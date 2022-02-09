@@ -3,6 +3,7 @@ package templatePlus
 import (
 	"html/template"
 	"net/http"
+	"shareExplorer/file"
 )
 
 type plusFunc func(*Context)
@@ -19,6 +20,27 @@ func (tp *TemplatePlus) Handle(path string, f plusFunc) (string, Handle) {
 	tp.handleMap[path] = rw
 	return path, rw.handleFunc
 }
+func (tp *TemplatePlus) Parse(templatePath string) error {
+	file, err := file.NewFile(templatePath)
+	if err != nil {
+		return err
+	}
+	files, err := file.ListAllFile()
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		if f.IsDir() {
+			return tp.Parse(f.Abs())
+		} else {
+			_, err2 := tp.template.ParseFiles(f.Abs())
+			if err2 != nil {
+				return err2
+			}
+		}
+	}
+	return nil
+}
 
 type rawHandle struct {
 	Handle Handle
@@ -31,7 +53,5 @@ func (rh *rawHandle) handleFunc(w http.ResponseWriter, r *http.Request) {
 
 func Parse(templatePath string) (*TemplatePlus, error) {
 	tp := new(TemplatePlus)
-	var err error
-	tp.template, err = template.ParseFiles("")
-	return tp, err
+	return tp, tp.Parse(templatePath)
 }

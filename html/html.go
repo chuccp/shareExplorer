@@ -20,7 +20,7 @@ func local(ctx *templatePlus.Context) {
 }
 func Html() {
 
-	template := templatePlus.Parse("template")
+	template, _ := templatePlus.Parse("template")
 
 	http.HandleFunc("/", index)
 
