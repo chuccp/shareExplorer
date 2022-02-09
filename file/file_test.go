@@ -12,15 +12,13 @@ func TestFile(t *testing.T) {
 	if err == nil {
 		for _, v := range fs {
 			log.Print(v.Abs())
-			ds, err2 := v.ListFile(0)
+			ds, err2 := v.ListAllFile()
 			if err2 == nil {
 				for _, d := range ds {
 					println(d.Abs())
 					if d.IsDir(){
-
-						fffs,_:=d.ListFile(0)
-						for _, fff := range fffs {
-							println(fff.Abs())
+						faffs,_:=d.ListAllFile()
+						for _, fff := range faffs {
 							println(fff.Name())
 						}
 
