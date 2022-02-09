@@ -71,6 +71,10 @@ func (fi *File) IsDir() bool {
 	st, _ := fi.file.Stat()
 	return st.IsDir()
 }
+func (fi *File) ListAllFile() ([]*File, error) {
+
+	return fi.ListFile(0)
+}
 func (fi *File) ListFile(n int) ([]*File, error) {
 	dirs, err := fi.List(n)
 	if err != nil {
