@@ -33,12 +33,12 @@ type storageInfo struct {
 	FileSystem string
 }
 type DirEntry struct {
-	Parent *File
+	Parent string
 	dir    os.DirEntry
 }
 
 func (dir *DirEntry) ToFile() (*File, error) {
-	f, err := os.Open(dir.Parent.abs() + dir.dir.Name())
+	f, err := os.Open(dir.Parent + dir.dir.Name())
 	if err == nil {
 		return &File{file: f, Parent: dir.Parent, isDir: dir.IsDir()}, err
 	}
@@ -49,13 +49,40 @@ func (dir *DirEntry) IsDir() bool {
 }
 
 type File struct {
-	Parent *File
+	Parent string
 	file   *os.File
 	isDir  bool
 }
 
+func NewFile(path string) (*File, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	file, err := os.Open(absPath)
+	if err != nil {
+		return nil, err
+	}
+	fi, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	file2 := &File{file: file, isDir: fi.IsDir()}
+	path = fi.Name()
+	num := strings.Count(path, string(filepath.Separator))
+	if num > 1 {
+		last := strings.LastIndex(path, string(filepath.Separator))
+		parentPath := path[:last]
+		file2.Parent = parentPath
+	}
+	return file2, nil
+}
+
 func (fi *File) Abs() string {
 	return fi.file.Name()
+}
+func (fi *File) GetParent() (*File, error) {
+	return NewFile(fi.Parent)
 }
 func (fi *File) abs() string {
 	if fi.isDir {
@@ -96,7 +123,7 @@ func (fi *File) List(n int) ([]*DirEntry, error) {
 	}
 	vDirs := make([]*DirEntry, len(dirs))
 	for i, _ := range vDirs {
-		vDirs[i] = &DirEntry{dir: dirs[i], Parent: fi}
+		vDirs[i] = &DirEntry{dir: dirs[i], Parent: fi.abs()}
 	}
 	return vDirs, err
 }

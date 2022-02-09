@@ -16,11 +16,11 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 func local(ctx *templatePlus.Context) {
-
+	ctx.MajorPath("template/index.html")
 }
 func Html() {
 
-	template := templatePlus.New("template")
+	template := templatePlus.Parse("template")
 
 	http.HandleFunc("/", index)
 

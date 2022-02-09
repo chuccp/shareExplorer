@@ -1,31 +1,37 @@
 package templatePlus
 
-import "net/http"
+import (
+	"html/template"
+	"net/http"
+)
 
 type plusFunc func(*Context)
 type Handle func(http.ResponseWriter, *http.Request)
 
 type TemplatePlus struct {
-	plusFunc plusFunc
+	plusFunc  plusFunc
 	handleMap map[string]*rawHandle
+	template  *template.Template
 }
 
-func (tp *TemplatePlus) Handle(path string,f plusFunc) (string,Handle) {
-	rw:=new(rawHandle)
+func (tp *TemplatePlus) Handle(path string, f plusFunc) (string, Handle) {
+	rw := new(rawHandle)
 	tp.handleMap[path] = rw
-	return path,rw.handleFunc
+	return path, rw.handleFunc
 }
 
 type rawHandle struct {
 	Handle Handle
-	path string
+	path   string
 }
+
 func (rh *rawHandle) handleFunc(w http.ResponseWriter, r *http.Request) {
 
-
 }
 
-func New(templatePath string) *TemplatePlus {
+func Parse(templatePath string) (*TemplatePlus, error) {
 	tp := new(TemplatePlus)
-	return tp
+	var err error
+	tp.template, err = template.ParseFiles("")
+	return tp, err
 }
