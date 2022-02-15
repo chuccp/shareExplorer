@@ -1,21 +1,13 @@
 package html
 
 import (
-	"html/template"
 	"net/http"
 	"shareExplorer/templatePlus"
 )
 
-func index(w http.ResponseWriter, r *http.Request) {
+func index(ctx *templatePlus.Context) {
 //	tmpl, err := template.ParseFiles("template/index.html", "template/header.html", "template/end.html", "template/nav.html")
-
-	tmpl,err := template.New("local.html").ParseFiles("tlocal.html")
-
-	if err == nil {
-		tmpl.Execute(w, "")
-	} else {
-		w.Write([]byte(err.Error()))
-	}
+	ctx.Major("index.html")
 }
 
 func local(ctx *templatePlus.Context) {
@@ -25,8 +17,8 @@ func local(ctx *templatePlus.Context) {
 func Html() {
 
 	template, _ := templatePlus.Parse("template")
-	http.HandleFunc("/", index)
 
+	http.HandleFunc(template.Handle("/", index))
 	http.HandleFunc(template.Handle("/local.html", local))
 
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("static/js/"))))
