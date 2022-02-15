@@ -19,6 +19,7 @@ func GetRootPath() ([]*File, error) {
 	}
 	return nil, err
 }
+
 func getRootPath() ([]*os.File, error) {
 	if runtime.GOOS == "windows" {
 		return getWindowsRootPath()
@@ -48,12 +49,17 @@ func (dir *DirEntry) IsDir() bool {
 	return dir.dir.IsDir()
 }
 
+
+
+
 type File struct {
 	Parent string
 	file   *os.File
 	isDir  bool
 }
-
+func NewFilePath(parent string,relativePath string)(*File, error){
+	return NewFile(filepath.Join(parent,relativePath))
+}
 func NewFile(path string) (*File, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {

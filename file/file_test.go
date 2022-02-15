@@ -3,8 +3,16 @@ package file
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"testing"
 )
+
+func TestGetRelativePath(t *testing.T)  {
+
+	v,_:=filepath.Rel("D:\\aaa","D:\\aaa\\bb\\111.json")
+
+	t.Log(v)
+}
 
 func TestFile(t *testing.T) {
 

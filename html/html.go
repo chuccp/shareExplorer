@@ -7,7 +7,10 @@ import (
 )
 
 func index(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("template/index.html", "template/header.html", "template/end.html", "template/nav.html")
+//	tmpl, err := template.ParseFiles("template/index.html", "template/header.html", "template/end.html", "template/nav.html")
+
+	tmpl,err := template.New("local.html").ParseFiles("tlocal.html")
+
 	if err == nil {
 		tmpl.Execute(w, "")
 	} else {
@@ -16,12 +19,12 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 func local(ctx *templatePlus.Context) {
-	ctx.MajorPath("template/index.html")
+
+	ctx.Major("local.html")
 }
 func Html() {
 
 	template, _ := templatePlus.Parse("template")
-
 	http.HandleFunc("/", index)
 
 	http.HandleFunc(template.Handle("/local.html", local))
