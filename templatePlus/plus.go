@@ -2,6 +2,7 @@ package templatePlus
 
 import (
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -11,15 +12,17 @@ import (
 type plusFunc func(*Context)
 type Handle func(http.ResponseWriter, *http.Request)
 
+type MapFunc func(*Context, template.FuncMap)
+
 type rawHandle struct {
-	Handle   Handle
-	path     string
-	plusFunc plusFunc
-	template *TemplatePlus
+	Handle       Handle
+	path         string
+	plusFunc     plusFunc
+	templatePlus *TemplatePlus
 }
 
 func (rh *rawHandle) handleFunc(w http.ResponseWriter, r *http.Request) {
-	ctx := NewContext(w, r, rh.template)
+	ctx := NewContext(w, r, rh.templatePlus)
 	rh.plusFunc(ctx)
 }
 
@@ -27,7 +30,12 @@ type Template struct {
 	template     *template.Template
 	relativePath string
 	templatePath string
-	text string
+	text         string
+	funcMap template.FuncMap
+}
+
+func (t *Template) SetFuncMap(funcMap template.FuncMap) {
+	t.funcMap = funcMap
 }
 
 func (t *Template) Clone() (*Template, error) {
@@ -35,9 +43,8 @@ func (t *Template) Clone() (*Template, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Template{template:tm,relativePath: t.relativePath,templatePath: t.templatePath}, nil
+	return &Template{template: tm, relativePath: t.relativePath, templatePath: t.templatePath}, nil
 }
-
 
 func (t *Template) Parse(file *file.File) (*Template, error) {
 
@@ -52,12 +59,12 @@ func (t *Template) Parse(file *file.File) (*Template, error) {
 	}
 	t.text = string(data)
 	if t.template == nil {
-		t.template, err = template.New(t.relativePath).Parse(t.text )
+		t.template, err = template.New(t.relativePath).Parse(t.text)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		t.template, err = t.template.New(t.relativePath).Parse(t.text )
+		t.template, err = t.template.New(t.relativePath).Parse(t.text)
 		if err != nil {
 			return nil, err
 		}
@@ -73,29 +80,72 @@ type TemplatePlus struct {
 	templatePath string
 	template     *Template
 	templateMap  map[string]*Template
-	contextMap  map[string]*string
+	contextMap   map[string]*string
 	handleMap    map[string]*rawHandle
+	mapFunc      MapFunc
+	debug        bool
 }
 
 func (temp *TemplatePlus) Handle(path string, f plusFunc) (string, Handle) {
 	rw := new(rawHandle)
 	rw.plusFunc = f
-	rw.template = temp
+	rw.templatePlus = temp
 	temp.handleMap[path] = rw
 	return path, rw.handleFunc
 }
-func (temp *TemplatePlus) GetTemplate(relativePath string) (*Template, error){
-	tp,err:= temp.getTemplate(relativePath)
-	if err==nil{
-		tem, _ :=tp.template.New(relativePath).Parse(tp.text)
-		return &Template{template:tem,relativePath: relativePath,templatePath: temp.templatePath,text: tp.text}, err
+func (temp *TemplatePlus) GetTemplate(relativePath string,ctx *Context) (*Template, error) {
+	if temp.debug {
+		return temp.debugTemplate(relativePath,ctx)
+	}
+	tp, err := temp.getTemplate(relativePath)
+	if err == nil {
+		tem, _ := tp.template.New(relativePath).Parse(tp.text)
+		return &Template{template: tem, relativePath: relativePath, templatePath: temp.templatePath, text: tp.text}, err
 	}
 	return tp, err
 }
+func (temp *TemplatePlus) debugTemplate(relativePath string,ctx *Context) (*Template, error) {
+
+
+
+
+	data, err := os.ReadFile(filepath.Join(temp.templatePath, relativePath))
+	if err == nil {
+		abc:=func() (string,error){return "uuuuu",nil}
+		var mm = &template.FuncMap{"abc": abc}
+		temp.mapFunc(ctx,*mm)
+		log.Println(mm,relativePath)
+		tem, err4 := template.New(relativePath).Funcs(*mm).Parse(string(data))
+		if err4 != nil {
+			return nil, err4
+		}
+
+
+		for relPath, _ := range temp.templateMap {
+			if relPath == relativePath {
+				continue
+			}
+			data2, err2 := os.ReadFile(filepath.Join(temp.templatePath, relPath))
+			if err2 == nil {
+				tem.New(relPath).Parse(string(data2))
+			}
+		}
+
+
+
+
+
+
+		return &Template{template: tem, relativePath: relativePath, templatePath: temp.templatePath, text: string(data)}, nil
+	}
+	return nil, err
+
+}
+
 func (temp *TemplatePlus) getTemplate(relativePath string) (*Template, error) {
 	v := temp.templateMap[relativePath]
 	if v == nil {
-		tp,err:=temp.ParseFile(filepath.Join(temp.templatePath, relativePath))
+		tp, err := temp.ParseFile(filepath.Join(temp.templatePath, relativePath))
 		if err != nil {
 			return nil, err
 		}
@@ -116,9 +166,14 @@ func (temp *TemplatePlus) ParseFile(filePath string) (*Template, error) {
 	}
 	return tmp, nil
 }
-func (temp *TemplatePlus)addTemplate(relativePath string,tmp *Template){
+func (temp *TemplatePlus) addTemplate(relativePath string, tmp *Template) {
 	temp.templateMap[relativePath] = tmp
 }
+
+func (temp *TemplatePlus) Debug(debug bool) {
+	temp.debug = debug
+}
+
 func (temp *TemplatePlus) Parse(templatePath string) (*TemplatePlus, error) {
 	file, err := file.NewFile(templatePath)
 	if err != nil {
@@ -146,9 +201,13 @@ func (temp *TemplatePlus) Parse(templatePath string) (*TemplatePlus, error) {
 	return temp, nil
 }
 
+func (temp *TemplatePlus) Funcs(mapFunc MapFunc) {
+	temp.mapFunc = mapFunc
+}
+
 func Parse(templatePath string) (*TemplatePlus, error) {
-	templatePath,_ = filepath.Abs(templatePath)
-	tp := &TemplatePlus{templateMap: make(map[string]*Template),handleMap:make(map[string]*rawHandle)}
+	templatePath, _ = filepath.Abs(templatePath)
+	tp := &TemplatePlus{templateMap: make(map[string]*Template), handleMap: make(map[string]*rawHandle), debug: false}
 	tp.template = &Template{templatePath: templatePath}
 	tp.Parse(templatePath)
 	return tp, nil

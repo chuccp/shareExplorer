@@ -1,6 +1,7 @@
 package templatePlus
 
 import (
+	"html/template"
 	"log"
 	"net/http"
 )
@@ -9,10 +10,17 @@ type Context struct {
 	w http.ResponseWriter
 	r *http.Request
 	temPlus *TemplatePlus
+	funcMap template.FuncMap
 }
 
+func (ctx *Context) Request() *http.Request  {
+	return ctx.r
+}
+func (ctx *Context) Response() http.ResponseWriter  {
+	return ctx.w
+}
 func (ctx *Context) Major(templateFile string)  {
-	temp,err :=ctx.temPlus.GetTemplate(templateFile)
+	temp,err :=ctx.temPlus.GetTemplate(templateFile,ctx)
 	if err==nil{
 		temp.Execute(ctx.w, "")
 	}else{
