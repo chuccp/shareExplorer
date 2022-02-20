@@ -13,7 +13,7 @@ func GetRootPath() ([]*File, error) {
 	if err == nil {
 		files := make([]*File, len(fs))
 		for i, _ := range files {
-			files[i] = &File{file: fs[i], isDir: true}
+			files[i] = &File{file: fs[i], isDir: true,isDisk: true}
 		}
 		return files, err
 	}
@@ -56,6 +56,7 @@ type File struct {
 	Parent string
 	file   *os.File
 	isDir  bool
+	isDisk bool
 }
 func NewFilePath(parent string,relativePath string)(*File, error){
 	return NewFile(filepath.Join(parent,relativePath))
@@ -118,6 +119,8 @@ func (fi *File) ListFile(n int) ([]*File, error) {
 		f, err5 := dir.ToFile()
 		if err5 == nil {
 			files = append(files, f)
+		}else{
+			return nil,err5
 		}
 	}
 	return files, err
@@ -127,9 +130,9 @@ func (fi *File) List(n int) ([]*DirEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	vDirs := make([]*DirEntry, len(dirs))
-	for i, _ := range vDirs {
-		vDirs[i] = &DirEntry{dir: dirs[i], Parent: fi.abs()}
+	vDirs := make([]*DirEntry, 0)
+	for _, f := range dirs {
+		vDirs = append(vDirs, &DirEntry{dir:f, Parent: fi.abs()})
 	}
 	return vDirs, err
 }
@@ -142,7 +145,9 @@ func (fi *File) Name() string {
 	}
 	return name
 }
-
+func (fi *File) IsDisk()bool{
+	return fi.isDisk
+}
 func getOtherRootPath() ([]*os.File, error) {
 	f, err := os.Open("/")
 	files := make([]*os.File, 0)
