@@ -27,6 +27,7 @@ func disk(context *gin.Context) {
 }
 func Html() {
 	router := gin.Default()
+	//gin.SetMode(gin.ReleaseMode)
 	router.LoadHTMLGlob("templates/*")
 	router.GET("/", index)
 	router.GET("/lyear_main.html", main)
