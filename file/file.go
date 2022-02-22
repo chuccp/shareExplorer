@@ -2,6 +2,7 @@ package file
 
 import (
 	"github.com/yusufpapurcu/wmi"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -119,19 +120,19 @@ func (fi *File) ListFile(n int) ([]*File, error) {
 		f, err5 := dir.ToFile()
 		if err5 == nil {
 			files = append(files, f)
-		}else{
-			return nil,err5
 		}
 	}
 	return files, err
 }
 func (fi *File) List(n int) ([]*DirEntry, error) {
 	dirs, err := fi.file.ReadDir(n)
+
 	if err != nil {
 		return nil, err
 	}
 	vDirs := make([]*DirEntry, 0)
 	for _, f := range dirs {
+
 		vDirs = append(vDirs, &DirEntry{dir:f, Parent: fi.abs()})
 	}
 	return vDirs, err
@@ -139,9 +140,14 @@ func (fi *File) List(n int) ([]*DirEntry, error) {
 
 func (fi *File) Name() string {
 	name := fi.file.Name()
+	log.Println( "====",name)
 	index := strings.LastIndexByte(fi.file.Name(), filepath.Separator)
 	if index > -1 {
-		return name[index+1:]
+		if fi.isDisk{
+			return name[0:index]
+		}else{
+			return name[index+1:]
+		}
 	}
 	return name
 }

@@ -7,7 +7,18 @@
           <div class="card-body">
                  <div>
                      {{range .files}}
-                      <a class="btn mdi mdi-48px mdi-harddisk">{{ .Abs }}</a>
+                      <a href="disk.html?path={{ .Abs }}" class="btn file-view">
+
+                      {{ if .IsDisk }}
+                            <i class="mdi mdi-48px mdi-harddisk file-view-icon"></i>
+                      {{else if .IsDir }}
+                            <i class="mdi mdi-48px mdi-folder file-view-icon"></i>
+                       {{ else }}
+                            <i class="mdi mdi-48px mdi-file file-view-icon"></i>
+                        {{end}}
+
+                      <span>{{ .Name }}</span>
+                      </a>
                       {{end}}
           		  </div>
             <div>

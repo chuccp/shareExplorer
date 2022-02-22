@@ -2,7 +2,6 @@ package file
 
 import (
 	"log"
-	"os"
 	"path/filepath"
 	"testing"
 )
@@ -42,9 +41,11 @@ func TestFile(t *testing.T) {
 
 func TestFile2(t *testing.T) {
 
-	f,err:=os.Open("D:/")
+	f,err:=NewFile("C:/")
 	if err==nil{
-		ds,_:=f.ReadDir(0)
+		log.Println(f.Abs())
+		ds,err:=f.ListAllFile()
+		log.Println(err)
 		for _, d := range ds {
 			t.Log(d.Name())
 		}

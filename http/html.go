@@ -16,12 +16,28 @@ func main(context *gin.Context) {
 	context.HTML(http.StatusOK, "lyear_main.tmpl", gin.H{})
 }
 func disk(context *gin.Context) {
-	files, err := file.GetRootPath()
-	if err == nil {
-		log.Println(len(files))
-		context.HTML(http.StatusOK, "disk.tmpl", gin.H{"files":files})
-	}else{
-		context.Writer.WriteString(err.Error())
+	path:= context.Request.FormValue("path")
+	log.Println(path)
+	if  path == "" {
+		files, err := file.GetRootPath()
+		if err == nil {
+			context.HTML(http.StatusOK, "disk.tmpl", gin.H{"files": files})
+			return
+		} else {
+			context.Writer.WriteString(err.Error())
+		}
+	} else {
+		file,err:=file.NewFile(path)
+		if err==nil{
+			files, err :=file.ListAllFile()
+			if err==nil{
+				context.HTML(http.StatusOK, "disk.tmpl", gin.H{"files": files})
+			}else{
+				context.Writer.WriteString(err.Error())
+			}
+		}else{
+			context.Writer.WriteString(err.Error())
+		}
 	}
 
 }
