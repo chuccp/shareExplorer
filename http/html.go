@@ -29,7 +29,7 @@ func disk(context *gin.Context) {
 	} else {
 		file,err:=file.NewFile(path)
 		if err==nil{
-			files, err :=file.ListAllFile()
+			files, err :=file.List()
 			if err==nil{
 				context.HTML(http.StatusOK, "disk.tmpl", gin.H{"files": files})
 			}else{

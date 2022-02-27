@@ -1,4 +1,4 @@
-package main
+package quic
 
 import (
 	"bufio"
@@ -12,7 +12,11 @@ import (
 	"log"
 	"math/big"
 )
-func generateTLSConfig() *tls.Config {
+type Rsa struct {
+	keyPEM  []byte
+	certPEM []byte
+}
+func  GenerateKey() ([]byte,[]byte) {
 	key, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		panic(err)
@@ -24,8 +28,23 @@ func generateTLSConfig() *tls.Config {
 	}
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	return certPEM,keyPEM
+}
 
-	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
+func generateTLSConfig() *tls.Config {
+	//key, err := rsa.GenerateKey(rand.Reader, 1024)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//template := x509.Certificate{SerialNumber: big.NewInt(1)}
+	//certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+	//certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+
+	tlsCert, err := tls.X509KeyPair(GenerateKey())
 	if err != nil {
 		panic(err)
 	}
@@ -34,9 +53,9 @@ func generateTLSConfig() *tls.Config {
 		NextProtos:   []string{"quic-echo-example"},
 	}
 }
-func main_() {
+func Run() {
 
-	listen, err := quic.ListenAddr("0.0.0.0:4242", generateTLSConfig(), nil)
+	listen, err := quic.ListenAddr(":4242", generateTLSConfig(), nil)
 	if err == nil {
 		log.Println("quick 启动=====")
 		for {

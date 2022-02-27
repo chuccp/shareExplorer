@@ -1,54 +1,41 @@
 package file
 
 import (
-	"log"
-	"path/filepath"
+	log "github.com/chuccp/coke-log"
 	"testing"
 )
 
-func TestGetRelativePath(t *testing.T)  {
-
-	v,_:=filepath.Rel("D:\\aaa","D:\\aaa\\bb\\111.json")
-
-	t.Log(v)
-}
-
-func TestFile(t *testing.T) {
-
-	fs, err := GetRootPath()
-	if err == nil {
-		for _, v := range fs {
-			log.Print(v.Abs())
-			ds, err2 := v.ListAllFile()
-			if err2 == nil {
-				for _, d := range ds {
-					println(d.Abs())
-					if d.IsDir(){
-						faffs,_:=d.ListAllFile()
-						for _, fff := range faffs {
-							println(fff.Name())
-						}
-
-					}
-				}
-			}else{
-				log.Print(err2)
-			}
-		}
-	}
-}
-
-
-func TestFile2(t *testing.T) {
-
-	f,err:=NewFile("C:/")
+func TestExists(t *testing.T) {
+	file,err:=NewFile("static")
 	if err==nil{
-		log.Println(f.Abs())
-		ds,err:=f.ListAllFile()
-		log.Println(err)
-		for _, d := range ds {
-			t.Log(d.Name())
+		log.Info(file.Name(),"====",file.IsDir())
+	}
+}
+
+func TestOpenOrCreateFile(t *testing.T) {
+	file,err:=NewFile("static/sss.ini")
+	log.Info("!!!========",err)
+	if err==nil{
+		data,flag,err3:=file.Read()
+		if flag && err3==nil{
+			log.Info(data)
+		}else{
+			log.Info(flag,err3)
+		}
+	}else{
+		log.Info(err)
+	}
+}
+
+func TestGetRootPath(t *testing.T) {
+	files,err:=GetRootPath()
+	if err==nil{
+		for _, file := range files {
+			t.Logf(file.Name())
 		}
 	}
+}
+func TestFile_Read(t *testing.T) {
+
 
 }
