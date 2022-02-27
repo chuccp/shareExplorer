@@ -16,3 +16,4 @@
 .idea/*
 .idea/shareExplorer.iml
 *.iml
+.idea/modules.xml
