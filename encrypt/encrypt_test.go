@@ -1,7 +1,7 @@
 package encrypt
 
 import (
-	log "github.com/chuccp/coke-log"
+	 "github.com/chuccp/utils/log"
 	"testing"
 )
 

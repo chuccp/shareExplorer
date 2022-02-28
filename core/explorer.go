@@ -1,15 +1,24 @@
 package core
 
-import "github.com/chuccp/cokePush/config"
+import (
+	"container/list"
+	"github.com/chuccp/utils/config"
+)
 
 type ShareExplorer struct {
-	config *config.Config
+	ctx *Context
+	list  *list.List
 }
-
-func (ShareExplorer *ShareExplorer) Start()error {
-
-	return nil
+func (se *ShareExplorer)AddServer(server Server){
+	se.list.PushBack(server)
 }
-func NewShareExplorer(config *config.Config)*ShareExplorer  {
-	return &ShareExplorer{config: config}
+func (se *ShareExplorer) Start() {
+	for ele := se.list.Front();ele!=nil ; ele = ele.Next() {
+		server:=(ele.Value).(Server)
+		server.Init(se.ctx)
+		go  server.Start()
+	}
+}
+func NewShareExplorer(cfg *config.Config)*ShareExplorer  {
+	return &ShareExplorer{ctx:NewContext(cfg),list:list.New()}
 }

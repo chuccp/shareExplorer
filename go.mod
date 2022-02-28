@@ -3,21 +3,17 @@ module shareExplorer
 go 1.17
 
 require (
-	github.com/chuccp/coke-log v0.0.0-20220218040601-89a96516a687
-	github.com/chuccp/cokePush v0.0.0-20220210132923-a5bfedb83676
+	github.com/chuccp/utils v0.0.0-20220228053210-92066cf2a8d0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/lucas-clemente/quic-go v0.25.0
 	github.com/magiconair/properties v1.8.6
-	github.com/yusufpapurcu/wmi v1.2.2
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 )
 
 require (
 	github.com/cheekybits/genny v1.0.0 // indirect
-	github.com/chuccp/queue v0.0.0-20220207013930-9f21948142d5 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
-	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-playground/validator/v10 v10.10.0 // indirect
@@ -36,7 +32,7 @@ require (
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
 	golang.org/x/mod v0.5.1 // indirect
-	golang.org/x/sys v0.0.0-20220224120231-95c6836cb0e7 // indirect
+	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.9 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

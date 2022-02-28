@@ -6,8 +6,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"github.com/chuccp/utils/file"
 	"math/big"
-	"shareExplorer/file"
+
 )
 
 type Encrypt struct {

@@ -1,10 +1,11 @@
 package http
 
 import (
+	"github.com/chuccp/utils/file"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
-	"shareExplorer/file"
+
 )
 
 func index(context *gin.Context) {
