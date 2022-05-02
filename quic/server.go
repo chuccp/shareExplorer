@@ -23,11 +23,11 @@ func (server *Server) Start() {
 	if err != nil {
 		panic(err)
 	}
+	session, err2 := listen.Accept(context.Background())
+	if err2 != nil {
+		panic(err2)
+	}
 	for {
-		session, err2 := listen.Accept(context.Background())
-		if err2 != nil {
-			break
-		}
 		stream, err3 := session.OpenStream()
 		if err3 == nil {
 			conn := newConn(stream)
