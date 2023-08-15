@@ -1,16 +1,7 @@
 package main
 
-import (
-	"github.com/chuccp/utils/config"
-	"github.com/magiconair/properties"
-	"shareExplorer/core"
-)
+import "log"
 
-func main()  {
-
-	cfg, err := config.LoadFile("application.properties", properties.UTF8)
-	if err==nil{
-		shareExplorer:=core.NewShareExplorer(cfg)
-		shareExplorer.Start()
-	}
+func main() {
+	log.Println("111111111")
 }
