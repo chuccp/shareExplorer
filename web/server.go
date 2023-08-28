@@ -4,6 +4,7 @@ import (
 	"github.com/chuccp/kuic/cert"
 	khttp "github.com/chuccp/kuic/http"
 	"github.com/chuccp/shareExplorer/io"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"os"
 )
@@ -18,6 +19,7 @@ func (s *Server) Index(context *gin.Context) {
 }
 
 func (s *Server) Files(context *gin.Context) {
+
 	Path := context.Request.FormValue("Path")
 	if len(Path) > 0 {
 		child, err := s.fileManage.Children(Path)
@@ -47,11 +49,15 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
+
 	server.ListenAndServe(certPath, keyPath, s.engine)
 	return nil
 }
 
 func NewServer() *Server {
-
-	return &Server{engine: gin.Default()}
+	server := &Server{engine: gin.Default()}
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"*"} // 允许的域名列表，可以使用 * 来允许所有域名
+	server.engine.Use(cors.New(config))
+	return server
 }
