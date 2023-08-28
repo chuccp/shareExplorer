@@ -6,9 +6,8 @@ import (
 )
 
 type FileInfo struct {
-	IsDir    bool
-	Relative string
-	path     string
+	IsDir bool   `json:"isDir"`
+	Name  string `json:"name"`
 }
 type File struct {
 	path   string
@@ -17,7 +16,7 @@ type File struct {
 	isDir  bool
 }
 
-func (f *File) List(base string) ([]*FileInfo, error) {
+func (f *File) List() ([]*FileInfo, error) {
 	dirs, err := os.ReadDir(f.normal)
 	if err != nil {
 		return nil, err
@@ -26,11 +25,7 @@ func (f *File) List(base string) ([]*FileInfo, error) {
 	for _, dir := range dirs {
 		info, err := dir.Info()
 		if err == nil {
-			path := filepath.Join(f.path, info.Name())
-			rel, err := filepath.Rel(base, path)
-			if err == nil {
-				files = append(files, &FileInfo{IsDir: dir.IsDir(), path: path, Relative: rel})
-			}
+			files = append(files, &FileInfo{IsDir: dir.IsDir(), Name: info.Name()})
 		}
 	}
 	return files, nil

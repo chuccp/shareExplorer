@@ -32,7 +32,7 @@ func (s *Server) Files(context *gin.Context) {
 }
 
 func (s *Server) Init() {
-	s.fileManage = io.CreateFileManage("C:\\Users\\cooge\\Downloads")
+	s.fileManage = io.CreateFileManage("C:/Users/cooge/Pictures/")
 	s.engine.GET("/index", s.Index)
 	s.engine.GET("/files", s.Files)
 }
@@ -47,7 +47,7 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
-	server.Listen(certPath, keyPath, s.engine)
+	server.ListenAndServe(certPath, keyPath, s.engine)
 	return nil
 }
 

@@ -5,7 +5,7 @@ go 1.20
 replace github.com/quic-go/quic-go => github.com/chuccp/quic-go v0.0.2
 
 require (
-	github.com/chuccp/kuic v0.0.2
+	github.com/chuccp/kuic v0.0.5
 	github.com/gin-gonic/gin v1.9.1
 )
 
