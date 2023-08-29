@@ -15,6 +15,12 @@ func (fm *FileManage) Children(path string) ([]*FileInfo, error) {
 		return nil, err
 	}
 	list, err := file.List()
+	for _, info := range list {
+		info.Path, err = filepath.Rel(fm.base, info.Path)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if err != nil {
 		return nil, err
 	}

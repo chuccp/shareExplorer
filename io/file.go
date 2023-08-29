@@ -6,8 +6,11 @@ import (
 )
 
 type FileInfo struct {
-	IsDir bool   `json:"isDir"`
-	Name  string `json:"name"`
+	IsDir      bool   `json:"isDir"`
+	Name       string `json:"name"`
+	Path       string `json:"path"`
+	Size       int64  `json:"size"`
+	ModifyTime int64  `json:"modifyTime"`
 }
 type File struct {
 	path   string
@@ -25,7 +28,8 @@ func (f *File) List() ([]*FileInfo, error) {
 	for _, dir := range dirs {
 		info, err := dir.Info()
 		if err == nil {
-			files = append(files, &FileInfo{IsDir: dir.IsDir(), Name: info.Name()})
+			path := filepath.Join(f.normal, info.Name())
+			files = append(files, &FileInfo{IsDir: dir.IsDir(), Name: info.Name(), Path: path, Size: info.Size(), ModifyTime: info.ModTime().UnixMilli()})
 		}
 	}
 	return files, nil
