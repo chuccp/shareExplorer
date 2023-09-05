@@ -6,6 +6,7 @@ import (
 	"github.com/chuccp/shareExplorer/io"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"os"
 )
 
@@ -32,11 +33,27 @@ func (s *Server) Files(context *gin.Context) {
 		context.AbortWithError(404, os.ErrNotExist)
 	}
 }
+func (s *Server) Upload(context *gin.Context) {
 
+	file, err := context.FormFile("file")
+	if err != nil {
+		context.AbortWithError(500, err)
+		return
+	}
+	Path := context.Request.FormValue("Path")
+	absolute := s.fileManage.Absolute(Path, file.Filename)
+	err = context.SaveUploadedFile(file, absolute)
+	if err != nil {
+		context.AbortWithError(500, err)
+		return
+	}
+	context.String(http.StatusOK, file.Filename)
+}
 func (s *Server) Init() {
 	s.fileManage = io.CreateFileManage("C:/Users/cooge/Pictures/")
 	s.engine.GET("/index", s.Index)
 	s.engine.GET("/files", s.Files)
+	s.engine.POST("/upload", s.Upload)
 }
 func (s *Server) Start() error {
 	keyPath := "keyPath.PEM"
