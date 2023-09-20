@@ -1,0 +1,19 @@
+package core
+
+import (
+	"github.com/chuccp/shareExplorer/entity"
+)
+
+type Server interface {
+	Init(context *Context)
+	GetName() string
+}
+
+type IRegister interface {
+	Range(f func(server Server) bool)
+	GetConfig() *Config
+}
+
+type Traversal interface {
+	GetUser(username string) *entity.User
+}
