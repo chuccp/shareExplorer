@@ -1,26 +1,28 @@
 package db
 
-import "database/sql"
-import _ "github.com/glebarez/go-sqlite"
+import (
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
+)
 
 type DB struct {
 	dbName string
-	db     *sql.DB
+	db     *gorm.DB
 }
 
-type table struct {
-	tableName string
+func (d *DB) GetConfigModel() *ConfigModel {
+	return &ConfigModel{db: d.db, tableName: "t_config"}
 }
 
-func (d *DB) GetConfig() *Config {
-	return &Config{table: d.getTable("t_config")}
+func (d *DB) GetUserModel() *UserModel {
+	return &UserModel{db: d.db, tableName: "t_user"}
+}
+func (d *DB) GetRawDB() *gorm.DB {
+	return d.db
 }
 
-func (d *DB) getTable(tableName string) *table {
-	return &table{tableName: tableName}
-}
 func CreateDb(dbName string) (*DB, error) {
-	db, err := sql.Open("sqlite", dbName)
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}

@@ -11,3 +11,6 @@ func ResponseOK(msg string) *Response {
 func ResponseData(data any) *Response {
 	return &Response{Code: 200, Data: data}
 }
+func ResponseError(msg string) *Response {
+	return &Response{Code: 500, Data: msg}
+}

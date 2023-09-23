@@ -1,5 +1,6 @@
 package entity
 
 type System struct {
-	HasConfig bool `json:"hasConfig"`
+	HasInit       bool     `json:"hasInit"`
+	RemoteAddress []string `json:"remoteAddress"`
 }

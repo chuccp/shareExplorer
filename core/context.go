@@ -3,8 +3,10 @@ package core
 import (
 	khttp "github.com/chuccp/kuic/http"
 	"github.com/chuccp/shareExplorer/db"
+	"github.com/chuccp/shareExplorer/util"
 	"github.com/chuccp/shareExplorer/web"
 	"github.com/gin-gonic/gin"
+	"strings"
 )
 
 type HandlerFunc func(req *web.Request) (any, error)
@@ -24,6 +26,11 @@ func (c *Context) Get(relativePath string, handlers ...HandlerFunc) {
 }
 func (c *Context) GetConfig(section, name string) string {
 	return c.register.GetConfig().GetString(section, name)
+}
+func (c *Context) GetConfigArray(section, name string) []string {
+	values := c.register.GetConfig().GetString(section, name)
+	vs := strings.Split(values, ",")
+	return util.RemoveRepeatElement(vs)
 }
 func (c *Context) GetDB() *db.DB {
 	return c.db

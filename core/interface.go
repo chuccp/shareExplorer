@@ -15,5 +15,5 @@ type IRegister interface {
 }
 
 type Traversal interface {
-	GetUser(username string) *entity.User
+	GetUser(username string) *entity.RemoteHost
 }

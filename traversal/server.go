@@ -14,7 +14,7 @@ type Server struct {
 }
 
 func (s *Server) input(req *web.Request) (any, error) {
-	var user user2.User
+	var user user2.RemoteHost
 	err := req.BodyJson(&user)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func (s *Server) queryOne(req *web.Request) (any, error) {
 	}
 	return nil, web.NotFound
 }
-func (s *Server) GetUser(username string) *user2.User {
+func (s *Server) GetUser(username string) *user2.RemoteHost {
 	u, ok := s.store.Query(username)
 	if ok {
 		return u

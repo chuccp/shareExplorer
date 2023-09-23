@@ -24,3 +24,13 @@ func TestDB(t *testing.T) {
 	println(num)
 
 }
+func TestCreate(t *testing.T) {
+	db, err := sql.Open("sqlite", "share_explorer.db")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	query, err := db.Exec("")
+	println(query, err)
+
+}

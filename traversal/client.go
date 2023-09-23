@@ -18,19 +18,20 @@ func newClient(context *core.Context) *Client {
 func (c *Client) start() {
 	time.Sleep(2 * time.Second)
 	log.Println("!!!========================")
-	host := c.context.GetConfig("traversal", "remote.host")
-	port := c.context.GetConfig("traversal", "remote.port")
-	address := host + ":" + port
+	address := c.context.GetConfigArray("traversal", "remote.address")
 	go func() {
 		for {
-			c.register(address)
 			time.Sleep(10 * time.Second)
+			for _, addr := range address {
+				c.register(addr)
+				time.Sleep(1 * time.Second)
+			}
 		}
 	}()
 }
 func (c *Client) register(address string) {
 
-	var user user2.User
+	var user user2.RemoteHost
 	user.Username = "121212112"
 
 	log.Println("777========================")

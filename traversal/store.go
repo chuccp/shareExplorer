@@ -9,14 +9,14 @@ import (
 
 type Store struct {
 	userList *list.List
-	userMap  map[string]*entity.User
+	hostMap  map[string]*entity.RemoteHost
 }
 
-func (s *Store) AddUser(user *entity.User) {
+func (s *Store) AddUser(user *entity.RemoteHost) {
 	username := user.Username
-	ur, ok := s.userMap[username]
+	ur, ok := s.hostMap[username]
 	if !ok {
-		s.userMap[username] = user
+		s.hostMap[username] = user
 		s.userList.PushBack(user)
 	} else {
 		if ur.RemoteAddr != user.RemoteAddr {
@@ -28,25 +28,25 @@ func (s *Store) AddUser(user *entity.User) {
 	}
 }
 
-func (s *Store) QueryPage(page *web.Page) []*entity.User {
-	us := make([]*entity.User, 0)
+func (s *Store) QueryPage(page *web.Page) []*entity.RemoteHost {
+	us := make([]*entity.RemoteHost, 0)
 	index := 0
 	start := page.PageNo * page.PageSize
 	end := start + page.PageSize
 	for ele := s.userList.Front(); ele != nil; ele = ele.Next() {
 		index++
 		if index >= start && index < end {
-			us = append(us, (ele.Value).(*entity.User))
+			us = append(us, (ele.Value).(*entity.RemoteHost))
 		}
 	}
 	return us
 }
-func (s *Store) Query(username string) (*entity.User, bool) {
-	u, ok := s.userMap[username]
+func (s *Store) Query(username string) (*entity.RemoteHost, bool) {
+	u, ok := s.hostMap[username]
 	return u, ok
 }
 
 func newStore() *Store {
 	uList := list.New()
-	return &Store{userList: uList, userMap: make(map[string]*entity.User)}
+	return &Store{userList: uList, hostMap: make(map[string]*entity.RemoteHost)}
 }
