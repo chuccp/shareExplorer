@@ -5,12 +5,16 @@ import (
 	user2 "github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/util"
 	"github.com/chuccp/shareExplorer/web"
+	"log"
 )
 
 type Server struct {
-	core.Traversal
-	store  *Store
-	client *Client
+	store   *Store
+	context *core.Context
+}
+
+func (s *Server) GetClient(remoteAddress string) core.TraversalClient {
+	return newClient(s.context, remoteAddress)
 }
 
 func (s *Server) input(req *web.Request) (any, error) {
@@ -39,6 +43,7 @@ func (s *Server) queryOne(req *web.Request) (any, error) {
 	}
 	return nil, web.NotFound
 }
+
 func (s *Server) GetUser(username string) *user2.RemoteHost {
 	u, ok := s.store.Query(username)
 	if ok {
@@ -46,14 +51,21 @@ func (s *Server) GetUser(username string) *user2.RemoteHost {
 	}
 	return nil
 }
+func (s *Server) connect(req *web.Request) (any, error) {
+
+	log.Println("检测=================来了")
+
+	return web.ResponseOK("ok"), nil
+}
 
 func (s *Server) Init(context *core.Context) {
+	s.context = context
 	s.store = newStore()
-	s.client = newClient(context)
 	context.SetTraversal(s)
 	context.Post("/traversal/register", s.input)
+	context.Get("/traversal/connect", s.connect)
 	context.Get("/traversal/queryList", s.queryList)
-	go s.client.start()
+	//go s.client.start()
 }
 func (s *Server) GetName() string {
 	return "traversal"

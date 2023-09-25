@@ -5,6 +5,7 @@ import (
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
+	"net"
 )
 
 type admin struct {
@@ -75,9 +76,35 @@ func (s *Server) info(req *web.Request) (any, error) {
 	system.RemoteAddress = s.context.GetConfigArray("traversal", "remote.address")
 	return &system, nil
 }
+func (s *Server) addRemoteAddress(req *web.Request) (any, error) {
+	var addresses []string
+	err := req.BodyJson(&addresses)
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+func (s *Server) connect(req *web.Request) (any, error) {
+	address := req.FormValue("address")
+	addr, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		return nil, err
+	}
+	traversalServer, ok := s.context.GetTraversal()
+	if ok {
+		traversalClient := traversalServer.GetClient(addr.String())
+		err := traversalClient.Connect()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return web.ResponseOK("ok"), nil
+}
 
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	context.Get("/user/info", s.info)
 	context.Post("/user/addAdmin", s.addAdmin)
+	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
+	context.Get("/user/connect", s.connect)
 }

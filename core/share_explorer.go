@@ -54,7 +54,7 @@ func (se *ShareExplorer) Start() error {
 		if len(username) == 0 {
 			context.Next()
 		} else {
-			traversal, ok := se.context.getTraversal()
+			traversal, ok := se.context.GetTraversal()
 			if ok {
 				u := traversal.GetUser(username)
 				if u != nil && len(u.RemoteAddr) > 0 {

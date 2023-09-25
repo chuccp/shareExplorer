@@ -15,7 +15,7 @@ type Context struct {
 	engine    *gin.Engine
 	register  IRegister
 	server    *khttp.Server
-	traversal Traversal
+	traversal TraversalServer
 	db        *db.DB
 }
 
@@ -35,10 +35,10 @@ func (c *Context) GetConfigArray(section, name string) []string {
 func (c *Context) GetDB() *db.DB {
 	return c.db
 }
-func (c *Context) SetTraversal(traversal Traversal) {
+func (c *Context) SetTraversal(traversal TraversalServer) {
 	c.traversal = traversal
 }
-func (c *Context) getTraversal() (Traversal, bool) {
+func (c *Context) GetTraversal() (TraversalServer, bool) {
 	return c.traversal, c.traversal != nil
 }
 func (c *Context) GetConfigInt(section, name string) (int, error) {
