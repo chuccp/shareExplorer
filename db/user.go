@@ -22,7 +22,7 @@ type UserModel struct {
 func (u *UserModel) IsExist() bool {
 	return u.db.Migrator().HasTable(u.tableName)
 }
-func (u *UserModel) create() error {
+func (u *UserModel) createTable() error {
 	err := u.db.Table(u.tableName).AutoMigrate(&User{})
 	return err
 }
@@ -31,7 +31,7 @@ func (u *UserModel) NewModel(db *gorm.DB) *UserModel {
 }
 func (u *UserModel) AddUser(username string, password string, role string) error {
 	if !u.IsExist() {
-		err := u.create()
+		err := u.createTable()
 		if err != nil {
 			return err
 		}

@@ -1,7 +1,6 @@
 package core
 
 import (
-	"github.com/chuccp/kuic/cert"
 	khttp "github.com/chuccp/kuic/http"
 	db2 "github.com/chuccp/shareExplorer/db"
 	"github.com/gin-contrib/cors"
@@ -39,13 +38,15 @@ func CreateShareExplorer(register IRegister) (*ShareExplorer, error) {
 }
 
 func (se *ShareExplorer) Start() error {
+	serverCert, err := InitServerCert()
+	if err != nil {
+		return err
+	}
+	se.context.cert = serverCert
 	se.register.Range(func(server Server) bool {
 		server.Init(se.context)
 		return true
 	})
-	keyPath := "keyPath.PEM"
-	certPath := "certPath.PEM"
-	err := cert.CreateOrReadCert(keyPath, certPath)
 	if err != nil {
 		return err
 	}
@@ -64,9 +65,8 @@ func (se *ShareExplorer) Start() error {
 					}
 				}
 			}
-
 		}
 	})
-	err = se.server.ListenAndServe(certPath, keyPath, se.engine)
+	err = se.server.ListenAndServeWithTls(serverCert.getTlsConfig(), se.engine)
 	return err
 }

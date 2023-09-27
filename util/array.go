@@ -15,3 +15,13 @@ func RemoveRepeatElement[T comparable](list []T) []T {
 	}
 	return tempList
 }
+
+func DeleteElement[T comparable](list []T, ele T) []T {
+	result := make([]T, 0)
+	for _, v := range list {
+		if v != ele {
+			result = append(result, v)
+		}
+	}
+	return result
+}

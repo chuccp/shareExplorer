@@ -1,6 +1,7 @@
 package io
 
 import (
+	"github.com/chuccp/kuic/util"
 	"os"
 	"path/filepath"
 )
@@ -44,4 +45,18 @@ func OpenFile(path string) (*File, error) {
 		return nil, err
 	}
 	return &File{normal: normal, path: path, file: file}, nil
+}
+func ReadFile(path string) ([]byte, error) {
+	file, err := util.NewFile(path)
+	if err != nil {
+		return nil, err
+	}
+	all, err := file.ReadAll()
+	if err != nil {
+		file.Close()
+		return nil, err
+	} else {
+		file.Close()
+		return all, nil
+	}
 }

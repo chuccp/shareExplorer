@@ -21,7 +21,7 @@ type ConfigModel struct {
 func (u *ConfigModel) IsExist() bool {
 	return u.db.Migrator().HasTable(u.tableName)
 }
-func (u *ConfigModel) create() error {
+func (u *ConfigModel) createTable() error {
 	err := u.db.Table(u.tableName).AutoMigrate(&Config{})
 	return err
 }
@@ -31,7 +31,7 @@ func (u *ConfigModel) NewModel(db *gorm.DB) *ConfigModel {
 func (u *ConfigModel) Create(key string, value string) error {
 
 	if !u.IsExist() {
-		u.create()
+		u.createTable()
 	}
 	tx := u.db.Table(u.tableName).Create(&Config{
 		Key:        key,

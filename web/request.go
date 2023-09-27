@@ -51,6 +51,7 @@ func (r *Request) BodyJson(v any) error {
 	if err != nil {
 		return err
 	}
+	println(string(body))
 	err = json.Unmarshal(body, v)
 	if err != nil {
 		return err

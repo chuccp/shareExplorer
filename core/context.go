@@ -17,6 +17,7 @@ type Context struct {
 	server    *khttp.Server
 	traversal TraversalServer
 	db        *db.DB
+	cert      *Cert
 }
 
 type HandlersChain []HandlerFunc
@@ -35,6 +36,9 @@ func (c *Context) GetConfigArray(section, name string) []string {
 func (c *Context) GetDB() *db.DB {
 	return c.db
 }
+func (c *Context) GetCert() *Cert {
+	return c.cert
+}
 func (c *Context) SetTraversal(traversal TraversalServer) {
 	c.traversal = traversal
 }
@@ -47,6 +51,7 @@ func (c *Context) GetConfigInt(section, name string) (int, error) {
 func (c *Context) GetHttpClient(address string) (*khttp.Client, error) {
 	return c.server.GetHttpClient(address)
 }
+
 func (c *Context) toGinHandlerFunc(handlers ...HandlerFunc) []gin.HandlerFunc {
 	var handlerFunc = make([]gin.HandlerFunc, len(handlers))
 	for i, handler := range handlers {
@@ -59,6 +64,8 @@ func (c *Context) toGinHandlerFunc(handlers ...HandlerFunc) []gin.HandlerFunc {
 				} else {
 					context.Writer.Write([]byte(t))
 				}
+			case *web.File:
+				context.FileAttachment(t.GetPath(), t.GetFilename())
 			default:
 				if err != nil {
 					if t != nil {

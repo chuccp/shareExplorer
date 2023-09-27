@@ -17,6 +17,9 @@ func (d *DB) GetConfigModel() *ConfigModel {
 func (d *DB) GetUserModel() *UserModel {
 	return &UserModel{db: d.db, tableName: "t_user"}
 }
+func (d *DB) GetAddressModel() *AddressModel {
+	return &AddressModel{db: d.db, tableName: "t_address"}
+}
 func (d *DB) GetRawDB() *gorm.DB {
 	return d.db
 }
