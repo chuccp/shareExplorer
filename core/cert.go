@@ -3,6 +3,7 @@ package core
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"github.com/chuccp/kuic/cert"
 	"github.com/chuccp/kuic/util"
 	"github.com/chuccp/shareExplorer/io"
@@ -80,7 +81,26 @@ func GenerateClientGroupPem(serverCa, clientCert, clientKey string) ([]byte, err
 	data = append(data, key...)
 	return data, nil
 }
-
+func ReadClientGroupPem(groupKey string) (ca *x509.Certificate, tlsCert *tls.Certificate, err error) {
+	file, err := io.ReadFile(groupKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	block, rest := pem.Decode(file)
+	ca, err = x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, nil, err
+	}
+	var cert tls.Certificate
+	block, rest = pem.Decode(rest)
+	cert.Certificate = append(cert.Certificate, block.Bytes)
+	block, rest = pem.Decode(rest)
+	cert.PrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ca, &cert, nil
+}
 func CreateNotExistCertGroup(caPath string, certPath string, keyPath string) (err error) {
 	caIsExists, err := util.ExistsFile(caPath)
 	if err != nil {
