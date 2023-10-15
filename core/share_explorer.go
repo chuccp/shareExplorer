@@ -3,6 +3,7 @@ package core
 import (
 	khttp "github.com/chuccp/kuic/http"
 	db2 "github.com/chuccp/shareExplorer/db"
+	"github.com/chuccp/shareExplorer/util"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"strconv"
@@ -19,6 +20,7 @@ func CreateShareExplorer(register IRegister) (*ShareExplorer, error) {
 	engine := gin.Default()
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"} // 允许的域名列表，可以使用 * 来允许所有域名
+	config.AllowHeaders = []string{"*"} // 允
 	engine.Use(cors.New(config))
 	port, err := register.GetConfig().GetInt("core", "local.port")
 	if err != nil {
@@ -33,7 +35,7 @@ func CreateShareExplorer(register IRegister) (*ShareExplorer, error) {
 	if err != nil {
 		return nil, err
 	}
-	context := &Context{engine: engine, register: register, server: server, db: db}
+	context := &Context{engine: engine, register: register, server: server, db: db, jwt: util.NewJwt()}
 	return &ShareExplorer{register: register, engine: engine, context: context, server: server}, nil
 }
 

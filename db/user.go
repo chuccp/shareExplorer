@@ -45,3 +45,17 @@ func (u *UserModel) AddUser(username string, password string, role string) error
 	})
 	return tx.Error
 }
+func (u *UserModel) QueryUser(username string, password string) (*User, error) {
+	if !u.IsExist() {
+		err := u.createTable()
+		if err != nil {
+			return nil, err
+		}
+	}
+	var user User
+	tx := u.db.Table(u.tableName).Find(&user, "username=? and password=? limit 1", username, password)
+	if tx.Error == nil {
+		return &user, nil
+	}
+	return nil, tx.Error
+}

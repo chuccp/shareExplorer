@@ -46,7 +46,7 @@ func (s *Server) GetName() string {
 }
 
 func (s *Server) Init(context *core.Context) {
-	s.fileManage = io.CreateFileManage("C:/Users/cooge/Pictures/")
+	s.fileManage = io.CreateFileManage("C:\\Users\\cooge\\Documents")
 	context.Get("/file/index", s.index)
 	context.Get("/file/files", s.files)
 	context.Get("/file/upload", s.Upload)

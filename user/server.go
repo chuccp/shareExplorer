@@ -24,7 +24,31 @@ type Server struct {
 func (s *Server) GetName() string {
 	return "user"
 }
+func (s *Server) signIn(req *web.Request) (any, error) {
+	var admin admin
+	req.BodyJson(&admin)
+	if len(admin.Username) == 0 {
+		return web.ResponseError("用户名不能为空"), nil
+	}
+	if len(admin.Password) == 0 {
+		return web.ResponseError("密码不能为空"), nil
+	}
 
+	u, err := s.context.GetDB().GetUserModel().QueryUser(admin.Username, admin.Password)
+	if err != nil {
+		return nil, err
+	}
+	if len(u.Username) > 0 {
+		sub, err := req.SignedUsername(u.Username)
+		if err != nil {
+			return nil, err
+		}
+		return web.ResponseOK(sub), nil
+	} else {
+		return web.ResponseError("登录失败"), nil
+	}
+
+}
 func (s *Server) addAdmin(req *web.Request) (any, error) {
 	var admin admin
 	req.BodyJson(&admin)
@@ -74,6 +98,14 @@ func (s *Server) info(req *web.Request) (any, error) {
 	exist := s.context.GetDB().GetUserModel().IsExist()
 	var system entity.System
 	system.HasInit = exist
+	if exist {
+		username := req.GetTokenUsername()
+		if len(username) > 0 {
+			system.HasSignIn = true
+		} else {
+			system.HasSignIn = false
+		}
+	}
 	system.RemoteAddress = s.context.GetConfigArray("traversal", "remote.address")
 	return &system, nil
 }
@@ -130,6 +162,7 @@ func (s *Server) Init(context *core.Context) {
 	s.context = context
 	context.Get("/user/info", s.info)
 	context.Post("/user/addAdmin", s.addAdmin)
+	context.Post("/user/signIn", s.signIn)
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)

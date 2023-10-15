@@ -18,6 +18,7 @@ type Context struct {
 	traversal TraversalServer
 	db        *db.DB
 	cert      *Cert
+	jwt       *util.Jwt
 }
 
 type HandlersChain []HandlerFunc
@@ -39,6 +40,9 @@ func (c *Context) GetDB() *db.DB {
 func (c *Context) GetCert() *Cert {
 	return c.cert
 }
+func (c *Context) GetJwt() *util.Jwt {
+	return c.jwt
+}
 func (c *Context) SetTraversal(traversal TraversalServer) {
 	c.traversal = traversal
 }
@@ -56,7 +60,7 @@ func (c *Context) toGinHandlerFunc(handlers ...HandlerFunc) []gin.HandlerFunc {
 	var handlerFunc = make([]gin.HandlerFunc, len(handlers))
 	for i, handler := range handlers {
 		handlerFunc[i] = func(context *gin.Context) {
-			value, err := handler(web.NewRequest(context))
+			value, err := handler(web.NewRequest(context, c.jwt))
 			switch t := value.(type) {
 			case string:
 				if err != nil {

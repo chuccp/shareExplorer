@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"github.com/chuccp/shareExplorer/util"
 	"github.com/gin-gonic/gin"
 	"io"
 	"log"
@@ -12,10 +13,11 @@ import (
 
 type Request struct {
 	context *gin.Context
+	jwt     *util.Jwt
 }
 
-func NewRequest(context *gin.Context) *Request {
-	return &Request{context: context}
+func NewRequest(context *gin.Context, jwt *util.Jwt) *Request {
+	return &Request{context: context, jwt: jwt}
 }
 
 func (r *Request) FormValue(key string) string {
@@ -36,6 +38,23 @@ func (r *Request) GetRemoteAddress() string {
 		return address[:index]
 	}
 	return address
+}
+func (r *Request) GetTokenUsername() string {
+	token := r.context.GetHeader("Token")
+	log.Println("token", token, len(token))
+	if len(token) > 0 {
+		sub, err := r.jwt.ParseWithSub(token)
+		log.Println(sub, err)
+		if err != nil {
+			return ""
+		} else {
+			return sub
+		}
+	}
+	return r.context.GetHeader("Token")
+}
+func (r *Request) SignedUsername(username string) (string, error) {
+	return r.jwt.SignedSub(username)
 }
 
 func (r *Request) GetPage() *Page {

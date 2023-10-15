@@ -22,6 +22,9 @@ func main() {
 		panic(err)
 		return
 	}
-	shareExplorer.Start()
-
+	err = shareExplorer.Start()
+	if err != nil {
+		return
+	}
+	panic(err)
 }
