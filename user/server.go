@@ -158,6 +158,11 @@ func (s *Server) downloadCert(req *web.Request) (any, error) {
 	}
 	return web.ResponseFile("share.group.key"), nil
 }
+func (s *Server) addPath(req *web.Request) (any, error) {
+
+	return nil, nil
+}
+
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	context.Get("/user/info", s.info)
@@ -166,4 +171,5 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)
+	context.Post("/user/addPath", s.addPath)
 }

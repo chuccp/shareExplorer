@@ -20,6 +20,11 @@ func (d *DB) GetUserModel() *UserModel {
 func (d *DB) GetAddressModel() *AddressModel {
 	return &AddressModel{db: d.db, tableName: "t_address"}
 }
+
+func (d *DB) GetPathModel() *PathModel {
+	return &PathModel{db: d.db, tableName: "t_path"}
+}
+
 func (d *DB) GetRawDB() *gorm.DB {
 	return d.db
 }

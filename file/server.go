@@ -45,9 +45,31 @@ func (s *Server) GetName() string {
 	return "file"
 }
 
+func (s *Server) root(req *web.Request) (any, error) {
+	pathInfo, err := io.ReadRootPath()
+	if err != nil {
+		return nil, err
+	}
+	return pathInfo, nil
+}
+func (s *Server) paths(req *web.Request) (any, error) {
+	Path := req.FormValue("Path")
+	if len(Path) > 0 {
+		pathInfo, err := io.ReadChildrenDir(Path)
+		if err != nil {
+			return nil, err
+		} else {
+			return pathInfo, err
+		}
+	}
+	return nil, os.ErrNotExist
+}
+
 func (s *Server) Init(context *core.Context) {
 	s.fileManage = io.CreateFileManage("C:\\Users\\cooge\\Documents")
 	context.Get("/file/index", s.index)
 	context.Get("/file/files", s.files)
 	context.Get("/file/upload", s.Upload)
+	context.Get("/file/root", s.root)
+	context.Get("/file/paths", s.paths)
 }

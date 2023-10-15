@@ -16,3 +16,15 @@ func TestName(t *testing.T) {
 
 	log.Println(len(children))
 }
+func TestRoot(t *testing.T) {
+
+	dir, err := ReadChildrenDir("c:\\")
+	t.Log(err)
+	if err != nil {
+		return
+	}
+	for _, info := range dir {
+		println(info.Path)
+	}
+
+}

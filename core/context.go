@@ -23,9 +23,6 @@ type Context struct {
 
 type HandlersChain []HandlerFunc
 
-func (c *Context) Get(relativePath string, handlers ...HandlerFunc) {
-	c.engine.GET(relativePath, c.toGinHandlerFunc(handlers...)...)
-}
 func (c *Context) GetConfig(section, name string) string {
 	return c.register.GetConfig().GetString(section, name)
 }
@@ -56,7 +53,13 @@ func (c *Context) GetHttpClient(address string) (*khttp.Client, error) {
 	return c.server.GetHttpClient(address)
 }
 
-func (c *Context) toGinHandlerFunc(handlers ...HandlerFunc) []gin.HandlerFunc {
+func (c *Context) Post(relativePath string, handlers ...HandlerFunc) {
+	c.engine.POST(relativePath, c.toGinHandlerFunc(handlers)...)
+}
+func (c *Context) Get(relativePath string, handlers ...HandlerFunc) {
+	c.engine.GET(relativePath, c.toGinHandlerFunc(handlers)...)
+}
+func (c *Context) toGinHandlerFunc(handlers []HandlerFunc) []gin.HandlerFunc {
 	var handlerFunc = make([]gin.HandlerFunc, len(handlers))
 	for i, handler := range handlers {
 		handlerFunc[i] = func(context *gin.Context) {
@@ -84,8 +87,4 @@ func (c *Context) toGinHandlerFunc(handlers ...HandlerFunc) []gin.HandlerFunc {
 		}
 	}
 	return handlerFunc
-}
-
-func (c *Context) Post(relativePath string, handlers ...HandlerFunc) {
-	c.engine.POST(relativePath, c.toGinHandlerFunc(handlers...)...)
 }
