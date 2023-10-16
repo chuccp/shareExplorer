@@ -3,6 +3,7 @@ package user
 import (
 	"github.com/chuccp/kuic/util"
 	"github.com/chuccp/shareExplorer/core"
+	"github.com/chuccp/shareExplorer/db"
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
@@ -159,8 +160,26 @@ func (s *Server) downloadCert(req *web.Request) (any, error) {
 	return web.ResponseFile("share.group.key"), nil
 }
 func (s *Server) addPath(req *web.Request) (any, error) {
-
-	return nil, nil
+	var path db.Path
+	err := req.BodyJson(&path)
+	if err != nil {
+		return nil, err
+	}
+	err = s.context.GetDB().GetPathModel().Create(path.Name, path.Path)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK("ok"), nil
+}
+func (s *Server) queryPath(req *web.Request) (any, error) {
+	pageNo := req.FormIntValue("pageNo")
+	pageSize := req.FormIntValue("pageSize")
+	list, num, err := s.context.GetDB().GetPathModel().QueryPage(pageNo, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	pageAble := &web.PageAble{Total: num, List: list}
+	return web.ResponseOK(pageAble), nil
 }
 
 func (s *Server) Init(context *core.Context) {
@@ -172,4 +191,6 @@ func (s *Server) Init(context *core.Context) {
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)
 	context.Post("/user/addPath", s.addPath)
+
+	context.Get("/user/queryPath", s.queryPath)
 }
