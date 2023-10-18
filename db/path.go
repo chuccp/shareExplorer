@@ -18,10 +18,9 @@ type PathModel struct {
 	tableName string
 }
 
-func (a *PathModel) IsExist() (bool, error) {
-	var num int64
-	tx := a.db.Table("sqlite_master").Where("type='table' AND name=?", a.tableName).Count(&num)
-	return num > 0, tx.Error
+func (a *PathModel) IsExist() bool {
+
+	return a.db.Migrator().HasTable(a.tableName)
 
 }
 func (a *PathModel) createTable() error {
@@ -29,22 +28,19 @@ func (a *PathModel) createTable() error {
 	return err
 }
 func (a *PathModel) Create(name string, path string) error {
-	exist, err := a.IsExist()
-	if err != nil {
-		return err
-	}
-	if !exist {
+
+	if !a.IsExist() {
 		a.createTable()
 	}
-	rows, err := a.db.Table(a.tableName).Where(" `name` = ? or `path`=?", name, path).Rows()
-	if err != nil {
-		return err
+	var num int64
+	tx := a.db.Table(a.tableName).Where(" `name` = ? or `path`=?", name, path).Count(&num)
+	if tx.Error != nil {
+		return tx.Error
 	}
-	if rows.Next() {
-		rows.Close()
+	if num > 0 {
 		return errors.New("存在重复")
 	}
-	tx := a.db.Table(a.tableName).Create(&Path{
+	tx = a.db.Table(a.tableName).Create(&Path{
 		Name:       name,
 		Path:       path,
 		CreateTime: time.Now(),
@@ -54,17 +50,12 @@ func (a *PathModel) Create(name string, path string) error {
 
 func (a *PathModel) QueryPage(pageNo int, pageSize int) ([]*Path, int64, error) {
 
-	exist, err := a.IsExist()
-	if err != nil {
-		return nil, 0, err
-	}
-
 	paths := make([]*Path, 0)
-	if !exist {
+	if !a.IsExist() {
 		return paths, 0, nil
 	}
 	var paths01 []*Path
-	tx := a.db.Table(a.tableName).Offset(pageNo * pageSize).Limit(pageSize).Find(&paths01)
+	tx := a.db.Table(a.tableName).Order("`id` desc").Offset(pageNo * pageSize).Limit(pageSize).Find(&paths01)
 	if tx.Error == nil {
 		var num int64
 		tx = a.db.Table(a.tableName).Count(&num)

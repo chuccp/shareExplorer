@@ -181,6 +181,14 @@ func (s *Server) queryPath(req *web.Request) (any, error) {
 	pageAble := &web.PageAble{Total: num, List: list}
 	return web.ResponseOK(pageAble), nil
 }
+func (s *Server) queryAllPath(req *web.Request) (any, error) {
+	list, num, err := s.context.GetDB().GetPathModel().QueryPage(0, 100)
+	if err != nil {
+		return nil, err
+	}
+	pageAble := &web.PageAble{Total: num, List: list}
+	return web.ResponseOK(pageAble), nil
+}
 
 func (s *Server) Init(context *core.Context) {
 	s.context = context
@@ -191,6 +199,6 @@ func (s *Server) Init(context *core.Context) {
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)
 	context.Post("/user/addPath", s.addPath)
-
 	context.Get("/user/queryPath", s.queryPath)
+	context.Get("/user/queryAllPath", s.queryAllPath)
 }

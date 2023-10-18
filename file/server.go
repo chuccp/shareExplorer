@@ -8,7 +8,6 @@ import (
 )
 
 type Server struct {
-	fileManage *io.FileManage
 }
 
 func (s *Server) index(req *web.Request) (any, error) {
@@ -17,8 +16,10 @@ func (s *Server) index(req *web.Request) (any, error) {
 
 func (s *Server) files(req *web.Request) (any, error) {
 	Path := req.FormValue("Path")
-	if len(Path) > 0 {
-		child, err := s.fileManage.Children(Path)
+	RootPath := req.FormValue("RootPath")
+	if len(Path) > 0 && len(RootPath) > 0 {
+		fileManage := io.CreateFileManage(RootPath)
+		child, err := fileManage.Children(Path)
 		if err != nil {
 			return nil, err
 		} else {
@@ -33,12 +34,18 @@ func (s *Server) Upload(req *web.Request) (any, error) {
 		return nil, err
 	}
 	Path := req.FormValue("Path")
-	absolute := s.fileManage.Absolute(Path, file.Filename)
-	err = web.SaveUploadedFile(file, absolute)
-	if err != nil {
-		return nil, err
+	RootPath := req.FormValue("RootPath")
+	if len(Path) > 0 && len(RootPath) > 0 {
+		fileManage := io.CreateFileManage(RootPath)
+		absolute := fileManage.Absolute(Path, file.Filename)
+		err = web.SaveUploadedFile(file, absolute)
+		if err != nil {
+			return nil, err
+		}
+		return file.Filename, err
 	}
-	return file.Filename, err
+	return nil, os.ErrNotExist
+
 }
 
 func (s *Server) GetName() string {
@@ -66,7 +73,6 @@ func (s *Server) paths(req *web.Request) (any, error) {
 }
 
 func (s *Server) Init(context *core.Context) {
-	s.fileManage = io.CreateFileManage("C:\\Users\\cooge\\Documents")
 	context.Get("/file/index", s.index)
 	context.Get("/file/files", s.files)
 	context.Get("/file/upload", s.Upload)

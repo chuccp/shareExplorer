@@ -1,6 +1,7 @@
 package io
 
 import (
+	"fmt"
 	"github.com/chuccp/kuic/util"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
@@ -68,6 +69,7 @@ func (f *File) Close() error {
 func OpenFile(path string) (*File, error) {
 	normal, err := filepath.Abs(path)
 	if err != nil {
+		fmt.Errorf("openfile %s", err)
 		return nil, err
 	}
 	file, err := os.Open(path)
@@ -79,6 +81,7 @@ func OpenFile(path string) (*File, error) {
 func ReadFile(path string) ([]byte, error) {
 	file, err := util.NewFile(path)
 	if err != nil {
+		fmt.Errorf("readfile %s", err)
 		return nil, err
 	}
 	all, err := file.ReadAll()
@@ -134,6 +137,7 @@ func ReadRootPath() ([]*FileInfo, error) {
 	} else {
 		dirs, err := os.ReadDir("/")
 		if err != nil {
+			fmt.Errorf("readdir %s", err)
 			return nil, err
 		}
 		var files = make([]*FileInfo, 0)
@@ -148,18 +152,24 @@ func ReadRootPath() ([]*FileInfo, error) {
 	}
 }
 func IsHiddenFile(filename string) (bool, error) {
+	basename := filepath.Base(filename)
 	if runtime.GOOS == "windows" {
+		if basename[0:1] == "." {
+			return true, nil
+		}
 		pointer, err := syscall.UTF16PtrFromString(filename)
 		if err != nil {
+			fmt.Errorf("IsHiddenFile %s", err)
 			return false, err
 		}
 		attributes, err := syscall.GetFileAttributes(pointer)
 		if err != nil {
+			fmt.Errorf("IsHiddenFile %s", err)
 			return false, err
 		}
 		return attributes&syscall.FILE_ATTRIBUTE_HIDDEN != 0, nil
 	} else {
-		if filename[0:1] == "." {
+		if basename[0:1] == "." {
 			return true, nil
 		}
 	}
