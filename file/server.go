@@ -48,6 +48,23 @@ func (s *Server) Upload(req *web.Request) (any, error) {
 
 }
 
+func (s *Server) createNewFolder(req *web.Request) (any, error) {
+	folder := req.FormValue("folder")
+	RootPath := req.FormValue("RootPath")
+	path := req.FormValue("Path")
+	if len(path) > 0 && len(folder) > 0 && len(RootPath) > 0 {
+		fileManage := io.CreateFileManage(RootPath)
+		err := fileManage.CreateNewFolder(path, folder)
+		if err != nil {
+			return nil, err
+		} else {
+			return web.ResponseOK("ok"), nil
+		}
+	}
+	return nil, os.ErrNotExist
+
+}
+
 func (s *Server) GetName() string {
 	return "file"
 }
@@ -75,7 +92,8 @@ func (s *Server) paths(req *web.Request) (any, error) {
 func (s *Server) Init(context *core.Context) {
 	context.Get("/file/index", s.index)
 	context.Get("/file/files", s.files)
-	context.Get("/file/upload", s.Upload)
+	context.Post("/file/upload", s.Upload)
 	context.Get("/file/root", s.root)
 	context.Get("/file/paths", s.paths)
+	context.Post("/file/createNewFolder", s.createNewFolder)
 }

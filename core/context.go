@@ -6,6 +6,8 @@ import (
 	"github.com/chuccp/shareExplorer/util"
 	"github.com/chuccp/shareExplorer/web"
 	"github.com/gin-gonic/gin"
+	"log"
+	"path"
 	"strings"
 )
 
@@ -19,6 +21,7 @@ type Context struct {
 	db        *db.DB
 	cert      *Cert
 	jwt       *util.Jwt
+	paths     map[string]any
 }
 
 type HandlersChain []HandlerFunc
@@ -54,10 +57,41 @@ func (c *Context) GetHttpClient(address string) (*khttp.Client, error) {
 }
 
 func (c *Context) Post(relativePath string, handlers ...HandlerFunc) {
+	c.paths[relativePath] = true
 	c.engine.POST(relativePath, c.toGinHandlerFunc(handlers)...)
 }
 func (c *Context) Get(relativePath string, handlers ...HandlerFunc) {
+	c.paths[relativePath] = true
 	c.engine.GET(relativePath, c.toGinHandlerFunc(handlers)...)
+}
+func (c *Context) HasPaths(queryPath string) bool {
+	_, ok := c.paths[queryPath]
+	return ok
+}
+
+// StaticHandle 设置静态文件路由
+func (c *Context) StaticHandle(relativePath string, filepath string) {
+	c.engine.Use(func(context *gin.Context) {
+		path_ := context.Request.URL.Path
+		if c.HasPaths(path_) {
+			context.Next()
+		} else {
+			if strings.Contains(path_, "/manifest.json") {
+				filePath := path.Join(filepath, "/manifest.json")
+				context.File(filePath)
+			} else {
+				relativeFilePath := ""
+				if path_ == relativePath {
+					relativeFilePath = relativePath + "index.html"
+				} else {
+					relativeFilePath = path_
+				}
+				filePath := path.Join(filepath, relativeFilePath)
+				log.Println(filePath)
+				context.File(filePath)
+			}
+		}
+	})
 }
 func (c *Context) toGinHandlerFunc(handlers []HandlerFunc) []gin.HandlerFunc {
 	var handlerFunc = make([]gin.HandlerFunc, len(handlers))

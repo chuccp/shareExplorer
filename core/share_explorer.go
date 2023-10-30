@@ -35,7 +35,7 @@ func CreateShareExplorer(register IRegister) (*ShareExplorer, error) {
 	if err != nil {
 		return nil, err
 	}
-	context := &Context{engine: engine, register: register, server: server, db: db, jwt: util.NewJwt()}
+	context := &Context{engine: engine, register: register, server: server, db: db, jwt: util.NewJwt(), paths: make(map[string]any)}
 	return &ShareExplorer{register: register, engine: engine, context: context, server: server}, nil
 }
 

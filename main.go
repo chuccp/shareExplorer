@@ -4,6 +4,7 @@ import (
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/file"
 	"github.com/chuccp/shareExplorer/traversal"
+	"github.com/chuccp/shareExplorer/ui"
 	"github.com/chuccp/shareExplorer/user"
 )
 
@@ -14,6 +15,7 @@ func main() {
 		return
 	}
 	var register = core.NewRegister(cfg)
+	register.AddServer(&ui.Server{})
 	register.AddServer(&file.Server{})
 	register.AddServer(&user.Server{})
 	register.AddServer(&traversal.Server{})
