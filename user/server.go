@@ -195,6 +195,16 @@ func (s *Server) addPath(req *web.Request) (any, error) {
 	}
 	return web.ResponseOK("ok"), nil
 }
+
+func (s *Server) deletePath(req *web.Request) (any, error) {
+	id := req.FormIntValue("id")
+	err := s.context.GetDB().GetPathModel().Delete(uint(id))
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK("ok"), nil
+}
+
 func (s *Server) queryPath(req *web.Request) (any, error) {
 	pageNo := req.FormIntValue("pageNo")
 	pageSize := req.FormIntValue("pageSize")
@@ -224,6 +234,7 @@ func (s *Server) Init(context *core.Context) {
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)
 	context.Post("/user/addPath", s.addPath)
+	context.Get("/user/deletePath", s.deletePath)
 	context.Get("/user/queryPath", s.queryPath)
 	context.Get("/user/queryAllPath", s.queryAllPath)
 }

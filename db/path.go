@@ -64,6 +64,17 @@ func (a *PathModel) Create(name string, path string) error {
 	return tx.Error
 }
 
+func (a *PathModel) Delete(id uint) error {
+	if !a.IsExist() {
+		return nil
+	}
+	tx := a.db.Table(a.tableName).Where("`id` = ?", id).Delete(&Path{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	return nil
+}
+
 func (a *PathModel) QueryPage(pageNo int, pageSize int) ([]*Path, int64, error) {
 
 	paths := make([]*Path, 0)
