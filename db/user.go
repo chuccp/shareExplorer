@@ -2,6 +2,7 @@ package db
 
 import (
 	"gorm.io/gorm"
+	"log"
 	"time"
 )
 
@@ -19,9 +20,24 @@ type UserModel struct {
 	tableName string
 }
 
+func (u *UserModel) DeleteTable() error {
+	if !u.IsExist() {
+		return nil
+	}
+	log.Println("UserModel")
+	tx := u.db.Table(u.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&User{})
+	return tx.Error
+}
 func (u *UserModel) IsExist() bool {
 	return u.db.Migrator().HasTable(u.tableName)
 }
+
+func (u *UserModel) HasData() bool {
+	var num int64
+	u.db.Table(u.tableName).Count(&num)
+	return num > 0
+}
+
 func (u *UserModel) createTable() error {
 	err := u.db.Table(u.tableName).AutoMigrate(&User{})
 	return err

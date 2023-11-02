@@ -3,6 +3,7 @@ package db
 import (
 	"github.com/chuccp/shareExplorer/util"
 	"gorm.io/gorm"
+	"log"
 	"time"
 )
 
@@ -19,6 +20,10 @@ type AddressModel struct {
 	tableName string
 }
 
+func (a *AddressModel) NewModel(db *gorm.DB) *AddressModel {
+	return &AddressModel{db: db, tableName: a.tableName}
+}
+
 func (a *AddressModel) IsExist() bool {
 	return a.db.Migrator().HasTable(a.tableName)
 }
@@ -26,6 +31,16 @@ func (a *AddressModel) createTable() error {
 	err := a.db.Table(a.tableName).AutoMigrate(&Address{})
 	return err
 }
+
+func (a *AddressModel) DeleteTable() error {
+	if !a.IsExist() {
+		return nil
+	}
+	log.Println("AddressModel")
+	tx := a.db.Table(a.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Address{})
+	return tx.Error
+}
+
 func (a *AddressModel) AddAddress(addresses []string) error {
 
 	if !a.IsExist() {

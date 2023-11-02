@@ -2,6 +2,7 @@ package db
 
 import (
 	"gorm.io/gorm"
+	"log"
 	"time"
 )
 
@@ -25,6 +26,16 @@ func (u *ConfigModel) createTable() error {
 	err := u.db.Table(u.tableName).AutoMigrate(&Config{})
 	return err
 }
+
+func (u *ConfigModel) DeleteTable() error {
+	if !u.IsExist() {
+		return nil
+	}
+	log.Println("ConfigModel")
+	tx := u.db.Table(u.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Config{})
+	return tx.Error
+}
+
 func (u *ConfigModel) NewModel(db *gorm.DB) *ConfigModel {
 	return &ConfigModel{db: db, tableName: u.tableName}
 }

@@ -11,11 +11,12 @@ import (
 )
 
 type admin struct {
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	RePassword  string `json:"rePassword"`
-	IsNatClient bool   `json:"isNatClient"`
-	IsNatServer bool   `json:"isNatServer"`
+	Username    string   `json:"username"`
+	Password    string   `json:"password"`
+	RePassword  string   `json:"rePassword"`
+	IsNatClient bool     `json:"isNatClient"`
+	IsNatServer bool     `json:"isNatServer"`
+	Addresses   []string `json:"addresses"`
 }
 
 type Server struct {
@@ -65,6 +66,11 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 	if admin.RePassword != admin.Password {
 		return web.ResponseError("两次密码输入不同"), nil
 	}
+	if admin.IsNatServer || admin.IsNatClient {
+		if admin.Addresses == nil || len(admin.Addresses) == 0 {
+			return web.ResponseError("远程节点不能为空"), nil
+		}
+	}
 
 	err := s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
 		err := s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin")
@@ -87,16 +93,25 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 		if err != nil {
 			return err
 		}
+		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
+		err = addressModel.AddAddress(admin.Addresses)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
 		return web.ResponseError(err.Error()), err
 	}
-	return web.ResponseOK("添加成功"), nil
+	sub, err := req.SignedUsername(admin.Username)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK(sub), nil
 }
 
 func (s *Server) info(req *web.Request) (any, error) {
-	exist := s.context.GetDB().GetUserModel().IsExist()
+	exist := s.context.GetDB().GetUserModel().HasData()
 	var system entity.System
 	system.HasInit = exist
 	if exist {
@@ -110,6 +125,15 @@ func (s *Server) info(req *web.Request) (any, error) {
 	system.RemoteAddress = s.context.GetConfigArray("traversal", "remote.address")
 	return &system, nil
 }
+
+func (s *Server) reset(req *web.Request) (any, error) {
+	err := s.context.GetDB().Reset()
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK("ok"), nil
+}
+
 func (s *Server) addRemoteAddress(req *web.Request) (any, error) {
 	println("addRemoteAddress")
 	var addresses []string
@@ -193,6 +217,7 @@ func (s *Server) queryAllPath(req *web.Request) (any, error) {
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	context.Get("/user/info", s.info)
+	context.Get("/user/reset", s.reset)
 	context.Post("/user/addAdmin", s.addAdmin)
 	context.Post("/user/signIn", s.signIn)
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)

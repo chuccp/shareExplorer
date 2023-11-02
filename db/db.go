@@ -28,6 +28,28 @@ func (d *DB) GetPathModel() *PathModel {
 func (d *DB) GetRawDB() *gorm.DB {
 	return d.db
 }
+func (d *DB) Reset() error {
+	err := d.db.Transaction(func(tx *gorm.DB) error {
+		err := d.GetConfigModel().NewModel(tx).DeleteTable()
+		if err != nil {
+			return err
+		}
+		err = d.GetPathModel().NewModel(tx).DeleteTable()
+		if err != nil {
+			return err
+		}
+		err = d.GetAddressModel().NewModel(tx).DeleteTable()
+		if err != nil {
+			return err
+		}
+		err = d.GetUserModel().NewModel(tx).DeleteTable()
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
+}
 
 func CreateDb(dbName string) (*DB, error) {
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})

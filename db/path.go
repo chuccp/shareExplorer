@@ -3,11 +3,12 @@ package db
 import (
 	"errors"
 	"gorm.io/gorm"
+	"log"
 	"time"
 )
 
 type Path struct {
-	Id         uint      `gorm:"primaryKey;autoIncrement;column:id"`
+	Id         uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
 	Name       string    `gorm:"unique;column:name" json:"name"`
 	Path       string    `gorm:"unique;column:path" json:"path"`
 	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
@@ -23,6 +24,21 @@ func (a *PathModel) IsExist() bool {
 	return a.db.Migrator().HasTable(a.tableName)
 
 }
+
+func (a *PathModel) DeleteTable() error {
+
+	if !a.IsExist() {
+		return nil
+	}
+	log.Println("PathModel")
+	tx := a.db.Table(a.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Path{})
+	return tx.Error
+}
+
+func (a *PathModel) NewModel(db *gorm.DB) *PathModel {
+	return &PathModel{db: db, tableName: a.tableName}
+}
+
 func (a *PathModel) createTable() error {
 	err := a.db.Table(a.tableName).AutoMigrate(&Path{})
 	return err
@@ -55,7 +71,7 @@ func (a *PathModel) QueryPage(pageNo int, pageSize int) ([]*Path, int64, error) 
 		return paths, 0, nil
 	}
 	var paths01 []*Path
-	tx := a.db.Table(a.tableName).Order("`id` desc").Offset(pageNo * pageSize).Limit(pageSize).Find(&paths01)
+	tx := a.db.Table(a.tableName).Order("`id` desc").Offset((pageNo - 1) * pageSize).Limit(pageSize).Find(&paths01)
 	if tx.Error == nil {
 		var num int64
 		tx = a.db.Table(a.tableName).Count(&num)
