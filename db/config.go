@@ -36,6 +36,17 @@ func (u *ConfigModel) DeleteTable() error {
 	return tx.Error
 }
 
+func (u *ConfigModel) HasData() bool {
+	var num int64
+	u.db.Table(u.tableName).Where(" `key` = 'isServer' ").Count(&num)
+	return num > 0
+}
+
+func (u *ConfigModel) GetValue(key string) (string, bool) {
+	var config Config
+	tx := u.db.Table(u.tableName).Where(&Config{Key: key}).First(&config)
+	return config.Value, !(tx.Error != nil || len(config.Value) == 0)
+}
 func (u *ConfigModel) NewModel(db *gorm.DB) *ConfigModel {
 	return &ConfigModel{db: db, tableName: u.tableName}
 }

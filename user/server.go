@@ -8,6 +8,7 @@ import (
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
 	"net"
+	"strings"
 )
 
 type admin struct {
@@ -73,7 +74,11 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 	}
 
 	err := s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
-		err := s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin")
+		err := s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", "true")
+		if err != nil {
+			return err
+		}
+		err = s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin")
 		if err != nil {
 			return err
 		}
@@ -93,6 +98,7 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 		if err != nil {
 			return err
 		}
+
 		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
 		err = addressModel.AddAddress(admin.Addresses)
 		if err != nil {
@@ -110,11 +116,36 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 	return web.ResponseOK(sub), nil
 }
 
+func (s *Server) addClient(req *web.Request) (any, error) {
+	var admin admin
+	req.BodyJson(&admin)
+	if admin.Addresses == nil || len(admin.Addresses) == 0 {
+		return web.ResponseError("远程节点不能为空"), nil
+	}
+	err := s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
+		err := s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", "true")
+		if err != nil {
+			return err
+		}
+		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
+		err = addressModel.AddAddress(admin.Addresses)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK("ok"), nil
+}
+
 func (s *Server) info(req *web.Request) (any, error) {
-	exist := s.context.GetDB().GetUserModel().HasData()
+	exist, fa := s.context.GetDB().GetConfigModel().GetValue("isServer")
 	var system entity.System
-	system.HasInit = exist
-	if exist {
+	system.HasInit = fa
+	if fa {
+		system.IsServer = strings.Contains(exist, "true")
 		username := req.GetTokenUsername()
 		if len(username) > 0 {
 			system.HasSignIn = true
@@ -229,6 +260,7 @@ func (s *Server) Init(context *core.Context) {
 	context.Get("/user/info", s.info)
 	context.Get("/user/reset", s.reset)
 	context.Post("/user/addAdmin", s.addAdmin)
+	context.Post("/user/addClient", s.addClient)
 	context.Post("/user/signIn", s.signIn)
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/connect", s.connect)

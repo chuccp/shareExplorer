@@ -3,6 +3,7 @@ package db
 import (
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type DB struct {
@@ -52,7 +53,8 @@ func (d *DB) Reset() error {
 }
 
 func CreateDb(dbName string) (*DB, error) {
-	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
+
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{Logger: logger.Default.LogMode(logger.Info)})
 	if err != nil {
 		return nil, err
 	}
