@@ -11,6 +11,7 @@ type Server interface {
 type TraversalClient interface {
 	Register() error
 	Connect() error
+	ClientSignIn(username string, password string) error
 }
 type IRegister interface {
 	Range(f func(server Server) bool)

@@ -198,6 +198,12 @@ func (s *Server) connect(req *web.Request) (any, error) {
 	}
 	return web.ResponseOK("ok"), nil
 }
+
+func (s *Server) clientSignIn(req *web.Request) (any, error) {
+
+	return web.ResponseOK("ok"), nil
+}
+
 func (s *Server) downloadCert(req *web.Request) (any, error) {
 
 	cert, err := core.InitClientCert("share")
@@ -262,6 +268,7 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/addAdmin", s.addAdmin)
 	context.Post("/user/addClient", s.addClient)
 	context.Post("/user/signIn", s.signIn)
+	context.Post("/user/clientSignIn", s.clientSignIn)
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)

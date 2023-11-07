@@ -102,15 +102,15 @@ func ReadClientGroupPem(groupKey string) (ca *x509.Certificate, tlsCert *tls.Cer
 	return ca, &cert, nil
 }
 func CreateNotExistCertGroup(caPath string, certPath string, keyPath string) (err error) {
-	caIsExists, err := util.ExistsFile(caPath)
+	caIsExists := util.ExistsFile(caPath)
 	if err != nil {
 		return err
 	}
-	certIsExists, err := util.ExistsFile(certPath)
+	certIsExists := util.ExistsFile(certPath)
 	if err != nil {
 		return err
 	}
-	keyIsExists, err := util.ExistsFile(keyPath)
+	keyIsExists := util.ExistsFile(keyPath)
 	if err != nil {
 		return err
 	}

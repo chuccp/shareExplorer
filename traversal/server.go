@@ -65,6 +65,7 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/traversal/register", s.input)
 	context.Get("/traversal/connect", s.connect)
 	context.Get("/traversal/queryList", s.queryList)
+	context.Get("/traversal/queryOne", s.queryOne)
 	//go s.client.start()
 }
 func (s *Server) GetName() string {
