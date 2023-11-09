@@ -1,4 +1,4 @@
-package core
+package util
 
 import (
 	"gopkg.in/ini.v1"

@@ -6,11 +6,12 @@ import (
 	"github.com/chuccp/shareExplorer/traversal"
 	"github.com/chuccp/shareExplorer/ui"
 	"github.com/chuccp/shareExplorer/user"
+	"github.com/chuccp/shareExplorer/util"
 )
 
 func main() {
 
-	cfg, err := core.LoadFile("config.ini")
+	cfg, err := util.LoadFile("config.ini")
 	if err != nil {
 		return
 	}

@@ -1,19 +1,22 @@
 package core
 
-import "sync"
+import (
+	"github.com/chuccp/shareExplorer/util"
+	"sync"
+)
 
 type Register struct {
 	servers *sync.Map
-	cfg     *Config
+	cfg     *util.Config
 }
 
-func NewRegister(cfg *Config) *Register {
+func NewRegister(cfg *util.Config) *Register {
 	return &Register{cfg: cfg, servers: new(sync.Map)}
 }
 func (register *Register) AddServer(server Server) {
 	register.servers.Store(server.GetName(), server)
 }
-func (register *Register) GetConfig() *Config {
+func (register *Register) GetConfig() *util.Config {
 	return register.cfg
 }
 func (register *Register) Range(f func(server Server) bool) {

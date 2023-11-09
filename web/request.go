@@ -41,7 +41,10 @@ func (r *Request) GetRemoteAddress() string {
 }
 func (r *Request) GetTokenUsername() string {
 	token := r.context.GetHeader("Token")
-	log.Println("token", token, len(token))
+	if len(token) == 0 {
+		token = r.context.Request.FormValue("Token")
+	}
+	log.Println("token:", token)
 	if len(token) > 0 {
 		sub, err := r.jwt.ParseWithSub(token)
 		log.Println(sub, err)
@@ -51,7 +54,7 @@ func (r *Request) GetTokenUsername() string {
 			return sub
 		}
 	}
-	return r.context.GetHeader("Token")
+	return ""
 }
 func (r *Request) SignedUsername(username string) (string, error) {
 	return r.jwt.SignedSub(username)

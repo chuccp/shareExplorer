@@ -3,7 +3,7 @@ package entity
 import "github.com/chuccp/shareExplorer/util"
 
 type RemoteHost struct {
-	Username     string `json:"username"`
+	ServerName   string `json:"serverName"`
 	RemoteAddr   string `json:"remoteAddr"`
 	CreateTime   string `json:"createTime"`
 	UpdateTime   string `json:"updateTime"`
@@ -11,8 +11,8 @@ type RemoteHost struct {
 	IsOnline     bool   `json:"isOnline"`
 }
 
-func NewUser(username string, remoteAddr string) *RemoteHost {
-	u := &RemoteHost{Username: username, RemoteAddr: remoteAddr}
+func NewRemoteHost(serverName string, remoteAddr string) *RemoteHost {
+	u := &RemoteHost{ServerName: serverName, RemoteAddr: remoteAddr}
 	u.CreateTime = util.NowTime()
 	u.UpdateTime = util.NowTime()
 	u.LastLiveTime = util.NowTime()

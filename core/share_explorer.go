@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/chuccp/kuic/cert"
 	khttp "github.com/chuccp/kuic/http"
 	db2 "github.com/chuccp/shareExplorer/db"
 	"github.com/chuccp/shareExplorer/util"
@@ -10,10 +11,12 @@ import (
 )
 
 type ShareExplorer struct {
-	engine   *gin.Engine
-	register IRegister
-	context  *Context
-	server   *khttp.Server
+	engine       *gin.Engine
+	register     IRegister
+	context      *Context
+	server       *khttp.Server
+	certManager  *cert.Manager
+	serverConfig *ServerConfig
 }
 
 func CreateShareExplorer(register IRegister) (*ShareExplorer, error) {
@@ -35,16 +38,23 @@ func CreateShareExplorer(register IRegister) (*ShareExplorer, error) {
 	if err != nil {
 		return nil, err
 	}
-	context := &Context{engine: engine, register: register, server: server, db: db, jwt: util.NewJwt(), paths: make(map[string]any)}
-	return &ShareExplorer{register: register, engine: engine, context: context, server: server}, nil
+	certManager := cert.NewManager("cert")
+	serverConfig := NewServerConfig(db.GetConfigModel())
+	context := &Context{serverConfig: serverConfig, engine: engine, register: register, server: server, db: db, jwt: util.NewJwt(), paths: make(map[string]any), remotePaths: make(map[string]any), certManager: certManager}
+	return &ShareExplorer{register: register, engine: engine, context: context, server: server, certManager: certManager, serverConfig: serverConfig}, nil
 }
 
 func (se *ShareExplorer) Start() error {
-	serverCert, err := InitServerCert()
+	//证书初始化
+	err := se.certManager.Init()
 	if err != nil {
 		return err
 	}
-	se.context.cert = serverCert
+	//服务配置初始化
+	err = se.serverConfig.Init()
+	if err != nil {
+		return err
+	}
 	se.register.Range(func(server Server) bool {
 		server.Init(se.context)
 		return true
@@ -52,23 +62,7 @@ func (se *ShareExplorer) Start() error {
 	if err != nil {
 		return err
 	}
-	se.engine.Use(func(context *gin.Context) {
-		username := context.GetHeader("username")
-		if len(username) == 0 {
-			context.Next()
-		} else {
-			traversal, ok := se.context.GetTraversal()
-			if ok {
-				u := traversal.GetUser(username)
-				if u != nil && len(u.RemoteAddr) > 0 {
-					proxy, err := se.server.GetReverseProxy(u.RemoteAddr)
-					if err == nil {
-						proxy.ServeHTTP(context.Writer, context.Request)
-					}
-				}
-			}
-		}
-	})
-	err = se.server.ListenAndServeWithTls(serverCert.getTlsConfig(), se.engine)
+
+	err = se.server.ListenAndServeWithKuicTls(se.certManager, se.engine)
 	return err
 }

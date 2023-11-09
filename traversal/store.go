@@ -13,10 +13,10 @@ type Store struct {
 }
 
 func (s *Store) AddUser(user *entity.RemoteHost) {
-	username := user.Username
-	ur, ok := s.hostMap[username]
+	serverName := user.ServerName
+	ur, ok := s.hostMap[serverName]
 	if !ok {
-		s.hostMap[username] = user
+		s.hostMap[serverName] = user
 		s.userList.PushBack(user)
 	} else {
 		if ur.RemoteAddr != user.RemoteAddr {

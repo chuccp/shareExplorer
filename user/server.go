@@ -1,12 +1,12 @@
 package user
 
 import (
-	"github.com/chuccp/kuic/util"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/db"
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
+	"log"
 	"net"
 	"strings"
 )
@@ -205,20 +205,13 @@ func (s *Server) clientSignIn(req *web.Request) (any, error) {
 }
 
 func (s *Server) downloadCert(req *web.Request) (any, error) {
-
-	cert, err := core.InitClientCert("share")
+	username := req.GetTokenUsername()
+	log.Println("username:", username)
+	cert, err := s.context.GetCertManager().CreateClientCert(username)
 	if err != nil {
 		return nil, err
 	}
-	pem, err := core.GenerateClientGroupPem(s.context.GetCert().CaPath, cert.CertPath, cert.KeyPath)
-	if err != nil {
-		return nil, err
-	}
-	err = util.WriteFile("share.group.key", pem)
-	if err != nil {
-		return nil, err
-	}
-	return web.ResponseFile("share.group.key"), nil
+	return web.ResponseFile(cert.ClientCertPath), nil
 }
 func (s *Server) addPath(req *web.Request) (any, error) {
 	var path db.Path
@@ -275,5 +268,5 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/addPath", s.addPath)
 	context.Get("/user/deletePath", s.deletePath)
 	context.Get("/user/queryPath", s.queryPath)
-	context.Get("/user/queryAllPath", s.queryAllPath)
+	context.GetRemote("/user/queryAllPath", s.queryAllPath)
 }

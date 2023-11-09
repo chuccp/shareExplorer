@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/chuccp/kuic/cert"
 	khttp "github.com/chuccp/kuic/http"
 	"github.com/chuccp/shareExplorer/db"
 	"github.com/chuccp/shareExplorer/util"
@@ -14,14 +15,16 @@ import (
 type HandlerFunc func(req *web.Request) (any, error)
 
 type Context struct {
-	engine    *gin.Engine
-	register  IRegister
-	server    *khttp.Server
-	traversal TraversalServer
-	db        *db.DB
-	cert      *Cert
-	jwt       *util.Jwt
-	paths     map[string]any
+	engine       *gin.Engine
+	register     IRegister
+	server       *khttp.Server
+	traversal    TraversalServer
+	db           *db.DB
+	jwt          *util.Jwt
+	paths        map[string]any
+	remotePaths  map[string]any
+	certManager  *cert.Manager
+	serverConfig *ServerConfig
 }
 
 type HandlersChain []HandlerFunc
@@ -37,8 +40,8 @@ func (c *Context) GetConfigArray(section, name string) []string {
 func (c *Context) GetDB() *db.DB {
 	return c.db
 }
-func (c *Context) GetCert() *Cert {
-	return c.cert
+func (c *Context) GetCertManager() *cert.Manager {
+	return c.certManager
 }
 func (c *Context) GetJwt() *util.Jwt {
 	return c.jwt
@@ -64,8 +67,18 @@ func (c *Context) Get(relativePath string, handlers ...HandlerFunc) {
 	c.paths[relativePath] = true
 	c.engine.GET(relativePath, c.toGinHandlerFunc(handlers)...)
 }
+
+func (c *Context) GetRemote(relativePath string, handlers ...HandlerFunc) {
+	c.Get(relativePath, handlers...)
+	c.remotePaths[relativePath] = true
+}
+
 func (c *Context) HasPaths(queryPath string) bool {
 	_, ok := c.paths[queryPath]
+	return ok
+}
+func (c *Context) IsRemotePaths(queryPath string) bool {
+	_, ok := c.remotePaths[queryPath]
 	return ok
 }
 
@@ -93,6 +106,15 @@ func (c *Context) StaticHandle(relativePath string, filepath string) {
 		}
 	})
 }
+func (c *Context) remoteHandle() {
+	c.engine.Use(func(context *gin.Context) {
+		path_ := context.Request.URL.Path
+		if c.IsRemotePaths(path_) {
+
+		}
+	})
+}
+
 func (c *Context) toGinHandlerFunc(handlers []HandlerFunc) []gin.HandlerFunc {
 	var handlerFunc = make([]gin.HandlerFunc, len(handlers))
 	for i, handler := range handlers {

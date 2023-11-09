@@ -5,7 +5,6 @@ import (
 	user2 "github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/util"
 	"github.com/chuccp/shareExplorer/web"
-	"log"
 )
 
 type Server struct {
@@ -17,7 +16,7 @@ func (s *Server) GetClient(remoteAddress string) core.TraversalClient {
 	return newClient(s.context, remoteAddress)
 }
 
-func (s *Server) input(req *web.Request) (any, error) {
+func (s *Server) register(req *web.Request) (any, error) {
 	var user user2.RemoteHost
 	err := req.BodyJson(&user)
 	if err != nil {
@@ -52,17 +51,16 @@ func (s *Server) GetUser(username string) *user2.RemoteHost {
 	return nil
 }
 func (s *Server) connect(req *web.Request) (any, error) {
-
-	log.Println("检测=================来了")
-
 	return web.ResponseOK("ok"), nil
 }
 
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.store = newStore()
+	remoteHost := user2.NewRemoteHost(context.GetCertManager().GetServerName(), "0.0.0.0:0")
+	s.store.AddUser(remoteHost)
 	context.SetTraversal(s)
-	context.Post("/traversal/register", s.input)
+	context.Post("/traversal/register", s.register)
 	context.Get("/traversal/connect", s.connect)
 	context.Get("/traversal/queryList", s.queryList)
 	context.Get("/traversal/queryOne", s.queryOne)

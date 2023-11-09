@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/chuccp/shareExplorer/entity"
+	"github.com/chuccp/shareExplorer/util"
 )
 
 type Server interface {
@@ -15,7 +16,7 @@ type TraversalClient interface {
 }
 type IRegister interface {
 	Range(f func(server Server) bool)
-	GetConfig() *Config
+	GetConfig() *util.Config
 }
 
 type TraversalServer interface {
