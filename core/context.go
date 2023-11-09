@@ -71,6 +71,7 @@ func (c *Context) Get(relativePath string, handlers ...HandlerFunc) {
 func (c *Context) GetRemote(relativePath string, handlers ...HandlerFunc) {
 	c.Get(relativePath, handlers...)
 	c.remotePaths[relativePath] = true
+	c.paths[relativePath] = true
 }
 
 func (c *Context) HasPaths(queryPath string) bool {
@@ -86,6 +87,7 @@ func (c *Context) IsRemotePaths(queryPath string) bool {
 func (c *Context) StaticHandle(relativePath string, filepath string) {
 	c.engine.Use(func(context *gin.Context) {
 		path_ := context.Request.URL.Path
+		log.Println("==StaticHandle===:", path_, c.HasPaths(path_), c.IsRemotePaths(path_), "----:", c.serverConfig.IsServer())
 		if c.HasPaths(path_) {
 			context.Next()
 		} else {
@@ -106,11 +108,20 @@ func (c *Context) StaticHandle(relativePath string, filepath string) {
 		}
 	})
 }
-func (c *Context) remoteHandle() {
+func (c *Context) RemoteHandle() {
+	log.Println("()()()()()()()")
 	c.engine.Use(func(context *gin.Context) {
+		log.Println("===============================")
 		path_ := context.Request.URL.Path
-		if c.IsRemotePaths(path_) {
-
+		log.Println("=RemoteHandle===:", c.IsRemotePaths(path_), "----:", c.serverConfig.IsServer(), context.Request.ProtoMajor, context.Request.Proto, context.Request.ProtoMinor)
+		if c.IsRemotePaths(path_) && c.serverConfig.IsServer() && context.Request.ProtoMajor != 3 {
+			proxy, err := c.server.GetReverseProxy("127.0.0.1:2156")
+			log.Println(proxy, err)
+			if err == nil {
+				context.Request.Header.Del("Origin")
+				context.Request.Header.Del("Referer")
+				proxy.ServeHTTP(context.Writer, context.Request)
+			}
 		}
 	})
 }

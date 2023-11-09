@@ -8,8 +8,8 @@ github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d h1:77cEq6EriyTZ
 github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d/go.mod h1:8EPpVsBuRksnlj1mLy4AWzRNQYxauNi62uWcE3to6eA=
 github.com/chenzhuoyu/iasm v0.9.0 h1:9fhXjVzq5hUy2gkhhgHl95zG2cEAhw9OSGs8toWWAwo=
 github.com/chenzhuoyu/iasm v0.9.0/go.mod h1:Xjy2NpN3h7aUqeqM+woSuuvxmIe6+DDsiNLIrkAmYog=
-github.com/chuccp/kuic v0.0.15 h1:XysYXX2zoPUJHWdsA8Sae3HMFoxTJSH2rU3E3WlVKoM=
-github.com/chuccp/kuic v0.0.15/go.mod h1:B8a/xDxbgOi/0Va+L3JX/sTuMiuaOto+jJPNlndq2dE=
+github.com/chuccp/kuic v0.0.16 h1:9VgHRjfJ/bn2jaHfmGuzFRaWs1GAEPb9lCDWBQU4uaY=
+github.com/chuccp/kuic v0.0.16/go.mod h1:B8a/xDxbgOi/0Va+L3JX/sTuMiuaOto+jJPNlndq2dE=
 github.com/chuccp/quic-go v0.0.4 h1:hA8CWoytXmryiganlDxB2ioiISh8y0xS0BmiKcCTG48=
 github.com/chuccp/quic-go v0.0.4/go.mod h1:ys9VFz0cRzObVRjR5tyVCRuddI/dH/J0QkmEyOpyJkw=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
