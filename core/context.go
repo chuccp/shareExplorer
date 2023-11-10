@@ -94,6 +94,7 @@ func (c *Context) StaticHandle(relativePath string, filepath string) {
 			if strings.Contains(path_, "/manifest.json") {
 				filePath := path.Join(filepath, "/manifest.json")
 				context.File(filePath)
+				context.Abort()
 			} else {
 				relativeFilePath := ""
 				if path_ == relativePath {
@@ -104,23 +105,34 @@ func (c *Context) StaticHandle(relativePath string, filepath string) {
 				filePath := path.Join(filepath, relativeFilePath)
 				log.Println(filePath)
 				context.File(filePath)
+				context.Abort()
 			}
 		}
 	})
 }
+
+func (c *Context) isRemote(context *gin.Context) bool {
+	path_ := context.Request.URL.Path
+	if c.IsRemotePaths(path_) && c.serverConfig.IsServer() && context.Request.ProtoMajor != 3 {
+		return true
+	}
+	return false
+}
+
 func (c *Context) RemoteHandle() {
 	log.Println("()()()()()()()")
 	c.engine.Use(func(context *gin.Context) {
 		log.Println("===============================")
 		path_ := context.Request.URL.Path
 		log.Println("=RemoteHandle===:", c.IsRemotePaths(path_), "----:", c.serverConfig.IsServer(), context.Request.ProtoMajor, context.Request.Proto, context.Request.ProtoMinor)
-		if c.IsRemotePaths(path_) && c.serverConfig.IsServer() && context.Request.ProtoMajor != 3 {
+		if c.isRemote(context) {
 			proxy, err := c.server.GetReverseProxy("127.0.0.1:2156")
-			log.Println(proxy, err)
 			if err == nil {
 				context.Request.Header.Del("Origin")
 				context.Request.Header.Del("Referer")
 				proxy.ServeHTTP(context.Writer, context.Request)
+				log.Println("========ServeHTTP=======================", context.Request.RemoteAddr)
+				context.Abort()
 			}
 		}
 	})
