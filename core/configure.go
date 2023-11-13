@@ -42,3 +42,9 @@ func (sc *ServerConfig) HasInit() bool {
 func (sc *ServerConfig) IsServer() bool {
 	return strings.Contains(sc.config.IsServer, "true")
 }
+func (sc *ServerConfig) IsNatServer() bool {
+	return strings.Contains(sc.config.IsNatServer, "true")
+}
+func (sc *ServerConfig) IsNatClient() bool {
+	return strings.Contains(sc.config.IsNatClient, "true")
+}

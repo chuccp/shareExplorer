@@ -7,7 +7,6 @@ import (
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
 	"log"
-	"net"
 	"strings"
 )
 
@@ -184,14 +183,9 @@ func (s *Server) addRemoteAddress(req *web.Request) (any, error) {
 }
 func (s *Server) connect(req *web.Request) (any, error) {
 	address := req.FormValue("address")
-	addr, err := net.ResolveUDPAddr("udp", address)
-	if err != nil {
-		return nil, err
-	}
 	traversalServer, ok := s.context.GetTraversal()
 	if ok {
-		traversalClient := traversalServer.GetClient(addr.String())
-		err := traversalClient.Connect()
+		err := traversalServer.Connect(address)
 		if err != nil {
 			return nil, err
 		}

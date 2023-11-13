@@ -1,65 +1,80 @@
 package traversal
 
 import (
-	"errors"
-	"github.com/chuccp/kuic/http"
 	"github.com/chuccp/shareExplorer/core"
-	"github.com/chuccp/shareExplorer/web"
+	"log"
+	"time"
 )
+
+type ClientManager struct {
+	context              *core.Context
+	traversalHostMap     map[string]*Client
+	tempTraversalHostMap map[string]*Client
+}
+
+func NewClientManager(context *core.Context) *ClientManager {
+	return &ClientManager{context: context, traversalHostMap: make(map[string]*Client), tempTraversalHostMap: make(map[string]*Client)}
+}
+
+func (clientManager *ClientManager) Run() {
+	addresses, err := clientManager.context.GetDB().GetAddressModel().QueryAddresses()
+	if err != nil {
+		log.Println(err)
+	} else {
+		for _, address := range addresses {
+			client := NewClient(address.Address, clientManager.context)
+			clientManager.tempTraversalHostMap[address.Address] = client
+		}
+		clientManager.register()
+		clientManager.live()
+	}
+}
+
+func (clientManager *ClientManager) live() {
+	for {
+		clientManager.readNode()
+		time.Sleep(time.Second * 30)
+		clientManager.register()
+	}
+}
+func (clientManager *ClientManager) register() {
+	for address, client := range clientManager.tempTraversalHostMap {
+		err := client.register()
+		if err == nil {
+			clientManager.traversalHostMap[address] = client
+		}
+	}
+}
+func (clientManager *ClientManager) readNode() {
+	for _, client := range clientManager.traversalHostMap {
+		client.readNode()
+	}
+}
+
+func (clientManager *ClientManager) FindRemoteHost(serverName string) {
+	for _, client := range clientManager.traversalHostMap {
+		client.FindRemoteHost(serverName)
+	}
+}
 
 type Client struct {
 	context       *core.Context
 	remoteAddress string
+	failureNum    int
 }
 
-func (c *Client) Register() error {
-
-	return nil
+func NewClient(remoteAddress string, context *core.Context) *Client {
+	return &Client{remoteAddress: remoteAddress, context: context, failureNum: 0}
 }
-func (c *Client) Connect() error {
-	_, err := c.getRequestString("/traversal/connect")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (c *Client) ClientSignIn(username string, password string) error {
-	_, err := c.getRequestString("/traversal/connect")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-func (c *Client) getRequestString(url string) (string, error) {
-	cl, err := c.getClient()
-	if err != nil {
-		return "", err
-	}
-
-	jsonString, err := cl.Get(url)
-	if err != nil {
-		return "", err
-	}
-	response, err := web.JsonToResponse[string](jsonString)
-	if err != nil {
-		return "", err
-	}
-	if response.IsOk() {
-		return response.Data, nil
-	}
-	return "", errors.New(response.Data)
-}
-
-func (c *Client) getJsonValue(url string, value any) error {
+func (cl *Client) register() error {
 
 	return nil
 }
+func (cl *Client) readNode() error {
 
-func (c *Client) getClient() (*http.Client, error) {
-	client, err := c.context.GetHttpClient(c.remoteAddress)
-	return client, err
+	return nil
 }
+func (cl *Client) FindRemoteHost(serverName string) error {
 
-func newClient(context *core.Context, remoteAddress string) *Client {
-	return &Client{context: context, remoteAddress: remoteAddress}
+	return nil
 }

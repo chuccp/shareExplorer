@@ -2,22 +2,21 @@ package traversal
 
 import (
 	"github.com/chuccp/shareExplorer/core"
-	user2 "github.com/chuccp/shareExplorer/entity"
+	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/util"
 	"github.com/chuccp/shareExplorer/web"
+	"net/http"
 )
 
 type Server struct {
-	store   *Store
-	context *core.Context
+	store         *ClientStore
+	context       *core.Context
+	clientManager *ClientManager
+	request       *Request
 }
 
-func (s *Server) GetClient(remoteAddress string) core.TraversalClient {
-	return newClient(s.context, remoteAddress)
-}
-
-func (s *Server) register(req *web.Request) (any, error) {
-	var user user2.RemoteHost
+func (server *Server) register(req *web.Request) (any, error) {
+	var user entity.RemoteHost
 	err := req.BodyJson(&user)
 	if err != nil {
 		return nil, err
@@ -27,45 +26,88 @@ func (s *Server) register(req *web.Request) (any, error) {
 	user.CreateTime = util.NowTime()
 	user.LastLiveTime = util.NowTime()
 	user.IsOnline = true
-	s.store.AddUser(&user)
+	server.store.AddUser(&user)
 	return "ok", nil
 }
-func (s *Server) queryList(req *web.Request) (any, error) {
+func (server *Server) queryRemoteHostList(req *web.Request) (any, error) {
 	page := req.GetPage()
-	return s.store.QueryPage(page), nil
+	return server.store.QueryPage(page), nil
 }
-func (s *Server) queryOne(req *web.Request) (any, error) {
-	username := req.FormValue("username")
-	u := s.GetUser(username)
+func (server *Server) queryRemoteHostOne(req *web.Request) (any, error) {
+	serverName := req.FormValue("serverName")
+	u := server.GetRemoteHost(serverName)
 	if u != nil {
 		return u, nil
 	}
 	return nil, web.NotFound
 }
 
-func (s *Server) GetUser(username string) *user2.RemoteHost {
-	u, ok := s.store.Query(username)
+func (server *Server) GetRemoteHost(serverName string) *entity.RemoteHost {
+	u, ok := server.store.Query(serverName)
 	if ok {
 		return u
 	}
 	return nil
 }
-func (s *Server) connect(req *web.Request) (any, error) {
+
+func (server *Server) Connect(remoteAddress string) error {
+	_, err := server.request.RequestString(remoteAddress, "/traversal/connect")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (server *Server) FindRemoteHost(serverName string) (*entity.RemoteHost, error) {
+
+	server.clientManager.FindRemoteHost(serverName)
+
+	return nil, nil
+}
+
+func (server *Server) ReverseProxy(remoteHost string, rw http.ResponseWriter, req *http.Request) {
+	req.Header.Del("Origin")
+	req.Header.Del("Referer")
+	proxy, err := server.context.GetReverseProxy(remoteHost, nil)
+	if err != nil {
+		return
+	}
+	proxy.ServeHTTP(rw, req)
+}
+func (server *Server) Login(serverName string) error {
+
+	return nil
+}
+
+func (server *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
 }
 
-func (s *Server) Init(context *core.Context) {
-	s.context = context
-	s.store = newStore()
-	remoteHost := user2.NewRemoteHost(context.GetCertManager().GetServerName(), "0.0.0.0:0")
-	s.store.AddUser(remoteHost)
-	context.SetTraversal(s)
-	context.Post("/traversal/register", s.register)
-	context.Get("/traversal/connect", s.connect)
-	context.Get("/traversal/queryList", s.queryList)
-	context.Get("/traversal/queryOne", s.queryOne)
-	//go s.client.start()
+func (server *Server) runClient() {
+	go server.clientManager.Run()
 }
-func (s *Server) GetName() string {
+
+func (server *Server) Init(context *core.Context) {
+	server.context = context
+	server.store = newClientStore()
+	server.request = NewRequest(server.context)
+	server.clientManager = NewClientManager(context)
+	server.context.SetTraversal(server)
+	serverConfig := server.context.GetServerConfig()
+	if serverConfig.IsServer() && serverConfig.IsNatServer() && serverConfig.IsNatClient() {
+		remoteHost := entity.NewRemoteHost(context.GetCertManager().GetServerName(), "0.0.0.0:0")
+		server.store.AddUser(remoteHost)
+	}
+	if serverConfig.IsNatServer() {
+		context.Post("/traversal/register", server.register)
+		context.Get("/traversal/connect", server.connect)
+		context.Get("/traversal/queryRemoteHostList", server.queryRemoteHostList)
+		context.Get("/traversal/queryRemoteHostOne", server.queryRemoteHostOne)
+	}
+	if serverConfig.IsNatClient() {
+		server.runClient()
+	}
+}
+func (server *Server) GetName() string {
 	return "traversal"
 }

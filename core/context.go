@@ -40,6 +40,9 @@ func (c *Context) GetConfigArray(section, name string) []string {
 func (c *Context) GetDB() *db.DB {
 	return c.db
 }
+func (c *Context) GetServerConfig() *ServerConfig {
+	return c.serverConfig
+}
 func (c *Context) GetCertManager() *cert.Manager {
 	return c.certManager
 }
@@ -87,7 +90,6 @@ func (c *Context) IsRemotePaths(queryPath string) bool {
 func (c *Context) StaticHandle(relativePath string, filepath string) {
 	c.engine.Use(func(context *gin.Context) {
 		path_ := context.Request.URL.Path
-		log.Println("==StaticHandle===:", path_, c.HasPaths(path_), c.IsRemotePaths(path_), "----:", c.serverConfig.IsServer())
 		if c.HasPaths(path_) {
 			context.Next()
 		} else {
@@ -118,24 +120,35 @@ func (c *Context) isRemote(context *gin.Context) bool {
 	}
 	return false
 }
+func (c *Context) GetReverseProxy(remoteAddress string, cert *cert.Certificate) (*khttp.ReverseProxy, error) {
+	proxy, err := c.server.GetTlsReverseProxy(remoteAddress, cert)
+	return proxy, err
+}
 
 func (c *Context) RemoteHandle() {
-	log.Println("()()()()()()()")
 	c.engine.Use(func(context *gin.Context) {
-		log.Println("===============================")
-		path_ := context.Request.URL.Path
-		log.Println("=RemoteHandle===:", c.IsRemotePaths(path_), "----:", c.serverConfig.IsServer(), context.Request.ProtoMajor, context.Request.Proto, context.Request.ProtoMinor)
 		if c.isRemote(context) {
-			proxy, err := c.server.GetReverseProxy("127.0.0.1:2156")
-			if err == nil {
-				context.Request.Header.Del("Origin")
-				context.Request.Header.Del("Referer")
-				proxy.ServeHTTP(context.Writer, context.Request)
-				log.Println("========ServeHTTP=======================", context.Request.RemoteAddr)
-				context.Abort()
-			}
+			req := web.NewRequest(context, c.jwt)
+			c.traversal.ReverseProxy(req.GetTokenUsername(), context.Writer, context.Request)
+			context.Abort()
 		}
 	})
+}
+
+func (c *Context) Request(path string, handelFunc func(response *web.ReverseResponse)) error {
+	client, err := web.CreateReverseClient(path)
+	if err != nil {
+		return err
+	}
+	reverseResponse := client.GetReverseResponse()
+	handelFunc(reverseResponse)
+	proxy, err := c.server.GetReverseProxy("127.0.0.1:2156")
+	if err == nil {
+		proxy.ServeHTTP(client.Response, client.Request)
+		return nil
+	} else {
+		return err
+	}
 }
 
 func (c *Context) toGinHandlerFunc(handlers []HandlerFunc) []gin.HandlerFunc {

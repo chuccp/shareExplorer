@@ -41,6 +41,12 @@ func (a *AddressModel) DeleteTable() error {
 	return tx.Error
 }
 
+func (a *AddressModel) QueryAddresses() ([]*Address, error) {
+	var addr []*Address
+	tx := a.db.Table(a.tableName).Find(&addr)
+	return addr, tx.Error
+}
+
 func (a *AddressModel) AddAddress(addresses []string) error {
 
 	if !a.IsExist() {

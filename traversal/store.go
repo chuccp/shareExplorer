@@ -7,12 +7,12 @@ import (
 	"github.com/chuccp/shareExplorer/web"
 )
 
-type Store struct {
+type ClientStore struct {
 	userList *list.List
 	hostMap  map[string]*entity.RemoteHost
 }
 
-func (s *Store) AddUser(user *entity.RemoteHost) {
+func (s *ClientStore) AddUser(user *entity.RemoteHost) {
 	serverName := user.ServerName
 	ur, ok := s.hostMap[serverName]
 	if !ok {
@@ -28,7 +28,7 @@ func (s *Store) AddUser(user *entity.RemoteHost) {
 	}
 }
 
-func (s *Store) QueryPage(page *web.Page) []*entity.RemoteHost {
+func (s *ClientStore) QueryPage(page *web.Page) []*entity.RemoteHost {
 	us := make([]*entity.RemoteHost, 0)
 	index := 0
 	start := page.PageNo * page.PageSize
@@ -41,12 +41,12 @@ func (s *Store) QueryPage(page *web.Page) []*entity.RemoteHost {
 	}
 	return us
 }
-func (s *Store) Query(username string) (*entity.RemoteHost, bool) {
+func (s *ClientStore) Query(username string) (*entity.RemoteHost, bool) {
 	u, ok := s.hostMap[username]
 	return u, ok
 }
 
-func newStore() *Store {
+func newClientStore() *ClientStore {
 	uList := list.New()
-	return &Store{userList: uList, hostMap: make(map[string]*entity.RemoteHost)}
+	return &ClientStore{userList: uList, hostMap: make(map[string]*entity.RemoteHost)}
 }
