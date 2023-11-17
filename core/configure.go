@@ -36,6 +36,9 @@ func (sc *ServerConfig) Init() error {
 	}
 	return nil
 }
+func (sc *ServerConfig) GetConfig() *Config {
+	return sc.config
+}
 func (sc *ServerConfig) HasInit() bool {
 	return len(sc.config.IsServer) > 0
 }

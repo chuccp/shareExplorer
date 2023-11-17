@@ -5,12 +5,12 @@ go 1.20
 replace github.com/quic-go/quic-go => github.com/chuccp/quic-go v0.0.4
 
 require (
-	github.com/chuccp/kuic v0.0.16
+	github.com/chuccp/kuic v0.1.1
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/glebarez/go-sqlite v1.21.2
 	github.com/glebarez/sqlite v1.10.0
-	github.com/golang-jwt/jwt/v5 v5.0.0
+	github.com/golang-jwt/jwt/v5 v5.1.0
 	github.com/google/uuid v1.4.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	gopkg.in/ini.v1 v1.67.0
