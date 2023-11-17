@@ -201,11 +201,12 @@ func (s *Server) clientSignIn(req *web.Request) (any, error) {
 func (s *Server) downloadCert(req *web.Request) (any, error) {
 	username := req.GetTokenUsername()
 	log.Println("username:", username)
-	cert, err := s.context.GetCertManager().CreateClientCert(username)
+	_, err := s.context.GetCertManager().CreateClientCert(username)
 	if err != nil {
 		return nil, err
 	}
-	return web.ResponseFile(cert.ClientCertPath), nil
+	//return web.ResponseFile(cert.ClientCertPath), nil
+	return web.ResponseOK("ok"), nil
 }
 func (s *Server) addPath(req *web.Request) (any, error) {
 	var path db.Path

@@ -10,18 +10,26 @@ import (
 )
 
 const (
-	nBuckets = 17
+	nBuckets                    = 17
+	bucketMinDistance           = 239
+	bucketIPLimit, bucketSubnet = 2, 24 //
 )
 
 type node struct {
+	Node
 	addedAt        time.Time
 	liveNessChecks uint
+}
+
+func wrapNode(n *Node) *node {
+	return &node{Node: *n}
 }
 
 type bucket struct {
 	entries      []*node
 	replacements []*node
 	index        int
+	ips          DistinctNetSet
 }
 type TableStore struct {
 	tableStore *sync.Map
@@ -29,10 +37,15 @@ type TableStore struct {
 }
 
 func NewTableStore(context *core.Context) *TableStore {
-	return &TableStore{tableStore: new(sync.Map)}
+	return &TableStore{tableStore: new(sync.Map), context: context}
 }
 func (ts *TableStore) AddTable(localNode *LocalNode) {
 	ts.tableStore.LoadOrStore(localNode.id, NewTable(ts.context, localNode))
+}
+func (ts *TableStore) RangeTable(f func(key ID, value *Table) bool) {
+	ts.tableStore.Range(func(key, value any) bool {
+		return f(key.(ID), value.(*Table))
+	})
 }
 
 type TableGroup struct {
@@ -81,6 +94,16 @@ func (tableGroup *TableGroup) doRevalidate(done chan<- struct{}) {
 func (tableGroup *TableGroup) run() {
 	go tableGroup.loop()
 }
+func (tableGroup *TableGroup) addSeenNode(n *node) {
+	tableGroup.mutex.Lock()
+	defer tableGroup.mutex.Unlock()
+	tableGroup.tableStore.RangeTable(func(key ID, value *Table) bool {
+		if n.id != key {
+			value.addSeenNode(n)
+		}
+		return true
+	})
+}
 
 func (tableGroup *TableGroup) AddTable(localNode *LocalNode) {
 	tableGroup.tableStore.AddTable(localNode)
@@ -101,15 +124,36 @@ func (tab *Table) ping(n *Node) {
 		return
 	}
 }
+func (tab *Table) addSeenNode(n *node) {
 
+}
+func (tab *Table) bucket(id ID) *bucket {
+	d := LogDist(tab.localNode.id, id)
+	return tab.bucketAtDistance(d)
+}
+func (tab *Table) bucketAtDistance(d int) *bucket {
+	if d <= bucketMinDistance {
+		return tab.buckets[0]
+	}
+	return tab.buckets[d-bucketMinDistance-1]
+}
 func (tab *Table) findNode(n *Node, distances []uint) {
 
 }
 
 func NewTable(context *core.Context, localNode *LocalNode) *Table {
-	return &Table{
+
+	table := &Table{
 		context:    context,
 		httpClient: web.NewHttpClient(context),
 		localNode:  localNode,
 	}
+	for i := range table.buckets {
+		table.buckets[i] = &bucket{
+			index: i,
+			ips:   DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
+		}
+	}
+
+	return table
 }

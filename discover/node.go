@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"math/bits"
 	"net"
 )
 
@@ -25,4 +26,18 @@ type LocalNode struct {
 func newLocalNode(serverName string) *LocalNode {
 
 	return &LocalNode{ServerName: serverName}
+}
+
+func LogDist(a, b ID) int {
+	lz := 0
+	for i := range a {
+		x := a[i] ^ b[i]
+		if x == 0 {
+			lz += 8
+		} else {
+			lz += bits.LeadingZeros8(x)
+			break
+		}
+	}
+	return len(a)*8 - lz
 }
