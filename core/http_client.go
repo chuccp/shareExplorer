@@ -1,15 +1,15 @@
-package web
+package core
 
 import (
 	"errors"
-	"github.com/chuccp/shareExplorer/core"
+	"github.com/chuccp/shareExplorer/web"
 )
 
 type HttpClient struct {
-	context *core.Context
+	context *Context
 }
 
-func NewHttpClient(context *core.Context) *HttpClient {
+func NewHttpClient(context *Context) *HttpClient {
 	return &HttpClient{context: context}
 }
 func (request *HttpClient) GetRequest(remoteAddress string, path string) (string, error) {
@@ -18,7 +18,7 @@ func (request *HttpClient) GetRequest(remoteAddress string, path string) (string
 	if err != nil {
 		return "", err
 	}
-	response, err := JsonToResponse[string](jsonString)
+	response, err := web.JsonToResponse[string](jsonString)
 	if err != nil {
 		return "", err
 	}
@@ -33,7 +33,7 @@ func (request *HttpClient) PostRequest(remoteAddress string, path string, json s
 	if err != nil {
 		return "", err
 	}
-	response, err := JsonToResponse[string](jsonString)
+	response, err := web.JsonToResponse[string](jsonString)
 	if err != nil {
 		return "", err
 	}

@@ -3,7 +3,6 @@ package discover
 import (
 	"encoding/json"
 	"github.com/chuccp/shareExplorer/core"
-	"github.com/chuccp/shareExplorer/web"
 	"math/rand"
 	"sync"
 	"time"
@@ -113,7 +112,7 @@ type Table struct {
 	buckets    [nBuckets]*bucket
 	nursery    []*node //bootstrap nodes
 	context    *core.Context
-	httpClient *web.HttpClient
+	httpClient *core.HttpClient
 	localNode  *LocalNode
 }
 
@@ -145,7 +144,7 @@ func NewTable(context *core.Context, localNode *LocalNode) *Table {
 
 	table := &Table{
 		context:    context,
-		httpClient: web.NewHttpClient(context),
+		httpClient: core.NewHttpClient(context),
 		localNode:  localNode,
 	}
 	for i := range table.buckets {
