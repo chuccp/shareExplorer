@@ -27,7 +27,7 @@ func main() {
 	}
 	err = shareExplorer.Start()
 	if err != nil {
+		panic(err)
 		return
 	}
-	panic(err)
 }

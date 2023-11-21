@@ -320,3 +320,9 @@ func (s DistinctNetSet) String() string {
 	buf.WriteString("}")
 	return buf.String()
 }
+func IsSameAddress(addr, other *net.UDPAddr) bool {
+	if addr.IP.Equal(other.IP) && addr.Port == other.Port {
+		return true
+	}
+	return false
+}

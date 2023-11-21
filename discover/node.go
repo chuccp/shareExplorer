@@ -1,11 +1,21 @@
 package discover
 
 import (
+	"bytes"
 	"math/bits"
 	"net"
 )
 
 type ID [32]byte
+
+var zeroId ID
+
+func (n *ID) IsBlank() bool {
+	if bytes.Compare(n[:], zeroId[:]) == 0 {
+		return true
+	}
+	return false
+}
 
 type Node struct {
 	id          ID
@@ -15,6 +25,15 @@ type Node struct {
 	IsNatServer string `json:"isNatServer"`
 	addr        *net.UDPAddr
 }
+
+func (n *Node) ID() ID {
+	return n.id
+}
+
+func NewNursery(addr *net.UDPAddr) *Node {
+	return &Node{addr: addr, IsNatServer: "true"}
+}
+
 type LocalNode struct {
 	id          ID
 	ServerName  string `json:"serverName"`
