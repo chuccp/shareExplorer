@@ -1,8 +1,8 @@
 package discover
 
 import (
-	"encoding/json"
 	"github.com/chuccp/shareExplorer/core"
+	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -13,6 +13,8 @@ const (
 	nBuckets                    = 17
 	bucketMinDistance           = 239
 	bucketIPLimit, bucketSubnet = 2, 24 //
+	bucketSize                  = 16
+	maxReplacements             = 10
 )
 
 type node struct {
@@ -49,6 +51,14 @@ func (ts *TableStore) RangeTable(f func(key ID, value *Table) bool) {
 		return f(key.(ID), value.(*Table))
 	})
 }
+func (ts *TableStore) GetTable() *Table {
+	var t *Table
+	ts.tableStore.Range(func(key, value any) bool {
+		t = value.(*Table)
+		return false
+	})
+	return t
+}
 
 type TableGroup struct {
 	mutex      sync.Mutex
@@ -60,6 +70,9 @@ type TableGroup struct {
 
 func NewTableGroup(context *core.Context) *TableGroup {
 	return &TableGroup{config: context.GetServerConfig().GetConfig(), rand: rand.New(rand.NewSource(0)), context: context, tableStore: NewTableStore(context)}
+}
+func (tableGroup *TableGroup) GetOneTable() *Table {
+	return tableGroup.tableStore.GetTable()
 }
 func (tableGroup *TableGroup) doRefresh(done chan struct{}) {
 	defer close(done)
@@ -142,12 +155,13 @@ func (tableGroup *TableGroup) AddTable(localNode *LocalNode) *Table {
 }
 
 type Table struct {
-	buckets    [nBuckets]*bucket
-	nursery    []*node //bootstrap nodes
-	context    *core.Context
-	httpClient *core.HttpClient
-	localNode  *LocalNode
-	rand       *rand.Rand
+	buckets   [nBuckets]*bucket
+	nursery   []*node //bootstrap nodes
+	context   *core.Context
+	localNode *LocalNode
+	ips       DistinctNetSet //IP池
+	rand      *rand.Rand
+	call      *call
 }
 
 func (tab *Table) addNursery(addr *net.UDPAddr) {
@@ -166,8 +180,67 @@ func containsAddress(ns []*node, addr *net.UDPAddr) bool {
 	}
 	return false
 }
+func (tab *Table) addReplacement(b *bucket, n *node) {
+	for _, e := range b.replacements {
+		if e.ID() == n.ID() {
+			return // already in list
+		}
+	}
+	if !tab.addIP(b, n.IP()) {
+		return
+	}
+	var removed *node
+	b.replacements, removed = pushNode(b.replacements, n, maxReplacements)
+	if removed != nil {
+		tab.removeIP(b, removed.IP())
+	}
+}
+func (tab *Table) removeIP(b *bucket, ip net.IP) {
+	if IsLAN(ip) {
+		return
+	}
+	tab.ips.Remove(ip)
+	b.ips.Remove(ip)
+}
+func pushNode(list []*node, n *node, max int) ([]*node, *node) {
+	if len(list) < max {
+		list = append(list, nil)
+	}
+	removed := list[len(list)-1]
+	copy(list[1:], list)
+	list[0] = n
+	return list, removed
+}
 
+func (tab *Table) addIP(b *bucket, ip net.IP) bool {
+	if len(ip) == 0 {
+		return false // Nodes without IP cannot be added.
+	}
+	if IsLAN(ip) {
+		return true
+	}
+	if !tab.ips.Add(ip) {
+		return false
+	}
+	if !b.ips.Add(ip) {
+		tab.ips.Remove(ip)
+		return false
+	}
+	return true
+}
 func (tab *Table) addSeenNode(n *node) {
+	if n.ID() == tab.self().ID() {
+		return
+	}
+	b := tab.bucket(n.ID())
+	if contains(b.entries, n.ID()) {
+		return
+	}
+	if len(b.entries) >= bucketSize {
+		// Bucket full, maybe add as replacement.
+		tab.addReplacement(b, n)
+		return
+	}
 
 }
 func (tab *Table) doRefresh() {
@@ -218,37 +291,47 @@ func (tab *Table) nodeToRevalidate() (n *node, bi int) {
 
 func (tab *Table) registerNursery() {
 	for _, n := range tab.nursery {
-
-		n.ID()
+		if n.ID().IsBlank() {
+			tab.register0(n)
+		} else {
+			tab.addSeenNode(n)
+		}
 	}
-
 }
 
 func (tab *Table) register() {
-
+	tab.registerNursery()
 	node, _ := tab.nodeToRevalidate()
-	tab.register0(node)
+	if node != nil {
+		tab.register0(node)
+	}
+
 }
 
 func (tab *Table) register0(node *node) {
-	data, _ := json.Marshal(tab.localNode)
-	_, err := tab.httpClient.PostRequest(node.addr.String(), "/discover/register", string(data))
+	value, err := tab.call.register(tab.localNode, node.addr.String())
 	if err != nil {
+		log.Println(err)
 		return
 	}
+	node.SetID(value.ID())
 }
 
 func (tab *Table) findNode(n *Node, distances []uint) {
 
 }
 
+func (tab *Table) self() *LocalNode {
+	return tab.localNode
+}
+
 func NewTable(context *core.Context, localNode *LocalNode) *Table {
 
 	table := &Table{
-		context:    context,
-		httpClient: core.NewHttpClient(context),
-		localNode:  localNode,
-		rand:       rand.New(rand.NewSource(0)),
+		context:   context,
+		localNode: localNode,
+		rand:      rand.New(rand.NewSource(0)),
+		call:      &call{httpClient: core.NewHttpClient(context)},
 	}
 	for i := range table.buckets {
 		table.buckets[i] = &bucket{

@@ -1,10 +1,5 @@
 package core
 
-import (
-	"errors"
-	"github.com/chuccp/shareExplorer/web"
-)
-
 type HttpClient struct {
 	context *Context
 }
@@ -18,14 +13,7 @@ func (request *HttpClient) GetRequest(remoteAddress string, path string) (string
 	if err != nil {
 		return "", err
 	}
-	response, err := web.JsonToResponse[string](jsonString)
-	if err != nil {
-		return "", err
-	}
-	if response.IsOk() {
-		return response.Data, nil
-	}
-	return "", errors.New(response.Data)
+	return jsonString, err
 }
 func (request *HttpClient) PostRequest(remoteAddress string, path string, json string) (string, error) {
 	client, err := request.context.GetHttpClient(remoteAddress)
@@ -33,12 +21,6 @@ func (request *HttpClient) PostRequest(remoteAddress string, path string, json s
 	if err != nil {
 		return "", err
 	}
-	response, err := web.JsonToResponse[string](jsonString)
-	if err != nil {
-		return "", err
-	}
-	if response.IsOk() {
-		return response.Data, nil
-	}
-	return "", errors.New(response.Data)
+	return jsonString, err
+
 }

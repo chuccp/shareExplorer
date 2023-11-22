@@ -7,8 +7,9 @@ type Data interface {
 }
 
 type Response[T Data] struct {
-	Code int `json:"code"`
-	Data T   `json:"data"`
+	Code  int    `json:"code"`
+	Data  T      `json:"data"`
+	Error string `json:"error"`
 }
 
 func (t *Response[T]) IsOk() bool {

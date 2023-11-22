@@ -18,14 +18,25 @@ func (s *Server) register(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	id, err := wrapIdFName(node.ServerName)
+	if err != nil {
+		return nil, err
+	}
+	node.SetID(id)
 	s.tableGroup.addSeenNode(wrapNode(&node))
-	return web.ResponseOK("ok"), nil
+	n := s.tableGroup.GetOneTable().localNode
+	return web.ResponseOK(n), nil
 }
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.context.Post("/discover/register", s.register)
 	s.tableGroup = NewTableGroup(context)
-	table := s.tableGroup.AddTable(newLocalNode("111111"))
+	localNode, err := createLocalNode("123456789abc")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	table := s.tableGroup.AddTable(localNode)
 	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:2156")
 	if err == nil {
 		table.addNursery(addr)
