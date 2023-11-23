@@ -15,6 +15,7 @@ const (
 	bucketIPLimit, bucketSubnet = 2, 24 //
 	bucketSize                  = 16
 	maxReplacements             = 10
+	findnodeResultLimit         = 16
 )
 
 type node struct {
@@ -41,7 +42,7 @@ type TableStore struct {
 func NewTableStore(context *core.Context) *TableStore {
 	return &TableStore{tableStore: new(sync.Map), context: context}
 }
-func (ts *TableStore) AddTable(localNode *LocalNode) *Table {
+func (ts *TableStore) AddTable(localNode *Node) *Table {
 	table := NewTable(ts.context, localNode)
 	t, _ := ts.tableStore.LoadOrStore(localNode.id, table)
 	return t.(*Table)
@@ -140,6 +141,9 @@ func (tableGroup *TableGroup) run() {
 	go tableGroup.loop()
 }
 func (tableGroup *TableGroup) addSeenNode(n *node) {
+	if !n.IsServer() {
+		return
+	}
 	tableGroup.mutex.Lock()
 	defer tableGroup.mutex.Unlock()
 	tableGroup.tableStore.RangeTable(func(key ID, value *Table) bool {
@@ -150,16 +154,31 @@ func (tableGroup *TableGroup) addSeenNode(n *node) {
 	})
 }
 
-func (tableGroup *TableGroup) AddTable(localNode *LocalNode) *Table {
+func (tableGroup *TableGroup) AddTable(localNode *Node) *Table {
 	return tableGroup.tableStore.AddTable(localNode)
+}
+
+type NatClientStore struct {
+	members *sync.Map
+	num     uint32
+}
+
+func NewNatServerStore() *NatClientStore {
+	return &NatClientStore{members: new(sync.Map)}
+}
+
+func (nss *NatClientStore) addNode(n *node) {
+	n.addedAt = time.Now()
+	nss.members.Store(n.serverName, n)
 }
 
 type Table struct {
 	buckets   [nBuckets]*bucket
 	nursery   []*node //bootstrap nodes
 	context   *core.Context
-	localNode *LocalNode
-	ips       DistinctNetSet //IP池
+	localNode *Node
+	ips       DistinctNetSet //IP计数
+	clients   *NatClientStore
 	rand      *rand.Rand
 	call      *call
 }
@@ -212,6 +231,46 @@ func pushNode(list []*node, n *node, max int) ([]*node, *node) {
 	return list, removed
 }
 
+func (tab *Table) collectTableNodes(rip net.IP, distances []uint, limit int) []*Node {
+	var nodes []*Node
+	var processed = make(map[uint]struct{})
+	for _, dist := range distances {
+		// Reject duplicate / invalid distances.
+		_, seen := processed[dist]
+		if seen || dist > 256 {
+			continue
+		}
+
+		// Get the nodes.
+		var bn []*Node
+		if dist == 0 {
+			bn = []*Node{tab.self()}
+		} else if dist <= 256 {
+
+			bn = unwrapNodes(tab.bucketAtDistance(int(dist)).entries)
+
+		}
+		processed[dist] = struct{}{}
+
+		// Apply some pre-checks to avoid sending invalid nodes.
+		for _, n := range bn {
+			// TODO livenessChecks > 1
+			if CheckRelayIP(rip, n.IP()) != nil {
+				continue
+			}
+			nodes = append(nodes, n)
+			if len(nodes) >= limit {
+				return nodes
+			}
+		}
+	}
+	return nodes
+}
+
+func (tab *Table) HandleFindNode(rip net.IP, findNode *FindNode) []*Node {
+
+	return tab.collectTableNodes(rip, findNode.Distances, findnodeResultLimit)
+}
 func (tab *Table) addIP(b *bucket, ip net.IP) bool {
 	if len(ip) == 0 {
 		return false // Nodes without IP cannot be added.
@@ -228,20 +287,26 @@ func (tab *Table) addIP(b *bucket, ip net.IP) bool {
 	}
 	return true
 }
+func (tab *Table) addClient(n *node) {
+	tab.clients.addNode(n)
+}
 func (tab *Table) addSeenNode(n *node) {
-	if n.ID() == tab.self().ID() {
+	if n.ID() == tab.self().id {
 		return
 	}
-	b := tab.bucket(n.ID())
-	if contains(b.entries, n.ID()) {
-		return
+	if n.IsNatClient() {
+		tab.addClient(n)
 	}
-	if len(b.entries) >= bucketSize {
-		// Bucket full, maybe add as replacement.
-		tab.addReplacement(b, n)
-		return
+	if n.IsNatServer() {
+		b := tab.bucket(n.ID())
+		if contains(b.entries, n.ID()) {
+			return
+		}
+		if len(b.entries) >= bucketSize {
+			tab.addReplacement(b, n)
+			return
+		}
 	}
-
 }
 func (tab *Table) doRefresh() {
 	tab.loadSeedNodes()
@@ -319,19 +384,27 @@ func (tab *Table) register0(node *node) {
 
 func (tab *Table) findNode(n *Node, distances []uint) {
 
+	nodes, err := tab.call.findNode(tab.localNode, n, n.addr.String(), distances)
+	if err != nil {
+		return
+	}
+	for _, n := range nodes {
+		tab.addSeenNode(wrapNode(n))
+	}
+
 }
 
-func (tab *Table) self() *LocalNode {
+func (tab *Table) self() *Node {
 	return tab.localNode
 }
 
-func NewTable(context *core.Context, localNode *LocalNode) *Table {
-
+func NewTable(context *core.Context, localNode *Node) *Table {
 	table := &Table{
 		context:   context,
 		localNode: localNode,
 		rand:      rand.New(rand.NewSource(0)),
 		call:      &call{httpClient: core.NewHttpClient(context)},
+		clients:   NewNatServerStore(),
 	}
 	for i := range table.buckets {
 		table.buckets[i] = &bucket{
@@ -339,6 +412,5 @@ func NewTable(context *core.Context, localNode *LocalNode) *Table {
 			ips:   DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
 		}
 	}
-
 	return table
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"math/bits"
 	"net"
+	"strings"
 )
 
 type ID [32]byte
@@ -37,18 +38,41 @@ func wrapIdFName(id string) (ID, error) {
 	}
 	return wrapId(b), nil
 }
+func wrapNodeFRegister(register *Register, address string) (*Node, error) {
+	b, err := hex.DecodeString(register.FormId)
+	if err != nil {
+		return nil, err
+	}
+	var node Node
+	node.id = wrapId(b)
+	node.serverName = register.FormId
+	node.isNatClient = register.IsNatClient
+	node.isNatServer = register.IsNatServer
+	node.isServer = register.IsServer
+	return &node, nil
+}
 
 type Node struct {
 	id          ID
-	ServerName  string `json:"serverName"`
-	IsServer    string `json:"isServer"`
-	IsNatClient string `json:"isNatClient"`
-	IsNatServer string `json:"isNatServer"`
+	serverName  string
+	isServer    string
+	isNatClient string
+	isNatServer string
 	addr        *net.UDPAddr
 }
 
 func (n *Node) IP() net.IP {
 	return n.addr.IP
+}
+
+func (n *Node) IsServer() bool {
+	return strings.Contains(n.isServer, "true")
+}
+func (n *Node) IsNatClient() bool {
+	return strings.Contains(n.isNatClient, "true")
+}
+func (n *Node) IsNatServer() bool {
+	return strings.Contains(n.isNatServer, "true")
 }
 
 func (n *Node) ID() ID {
@@ -59,19 +83,15 @@ func (n *Node) SetID(id ID) {
 }
 
 func NewNursery(addr *net.UDPAddr) *Node {
-	return &Node{addr: addr, IsNatServer: "true"}
+	return &Node{addr: addr, isNatServer: "true", isServer: "true", isNatClient: "true"}
 }
 
-type LocalNode struct {
-	*Node
-}
-
-func createLocalNode(serverName string) (*LocalNode, error) {
+func createLocalNode(serverName string) (*Node, error) {
 	id, err := hex.DecodeString(serverName)
 	if err != nil {
 		return nil, err
 	}
-	return &LocalNode{&Node{ServerName: serverName, id: wrapId(id)}}, nil
+	return &Node{serverName: serverName, id: wrapId(id)}, nil
 }
 
 func LogDist(a, b ID) int {
@@ -86,4 +106,14 @@ func LogDist(a, b ID) int {
 		}
 	}
 	return len(a)*8 - lz
+}
+func unwrapNodes(ns []*node) []*Node {
+	result := make([]*Node, len(ns))
+	for i, n := range ns {
+		result[i] = unwrapNode(n)
+	}
+	return result
+}
+func unwrapNode(n *node) *Node {
+	return &n.Node
 }
