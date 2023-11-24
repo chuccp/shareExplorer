@@ -18,14 +18,13 @@ type lookup struct {
 func newLookup(tab *Table, target ID, context *core.Context, queryfunc queryFunc) *lookup {
 	return &lookup{tab: tab, target: target, context: context, queryfunc: queryfunc}
 }
-func (l *lookup) run() {
+func (l *lookup) run() *lookup {
 
 	nodesByDistance := l.tab.findnodeByID(l.target, bucketSize, false)
-
 	for _, entry := range nodesByDistance.entries {
 		go l.queryfunc(entry)
 	}
-
+	return l
 }
 
 type nodesByDistance struct {

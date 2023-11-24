@@ -327,8 +327,14 @@ func deleteNode(list []*node, n *node) []*node {
 func (tab *Table) doRefresh() {
 	tab.loadSeedNodes()
 	tab.lookupSelf()
+	for i := 0; i < 3; i++ {
+		tab.lookupRandom()
+	}
 }
 func (tab *Table) lookupSelf() {
+	tab.newLookup(tab.context, tab.self().ID())
+}
+func (tab *Table) lookupRandom() {
 	tab.newLookup(tab.context, tab.self().ID())
 }
 
@@ -336,6 +342,11 @@ func (tab *Table) newLookup(ctx *core.Context, target ID) {
 	newLookup(tab, target, ctx, func(n *node) ([]*node, error) {
 		return tab.lookupWorker(n, target)
 	}).run()
+}
+func (tab *Table) newRandomLookup(ctx *core.Context) {
+	var target ID
+	tab.rand.Read(target[:])
+	tab.newLookup(ctx, target)
 }
 func lookupDistances(target, dest ID) (dists []uint) {
 	td := LogDist(target, dest)
