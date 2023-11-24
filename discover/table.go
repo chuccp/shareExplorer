@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"errors"
 	"github.com/chuccp/shareExplorer/core"
 	"log"
 	"math/rand"
@@ -16,6 +17,7 @@ const (
 	bucketSize                  = 16
 	maxReplacements             = 10
 	findnodeResultLimit         = 16
+	lookupRequestLimit          = 3
 )
 
 type node struct {
@@ -306,22 +308,69 @@ func (tab *Table) addSeenNode(n *node) {
 			tab.addReplacement(b, n)
 			return
 		}
+		if !tab.addIP(b, n.IP()) {
+			return
+		}
+		n.addedAt = time.Now()
+		b.entries = append(b.entries, n)
+		b.replacements = deleteNode(b.replacements, n)
 	}
+}
+func deleteNode(list []*node, n *node) []*node {
+	for i := range list {
+		if list[i].ID() == n.ID() {
+			return append(list[:i], list[i+1:]...)
+		}
+	}
+	return list
 }
 func (tab *Table) doRefresh() {
 	tab.loadSeedNodes()
 	tab.lookupSelf()
 }
 func (tab *Table) lookupSelf() {
-
+	tab.newLookup(tab.context, tab.self().ID())
 }
 
 func (tab *Table) newLookup(ctx *core.Context, target ID) {
-	newLookup(tab, target, ctx).run()
+	newLookup(tab, target, ctx, func(n *node) ([]*node, error) {
+		return tab.lookupWorker(n, target)
+	}).run()
+}
+func lookupDistances(target, dest ID) (dists []uint) {
+	td := LogDist(target, dest)
+	dists = append(dists, uint(td))
+	for i := 1; len(dists) < lookupRequestLimit; i++ {
+		if td+i <= 256 {
+			dists = append(dists, uint(td+i))
+		}
+		if td-i > 0 {
+			dists = append(dists, uint(td-i))
+		}
+	}
+	return dists
+}
+func (tab *Table) lookupWorker(destNode *node, target ID) ([]*node, error) {
+	var (
+		dists = lookupDistances(target, destNode.ID())
+		nodes = nodesByDistance{target: target}
+		err   error
+	)
+	var r []*Node
+	r, err = tab.findNode(unwrapNode(destNode), dists)
+	if errors.Is(err, net.ErrClosed) {
+		return nil, err
+	}
+	for _, n := range r {
+		if n.ID() != tab.self().ID() {
+			nodes.push(wrapNode(n), findnodeResultLimit)
+		}
+	}
+	return nodes.entries, err
 }
 
 func (tab *Table) loadSeedNodes() {
-
+	tab.registerNursery()
 }
 
 func contains(ns []*node, id ID) bool {
@@ -365,7 +414,6 @@ func (tab *Table) registerNursery() {
 }
 
 func (tab *Table) register() {
-	tab.registerNursery()
 	node, _ := tab.nodeToRevalidate()
 	if node != nil {
 		tab.register0(node)
@@ -379,21 +427,31 @@ func (tab *Table) register0(node *node) {
 		log.Println(err)
 		return
 	}
+	node.liveNessChecks++
 	node.SetID(value.ID())
 }
 
-func (tab *Table) findNode(n *Node, distances []uint) {
-
+func (tab *Table) findNode(n *Node, distances []uint) ([]*Node, error) {
 	nodes, err := tab.call.findNode(tab.localNode, n, n.addr.String(), distances)
-	if err != nil {
-		return
-	}
-	for _, n := range nodes {
-		tab.addSeenNode(wrapNode(n))
-	}
+	return nodes, err
 
 }
-
+func (tab *Table) findnodeByID(target ID, nresults int, preferLive bool) *nodesByDistance {
+	nodes := &nodesByDistance{target: target}
+	liveNodes := &nodesByDistance{target: target}
+	for _, b := range &tab.buckets {
+		for _, n := range b.entries {
+			nodes.push(n, nresults)
+			if preferLive && n.liveNessChecks > 0 {
+				liveNodes.push(n, nresults)
+			}
+		}
+	}
+	if preferLive && len(liveNodes.entries) > 0 {
+		return liveNodes
+	}
+	return nodes
+}
 func (tab *Table) self() *Node {
 	return tab.localNode
 }

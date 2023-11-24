@@ -3,6 +3,7 @@ package discover
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"math/bits"
 	"net"
 	"strings"
@@ -17,6 +18,9 @@ func (n ID) IsBlank() bool {
 		return true
 	}
 	return false
+}
+func (n ID) String() string {
+	return fmt.Sprintf("%x", n[:])
 }
 
 func wrapId(id []byte) ID {
@@ -106,6 +110,18 @@ func LogDist(a, b ID) int {
 		}
 	}
 	return len(a)*8 - lz
+}
+func DistCmp(target, a, b ID) int {
+	for i := range target {
+		da := a[i] ^ target[i]
+		db := b[i] ^ target[i]
+		if da > db {
+			return 1
+		} else if da < db {
+			return -1
+		}
+	}
+	return 0
 }
 func unwrapNodes(ns []*node) []*Node {
 	result := make([]*Node, len(ns))
