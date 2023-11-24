@@ -45,11 +45,18 @@ func (s *Server) queryNode(req *web.Request) (any, error) {
 
 func (s *Server) Init(context *core.Context) {
 	s.context = context
+	if !s.context.GetServerConfig().HasInit() {
+		return
+	}
+	s.run()
+}
+func (s *Server) run() {
 	s.context.Post("/discover/register", s.register)
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/queryNode", s.queryNode)
-	s.tableGroup = NewTableGroup(context)
-	localNode, err := createLocalNode("123456789abc")
+	s.tableGroup = NewTableGroup(s.context)
+	servername := s.context.GetCertManager().GetServerName()
+	localNode, err := createLocalNode(servername)
 	if err != nil {
 		log.Println(err)
 		return
