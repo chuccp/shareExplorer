@@ -115,7 +115,7 @@ func (c *Context) StaticHandle(relativePath string, filepath string) {
 
 func (c *Context) isRemote(context *gin.Context) bool {
 	path_ := context.Request.URL.Path
-	if c.IsRemotePaths(path_) && c.serverConfig.IsServer() && context.Request.ProtoMajor != 3 {
+	if c.IsRemotePaths(path_) && !c.serverConfig.IsServer() && context.Request.ProtoMajor != 3 {
 		return true
 	}
 	return false

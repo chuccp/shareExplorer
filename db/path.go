@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
 	"log"
 	"time"
@@ -63,7 +64,14 @@ func (a *PathModel) Create(name string, path string) error {
 		UpdateTime: time.Now()})
 	return tx.Error
 }
+func (a *PathModel) Update(id int, name string, path string) error {
 
+	if !a.IsExist() {
+		a.createTable()
+	}
+	tx := a.db.Table(a.tableName).Where(&Path{Id: uint(id)}).Updates(&Path{Name: name, Path: path, UpdateTime: time.Now()})
+	return tx.Error
+}
 func (a *PathModel) Delete(id uint) error {
 	if !a.IsExist() {
 		return nil
@@ -91,4 +99,15 @@ func (a *PathModel) QueryPage(pageNo int, pageSize int) ([]*Path, int64, error) 
 		}
 	}
 	return nil, 0, tx.Error
+}
+func (a *PathModel) QueryById(id uint) (*Path, error) {
+	if !a.IsExist() {
+		return nil, web.NotFound
+	}
+	var users01 Path
+	tx := a.db.Table(a.tableName).Where(&Path{Id: id}).First(&users01)
+	if tx.Error == nil {
+		return &users01, nil
+	}
+	return nil, tx.Error
 }

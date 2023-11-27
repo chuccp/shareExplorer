@@ -1,18 +1,19 @@
 package db
 
 import (
+	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
 	"log"
 	"time"
 )
 
 type User struct {
-	Id         uint      `gorm:"primaryKey;autoIncrement;column:id"`
-	Username   string    `gorm:"unique;column:username"`
-	Password   string    `gorm:"column:password"`
-	Role       string    `gorm:"column:role"`
-	CreateTime time.Time `gorm:"column:create_time"`
-	UpdateTime time.Time `gorm:"column:update_time"`
+	Id         uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	Username   string    `gorm:"unique;column:username" json:"username"`
+	Password   string    `gorm:"column:password" json:"password"`
+	Role       string    `gorm:"column:role" json:"role"`
+	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
+	UpdateTime time.Time `gorm:"column:update_time" json:"updateTime"`
 }
 
 type UserModel struct {
@@ -72,6 +73,34 @@ func (u *UserModel) QueryUser(username string, password string) (*User, error) {
 	tx := u.db.Table(u.tableName).Find(&user, "username=? and password=? limit 1", username, password)
 	if tx.Error == nil {
 		return &user, nil
+	}
+	return nil, tx.Error
+}
+func (u *UserModel) QueryPage(pageNo int, pageSize int) ([]*User, int64, error) {
+
+	users := make([]*User, 0)
+	if !u.IsExist() {
+		return users, 0, nil
+	}
+	var users01 []*User
+	tx := u.db.Table(u.tableName).Order("`id` desc").Offset((pageNo - 1) * pageSize).Limit(pageSize).Find(&users01)
+	if tx.Error == nil {
+		var num int64
+		tx = u.db.Table(u.tableName).Count(&num)
+		if tx.Error == nil {
+			return users01, num, nil
+		}
+	}
+	return nil, 0, tx.Error
+}
+func (u *UserModel) QueryById(id uint) (*User, error) {
+	if !u.IsExist() {
+		return nil, web.NotFound
+	}
+	var users01 User
+	tx := u.db.Table(u.tableName).Where(&User{Id: id}).First(&users01)
+	if tx.Error == nil {
+		return &users01, nil
 	}
 	return nil, tx.Error
 }

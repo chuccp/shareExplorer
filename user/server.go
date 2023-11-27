@@ -220,7 +220,18 @@ func (s *Server) addPath(req *web.Request) (any, error) {
 	}
 	return web.ResponseOK("ok"), nil
 }
-
+func (s *Server) editPath(req *web.Request) (any, error) {
+	var path db.Path
+	err := req.BodyJson(&path)
+	if err != nil {
+		return nil, err
+	}
+	err = s.context.GetDB().GetPathModel().Update(int(path.Id), path.Name, path.Path)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK("ok"), nil
+}
 func (s *Server) deletePath(req *web.Request) (any, error) {
 	id := req.FormIntValue("id")
 	err := s.context.GetDB().GetPathModel().Delete(uint(id))
@@ -248,7 +259,19 @@ func (s *Server) queryAllPath(req *web.Request) (any, error) {
 	pageAble := &web.PageAble{Total: num, List: list}
 	return web.ResponseOK(pageAble), nil
 }
-
+func (s *Server) queryUser(req *web.Request) (any, error) {
+	list, num, err := s.context.GetDB().GetUserModel().QueryPage(0, 100)
+	if err != nil {
+		return nil, err
+	}
+	pageAble := &web.PageAble{Total: num, List: list}
+	return web.ResponseOK(pageAble), nil
+}
+func (s *Server) queryOnePath(req *web.Request) (any, error) {
+	id := req.FormIntValue("id")
+	path, err := s.context.GetDB().GetPathModel().QueryById(uint(id))
+	return web.ResponseOK(path), err
+}
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	context.Get("/user/info", s.info)
@@ -260,7 +283,10 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)
+	context.Get("/user/queryUser", s.queryUser)
+	context.Get("/user/queryOnePath", s.queryOnePath)
 	context.Post("/user/addPath", s.addPath)
+	context.Post("/user/editPath", s.editPath)
 	context.Get("/user/deletePath", s.deletePath)
 	context.Get("/user/queryPath", s.queryPath)
 	context.GetRemote("/user/queryAllPath", s.queryAllPath)
