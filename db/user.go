@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
 	"log"
@@ -12,6 +13,7 @@ type User struct {
 	Username   string    `gorm:"unique;column:username" json:"username"`
 	Password   string    `gorm:"column:password" json:"password"`
 	Role       string    `gorm:"column:role" json:"role"`
+	PathIds    string    `gorm:"column:path_ids" json:"pathIds"`
 	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"updateTime"`
 }
@@ -62,6 +64,63 @@ func (u *UserModel) AddUser(username string, password string, role string) error
 	})
 	return tx.Error
 }
+
+func (u *UserModel) DeleteUser(username string) error {
+	if !u.IsExist() {
+		err := u.createTable()
+		if err != nil {
+			return err
+		}
+	}
+
+	var v User
+	tx := u.db.Table(u.tableName).Where("`username` = ?", username).First(&v)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if v.Role == "admin" {
+		return errors.New("管理员账号不能删除")
+	}
+	tx = u.db.Table(u.tableName).Where("`username` = ? and role!=?", username, "admin").Delete(&User{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	return tx.Error
+}
+func (u *UserModel) EditUser(username string, password string, pathIds string) error {
+	if !u.IsExist() {
+		err := u.createTable()
+		if err != nil {
+			return err
+		}
+	}
+	tx := u.db.Table(u.tableName).Where(&User{
+		Username: username,
+	}).Updates(&User{
+		Password:   password,
+		PathIds:    pathIds,
+		UpdateTime: time.Now(),
+	})
+	return tx.Error
+}
+
+func (u *UserModel) AddGuestUser(username string, password string, pathIds string) error {
+	if !u.IsExist() {
+		err := u.createTable()
+		if err != nil {
+			return err
+		}
+	}
+	tx := u.db.Table(u.tableName).Create(&User{
+		Username:   username,
+		Password:   password,
+		Role:       "guest",
+		PathIds:    pathIds,
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
+	})
+	return tx.Error
+}
 func (u *UserModel) QueryUser(username string, password string) (*User, error) {
 	if !u.IsExist() {
 		err := u.createTable()
@@ -71,6 +130,20 @@ func (u *UserModel) QueryUser(username string, password string) (*User, error) {
 	}
 	var user User
 	tx := u.db.Table(u.tableName).Find(&user, "username=? and password=? limit 1", username, password)
+	if tx.Error == nil {
+		return &user, nil
+	}
+	return nil, tx.Error
+}
+func (u *UserModel) QueryOneUser(username string) (*User, error) {
+	if !u.IsExist() {
+		err := u.createTable()
+		if err != nil {
+			return nil, err
+		}
+	}
+	var user User
+	tx := u.db.Table(u.tableName).Find(&user, "username=?  limit 1", username)
 	if tx.Error == nil {
 		return &user, nil
 	}

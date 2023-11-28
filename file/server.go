@@ -48,13 +48,21 @@ func (s *Server) Upload(req *web.Request) (any, error) {
 
 }
 
+type NewFolder struct {
+	Folder   string `json:"folder"`
+	RootPath string `json:"rootPath"`
+	Path     string `json:"path"`
+}
+
 func (s *Server) createNewFolder(req *web.Request) (any, error) {
-	folder := req.FormValue("folder")
-	RootPath := req.FormValue("RootPath")
-	path := req.FormValue("Path")
-	if len(path) > 0 && len(folder) > 0 && len(RootPath) > 0 {
-		fileManage := io.CreateFileManage(RootPath)
-		err := fileManage.CreateNewFolder(path, folder)
+	var folder NewFolder
+	err := req.BodyJson(&folder)
+	if err != nil {
+		return nil, err
+	}
+	if len(folder.Path) > 0 && len(folder.Folder) > 0 && len(folder.RootPath) > 0 {
+		fileManage := io.CreateFileManage(folder.RootPath)
+		err := fileManage.CreateNewFolder(folder.Path, folder.Folder)
 		if err != nil {
 			return nil, err
 		} else {

@@ -272,6 +272,50 @@ func (s *Server) queryOnePath(req *web.Request) (any, error) {
 	path, err := s.context.GetDB().GetPathModel().QueryById(uint(id))
 	return web.ResponseOK(path), err
 }
+
+func (s *Server) addUser(req *web.Request) (any, error) {
+	var user db.User
+	err := req.BodyJson(&user)
+	if err != nil {
+		return nil, err
+	}
+	err = s.context.GetDB().GetUserModel().AddGuestUser(user.Username, user.Password, user.PathIds)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK("ok"), err
+}
+
+func (s *Server) deleteUser(req *web.Request) (any, error) {
+	username := req.FormValue("username")
+	err := s.context.GetDB().GetUserModel().DeleteUser(username)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK("ok"), nil
+}
+
+func (s *Server) editUser(req *web.Request) (any, error) {
+	var user db.User
+	err := req.BodyJson(&user)
+	if err != nil {
+		return nil, err
+	}
+	err = s.context.GetDB().GetUserModel().EditUser(user.Username, user.Password, user.PathIds)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK("ok"), err
+}
+func (s *Server) queryOneUser(req *web.Request) (any, error) {
+	username := req.FormValue("username")
+	user, err := s.context.GetDB().GetUserModel().QueryOneUser(username)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK(user), nil
+}
+
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	context.Get("/user/info", s.info)
@@ -283,7 +327,13 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)
+
 	context.Get("/user/queryUser", s.queryUser)
+	context.Post("/user/addUser", s.addUser)
+	context.Get("/user/deleteUser", s.deleteUser)
+	context.Post("/user/editUser", s.editUser)
+	context.Get("/user/queryOneUser", s.queryOneUser)
+
 	context.Get("/user/queryOnePath", s.queryOnePath)
 	context.Post("/user/addPath", s.addPath)
 	context.Post("/user/editPath", s.editPath)

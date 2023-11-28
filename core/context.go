@@ -156,26 +156,19 @@ func (c *Context) toGinHandlerFunc(handlers []HandlerFunc) []gin.HandlerFunc {
 	for i, handler := range handlers {
 		handlerFunc[i] = func(context *gin.Context) {
 			value, err := handler(web.NewRequest(context, c.jwt))
-			switch t := value.(type) {
-			case string:
-				if err != nil {
-					context.AbortWithError(500, err)
-				} else {
+			if err != nil {
+				context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
+			} else {
+				switch t := value.(type) {
+				case string:
 					context.Writer.Write([]byte(t))
-				}
-			case *web.File:
-				context.FileAttachment(t.GetPath(), t.GetFilename())
-			default:
-				if err != nil {
-					if t != nil {
-						context.AbortWithStatusJSON(500, t)
-					} else {
-						context.AbortWithError(500, err)
-					}
-				} else {
+				case *web.File:
+					context.FileAttachment(t.GetPath(), t.GetFilename())
+				default:
 					context.AbortWithStatusJSON(200, t)
 				}
 			}
+
 		}
 	}
 	return handlerFunc
