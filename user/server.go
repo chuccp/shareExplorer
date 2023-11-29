@@ -1,6 +1,7 @@
 package user
 
 import (
+	"errors"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/db"
 	"github.com/chuccp/shareExplorer/entity"
@@ -122,7 +123,7 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 		return web.ResponseError("远程节点不能为空"), nil
 	}
 	err := s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
-		err := s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", "true")
+		err := s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", "false")
 		if err != nil {
 			return err
 		}
@@ -309,11 +310,22 @@ func (s *Server) editUser(req *web.Request) (any, error) {
 }
 func (s *Server) queryOneUser(req *web.Request) (any, error) {
 	username := req.FormValue("username")
-	user, err := s.context.GetDB().GetUserModel().QueryOneUser(username)
-	if err != nil {
-		return nil, err
+	if len(username) > 0 {
+		user, err := s.context.GetDB().GetUserModel().QueryOneUser(username)
+		if err != nil {
+			return nil, err
+		}
+		return web.ResponseOK(user), nil
 	}
-	return web.ResponseOK(user), nil
+	userId := req.FormIntValue("userId")
+	if userId > 0 {
+		user, err := s.context.GetDB().GetUserModel().QueryById(uint(userId))
+		if err != nil {
+			return nil, err
+		}
+		return web.ResponseOK(user), nil
+	}
+	return nil, errors.New("参数有错")
 }
 
 func (s *Server) Init(context *core.Context) {
