@@ -113,6 +113,10 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	discoverServer, fa := s.context.GetDiscoverServer()
+	if fa {
+		discoverServer.Start()
+	}
 	return web.ResponseOK(sub), nil
 }
 
@@ -137,6 +141,11 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	discoverServer, fa := s.context.GetDiscoverServer()
+	if fa {
+		discoverServer.Start()
+	}
+
 	return web.ResponseOK("ok"), nil
 }
 
@@ -184,9 +193,9 @@ func (s *Server) addRemoteAddress(req *web.Request) (any, error) {
 }
 func (s *Server) connect(req *web.Request) (any, error) {
 	address := req.FormValue("address")
-	traversalServer, ok := s.context.GetTraversal()
+	discoverServer, ok := s.context.GetDiscoverServer()
 	if ok {
-		err := traversalServer.Connect(address)
+		err := discoverServer.Connect(address)
 		if err != nil {
 			return nil, err
 		}

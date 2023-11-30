@@ -1,9 +1,7 @@
 package core
 
 import (
-	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/util"
-	"net/http"
 )
 
 type Server interface {
@@ -15,9 +13,7 @@ type IRegister interface {
 	GetConfig() *util.Config
 }
 
-type TraversalServer interface {
-	Connect(remoteAddress string) error
-	FindRemoteHost(serverName string) (*entity.RemoteHost, error)
-	ReverseProxy(remoteHost string, rw http.ResponseWriter, req *http.Request)
-	Login(serverName string) error
+type DiscoverServer interface {
+	Start()
+	Connect(address string) error
 }

@@ -36,33 +36,6 @@ type bucket struct {
 	index        int
 	ips          DistinctNetSet
 }
-type TableStore struct {
-	tableStore *sync.Map
-	context    *core.Context
-}
-
-func NewTableStore(context *core.Context) *TableStore {
-	return &TableStore{tableStore: new(sync.Map), context: context}
-}
-func (ts *TableStore) AddTable(localNode *Node) *Table {
-	table := NewTable(ts.context, localNode)
-	t, _ := ts.tableStore.LoadOrStore(localNode.id, table)
-	return t.(*Table)
-}
-func (ts *TableStore) RangeTable(f func(key ID, value *Table) bool) {
-	ts.tableStore.Range(func(key, value any) bool {
-		return f(key.(ID), value.(*Table))
-	})
-}
-func (ts *TableStore) GetTable() *Table {
-	var t *Table
-	ts.tableStore.Range(func(key, value any) bool {
-		t = value.(*Table)
-		return false
-	})
-	return t
-}
-
 type Table struct {
 	mutex     sync.Mutex
 	config    *core.Config
@@ -74,10 +47,6 @@ type Table struct {
 	clients   *NatClientStore
 	rand      *rand.Rand
 	call      *call
-}
-
-func NewTableGroup(context *core.Context) *Table {
-	return &Table{config: context.GetServerConfig().GetConfig(), rand: rand.New(rand.NewSource(0)), context: context}
 }
 
 func (table *Table) loop() {
@@ -202,7 +171,6 @@ func (table *Table) collectTableNodes(rip net.IP, distances []uint, limit int) [
 	var nodes []*Node
 	var processed = make(map[uint]struct{})
 	for _, dist := range distances {
-		// Reject duplicate / invalid distances.
 		_, seen := processed[dist]
 		if seen || dist > 256 {
 			continue
@@ -218,10 +186,7 @@ func (table *Table) collectTableNodes(rip net.IP, distances []uint, limit int) [
 
 		}
 		processed[dist] = struct{}{}
-
-		// Apply some pre-checks to avoid sending invalid nodes.
 		for _, n := range bn {
-			// TODO livenessChecks > 1
 			if CheckRelayIP(rip, n.IP()) != nil {
 				continue
 			}
@@ -289,8 +254,8 @@ func deleteNode(list []*node, n *node) []*node {
 	}
 	return list
 }
-func (table *Table) doRefresh(doRefresh chan struct{}) {
-	defer close(doRefresh)
+func (table *Table) doRefresh(done chan<- struct{}) {
+	defer close(done)
 	table.loadSeedNodes()
 	table.lookupSelf()
 	for i := 0; i < 3; i++ {
@@ -433,12 +398,12 @@ func (table *Table) self() *Node {
 	return table.localNode
 }
 
-func NewTable(context *core.Context, localNode *Node) *Table {
+func NewTable(context *core.Context, localNode *Node, call *call) *Table {
 	table := &Table{
 		context:   context,
 		localNode: localNode,
 		rand:      rand.New(rand.NewSource(0)),
-		call:      &call{httpClient: core.NewHttpClient(context)},
+		call:      call,
 		clients:   NewNatServerStore(),
 	}
 	for i := range table.buckets {

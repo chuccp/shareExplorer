@@ -15,16 +15,16 @@ import (
 type HandlerFunc func(req *web.Request) (any, error)
 
 type Context struct {
-	engine       *gin.Engine
-	register     IRegister
-	server       *khttp.Server
-	traversal    TraversalServer
-	db           *db.DB
-	jwt          *util.Jwt
-	paths        map[string]any
-	remotePaths  map[string]any
-	certManager  *cert.Manager
-	serverConfig *ServerConfig
+	engine         *gin.Engine
+	register       IRegister
+	server         *khttp.Server
+	discoverServer DiscoverServer
+	db             *db.DB
+	jwt            *util.Jwt
+	paths          map[string]any
+	remotePaths    map[string]any
+	certManager    *cert.Manager
+	serverConfig   *ServerConfig
 }
 
 type HandlersChain []HandlerFunc
@@ -49,11 +49,11 @@ func (c *Context) GetCertManager() *cert.Manager {
 func (c *Context) GetJwt() *util.Jwt {
 	return c.jwt
 }
-func (c *Context) SetTraversal(traversal TraversalServer) {
-	c.traversal = traversal
+func (c *Context) SetDiscoverServer(discoverServer DiscoverServer) {
+	c.discoverServer = discoverServer
 }
-func (c *Context) GetTraversal() (TraversalServer, bool) {
-	return c.traversal, c.traversal != nil
+func (c *Context) GetDiscoverServer() (DiscoverServer, bool) {
+	return c.discoverServer, c.discoverServer != nil
 }
 func (c *Context) GetConfigInt(section, name string) (int, error) {
 	return c.register.GetConfig().GetInt(section, name)
@@ -128,8 +128,8 @@ func (c *Context) GetReverseProxy(remoteAddress string, cert *cert.Certificate) 
 func (c *Context) RemoteHandle() {
 	c.engine.Use(func(context *gin.Context) {
 		if c.isRemote(context) {
-			req := web.NewRequest(context, c.jwt)
-			c.traversal.ReverseProxy(req.GetTokenUsername(), context.Writer, context.Request)
+			//req := web.NewRequest(context, c.jwt)
+			//c.traversal.ReverseProxy(req.GetTokenUsername(), context.Writer, context.Request)
 			context.Abort()
 		}
 	})

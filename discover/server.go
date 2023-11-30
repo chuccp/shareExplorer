@@ -16,6 +16,7 @@ const (
 type Server struct {
 	context *core.Context
 	table   *Table
+	call    *call
 }
 
 func (s *Server) register(req *web.Request) (any, error) {
@@ -51,37 +52,50 @@ func (s *Server) queryNode(req *web.Request) (any, error) {
 
 func (s *Server) Init(context *core.Context) {
 	s.context = context
+	s.call = &call{httpClient: core.NewHttpClient(context)}
+	s.context.SetDiscoverServer(s)
 	if !s.context.GetServerConfig().HasInit() {
 		return
 	}
-	s.run()
+	s.Start()
 }
 func (s *Server) nodeList(req *web.Request) (any, error) {
 	nodeType := req.FormIntValue("nodeType")
 	log.Println(nodeType)
 	return web.ResponseOK(""), nil
 }
+func (s *Server) connect(req *web.Request) (any, error) {
+	return web.ResponseOK("ok"), nil
+}
 
-func (s *Server) run() {
+func (s *Server) Connect(address string) error {
+	_, err := s.call.httpClient.GetRequest(address, "/discover/connect")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (s *Server) Start() {
 	s.context.Post("/discover/register", s.register)
+	s.context.Post("/discover/connect", s.connect)
 	s.context.Post("/discover/nodeList", s.nodeList)
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/queryNode", s.queryNode)
-
 	servername := s.context.GetCertManager().GetServerName()
 	localNode, err := createLocalNode(servername)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	s.table = NewTable(s.context, localNode)
+	s.table = NewTable(s.context, localNode, s.call)
 	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:2156")
 	if err == nil {
 		s.table.addNursery(addr)
+		s.table.run()
 	} else {
 		log.Println(err)
 	}
-	s.table.run()
+
 }
 
 func (s *Server) GetName() string {
