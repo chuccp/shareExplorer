@@ -87,7 +87,7 @@ func (u *UserModel) DeleteUser(username string) error {
 	}
 	return tx.Error
 }
-func (u *UserModel) EditUser(username string, password string, pathIds string) error {
+func (u *UserModel) EditUser(id uint, username string, password string, pathIds string) error {
 	if !u.IsExist() {
 		err := u.createTable()
 		if err != nil {
@@ -95,8 +95,9 @@ func (u *UserModel) EditUser(username string, password string, pathIds string) e
 		}
 	}
 	tx := u.db.Table(u.tableName).Where(&User{
-		Username: username,
+		Id: id,
 	}).Updates(&User{
+		Username:   username,
 		Password:   password,
 		PathIds:    pathIds,
 		UpdateTime: time.Now(),

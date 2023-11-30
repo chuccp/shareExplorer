@@ -7,9 +7,15 @@ import (
 	"net"
 )
 
+const (
+	client = iota + 1
+	natClient
+	natServer
+)
+
 type Server struct {
-	context    *core.Context
-	tableGroup *TableGroup
+	context *core.Context
+	table   *Table
 }
 
 func (s *Server) register(req *web.Request) (any, error) {
@@ -22,8 +28,8 @@ func (s *Server) register(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.tableGroup.addSeenNode(wrapNode(node))
-	n := s.tableGroup.GetOneTable().self()
+	s.table.addSeenNode(wrapNode(node))
+	n := s.table.self()
 	return web.ResponseOK(wrapResponseNode(n)), nil
 }
 func (s *Server) findNode(req *web.Request) (any, error) {
@@ -36,7 +42,7 @@ func (s *Server) findNode(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	ns := s.tableGroup.GetOneTable().HandleFindNode(addr.IP, &findNode)
+	ns := s.table.HandleFindNode(addr.IP, &findNode)
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
 func (s *Server) queryNode(req *web.Request) (any, error) {
@@ -50,25 +56,32 @@ func (s *Server) Init(context *core.Context) {
 	}
 	s.run()
 }
+func (s *Server) nodeList(req *web.Request) (any, error) {
+	nodeType := req.FormIntValue("nodeType")
+	log.Println(nodeType)
+	return web.ResponseOK(""), nil
+}
+
 func (s *Server) run() {
 	s.context.Post("/discover/register", s.register)
+	s.context.Post("/discover/nodeList", s.nodeList)
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/queryNode", s.queryNode)
-	s.tableGroup = NewTableGroup(s.context)
+
 	servername := s.context.GetCertManager().GetServerName()
 	localNode, err := createLocalNode(servername)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	table := s.tableGroup.AddTable(localNode)
+	s.table = NewTable(s.context, localNode)
 	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:2156")
 	if err == nil {
-		table.addNursery(addr)
+		s.table.addNursery(addr)
 	} else {
 		log.Println(err)
 	}
-	s.tableGroup.run()
+	s.table.run()
 }
 
 func (s *Server) GetName() string {

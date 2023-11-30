@@ -302,7 +302,7 @@ func (s *Server) editUser(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = s.context.GetDB().GetUserModel().EditUser(user.Username, user.Password, user.PathIds)
+	err = s.context.GetDB().GetUserModel().EditUser(user.Id, user.Username, user.Password, user.PathIds)
 	if err != nil {
 		return nil, err
 	}
