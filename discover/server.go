@@ -61,8 +61,10 @@ func (s *Server) Init(context *core.Context) {
 }
 func (s *Server) nodeList(req *web.Request) (any, error) {
 	nodeType := req.FormIntValue("nodeType")
-	log.Println(nodeType)
-	return web.ResponseOK(""), nil
+	pageNo := req.FormIntValue("pageNo")
+	pageSize := req.FormIntValue("pageSize")
+	list, num := s.table.queryNode(nodeType, pageNo, pageSize)
+	return web.ResponsePage(int64(num), wrapExNodes(list)), nil
 }
 func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
@@ -78,7 +80,7 @@ func (s *Server) Connect(address string) error {
 func (s *Server) Start() {
 	s.context.Post("/discover/register", s.register)
 	s.context.Post("/discover/connect", s.connect)
-	s.context.Post("/discover/nodeList", s.nodeList)
+	s.context.Get("/discover/nodeList", s.nodeList)
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/queryNode", s.queryNode)
 	servername := s.context.GetCertManager().GetServerName()

@@ -3,7 +3,7 @@ package web
 import "encoding/json"
 
 type Data interface {
-	string | any
+	string | any | *PageAble
 }
 
 type Response[T Data] struct {
@@ -17,6 +17,9 @@ func (t *Response[T]) IsOk() bool {
 }
 func ResponseOK[T Data](msg T) *Response[T] {
 	return &Response[T]{Code: 200, Data: msg}
+}
+func ResponsePage(total int64, list any) *Response[*PageAble] {
+	return &Response[*PageAble]{Code: 200, Data: &PageAble{Total: total, List: list}}
 }
 func ResponseData[T Data](data T) *Response[T] {
 	return &Response[T]{Code: 200, Data: data}

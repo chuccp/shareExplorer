@@ -47,12 +47,17 @@ func wrapNodeFRegister(register *Register, address string) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	addr, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		return nil, err
+	}
 	var node Node
 	node.id = wrapId(b)
 	node.serverName = register.FormId
 	node.isNatClient = register.IsNatClient
 	node.isNatServer = register.IsNatServer
 	node.isServer = register.IsServer
+	node.addr = addr
 	return &node, nil
 }
 

@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"container/list"
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
 	"log"
@@ -37,16 +38,17 @@ type bucket struct {
 	ips          DistinctNetSet
 }
 type Table struct {
-	mutex     sync.Mutex
-	config    *core.Config
-	buckets   [nBuckets]*bucket
-	nursery   []*node //bootstrap nodes
-	context   *core.Context
-	localNode *Node
-	ips       DistinctNetSet //IP计数
-	clients   *NatClientStore
-	rand      *rand.Rand
-	call      *call
+	mutex      sync.Mutex
+	config     *core.Config
+	buckets    [nBuckets]*bucket
+	nursery    []*node //bootstrap nodes
+	context    *core.Context
+	localNode  *Node
+	ips        DistinctNetSet //IP计数
+	natClients *NodeStore
+	clients    *NodeStore
+	rand       *rand.Rand
+	call       *call
 }
 
 func (table *Table) loop() {
@@ -105,18 +107,46 @@ func (table *Table) run() {
 	go table.loop()
 }
 
-type NatClientStore struct {
-	members *sync.Map
-	num     uint32
+type NodeStore struct {
+	members   *list.List
+	memberMap map[string]*node
+	mutex     sync.RWMutex
 }
 
-func NewNatServerStore() *NatClientStore {
-	return &NatClientStore{members: new(sync.Map)}
+func NewNodeStore() *NodeStore {
+	return &NodeStore{members: new(list.List), memberMap: make(map[string]*node)}
 }
 
-func (nss *NatClientStore) addNode(n *node) {
-	n.addedAt = time.Now()
-	nss.members.Store(n.serverName, n)
+func (nss *NodeStore) queryNode(pageNo, pageSize int) ([]*node, int) {
+	nss.mutex.RLock()
+	defer nss.mutex.RUnlock()
+	list := nss.members
+	nodes := make([]*node, 0)
+	start := (pageNo - 1) * pageSize
+	num := 0
+	for ele := list.Front(); ele != nil; ele = ele.Next() {
+		num++
+		if num > start {
+			nodes = append(nodes, ele.Value.(*node))
+			if len(nodes) >= pageSize {
+				break
+			}
+		}
+	}
+	return nodes, list.Len()
+}
+func (nss *NodeStore) addNode(n *node) {
+	nss.mutex.Lock()
+	defer nss.mutex.Unlock()
+	key := n.serverName
+	v, ok := nss.memberMap[key]
+	if !ok {
+		n.addedAt = time.Now()
+		nss.members.PushFront(n)
+	} else {
+		v.addedAt = time.Now()
+		v.addr = n.addr
+	}
 }
 
 func (table *Table) addNursery(addr *net.UDPAddr) {
@@ -219,6 +249,9 @@ func (table *Table) addIP(b *bucket, ip net.IP) bool {
 	}
 	return true
 }
+func (table *Table) addNatClient(n *node) {
+	table.natClients.addNode(n)
+}
 func (table *Table) addClient(n *node) {
 	table.clients.addNode(n)
 }
@@ -226,8 +259,12 @@ func (table *Table) addSeenNode(n *node) {
 	if n.ID() == table.self().id {
 		return
 	}
-	if n.IsNatClient() {
+	if !n.IsServer() {
 		table.addClient(n)
+		return
+	}
+	if n.IsNatClient() {
+		table.addNatClient(n)
 	}
 	if n.IsNatServer() {
 		b := table.bucket(n.ID())
@@ -398,13 +435,23 @@ func (table *Table) self() *Node {
 	return table.localNode
 }
 
+func (table *Table) queryNode(nodeType, pageNo, pageSize int) ([]*node, int) {
+	var nodes []*node
+	if nodeType == client {
+		return table.clients.queryNode(pageNo, pageSize)
+	}
+
+	return nodes, 0
+}
+
 func NewTable(context *core.Context, localNode *Node, call *call) *Table {
 	table := &Table{
-		context:   context,
-		localNode: localNode,
-		rand:      rand.New(rand.NewSource(0)),
-		call:      call,
-		clients:   NewNatServerStore(),
+		context:    context,
+		localNode:  localNode,
+		rand:       rand.New(rand.NewSource(0)),
+		call:       call,
+		natClients: NewNodeStore(),
+		clients:    NewNodeStore(),
 	}
 	for i := range table.buckets {
 		table.buckets[i] = &bucket{

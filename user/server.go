@@ -274,8 +274,7 @@ func (s *Server) queryUser(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	pageAble := &web.PageAble{Total: num, List: list}
-	return web.ResponseOK(pageAble), nil
+	return web.ResponsePage(num, list), nil
 }
 func (s *Server) queryOnePath(req *web.Request) (any, error) {
 	id := req.FormIntValue("id")

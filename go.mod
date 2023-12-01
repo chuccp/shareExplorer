@@ -2,10 +2,10 @@ module github.com/chuccp/shareExplorer
 
 go 1.20
 
-replace github.com/quic-go/quic-go => github.com/chuccp/quic-go v0.0.4
+replace github.com/quic-go/quic-go => github.com/chuccp/quic-go v0.0.5
 
 require (
-	github.com/chuccp/kuic v0.1.2
+	github.com/chuccp/kuic v0.1.3
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/glebarez/go-sqlite v1.21.2
@@ -42,7 +42,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.12.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
-	github.com/quic-go/qtls-go1-20 v0.3.4 // indirect
+	github.com/quic-go/qtls-go1-20 v0.4.1 // indirect
 	github.com/quic-go/quic-go v0.39.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
