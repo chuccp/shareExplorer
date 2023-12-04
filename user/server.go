@@ -7,7 +7,6 @@ import (
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
-	"log"
 	"strings"
 )
 
@@ -214,7 +213,14 @@ func (s *Server) clientSignIn(req *web.Request) (any, error) {
 
 func (s *Server) downloadCert(req *web.Request) (any, error) {
 	username := req.GetTokenUsername()
-	log.Println("username:", username)
+	cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(username)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseFile(cert), nil
+}
+func (s *Server) downloadUserCert(req *web.Request) (any, error) {
+	username := req.FormValue("username")
 	cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(username)
 	if err != nil {
 		return nil, err
@@ -350,6 +356,7 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)
+	context.Get("/user/downloadUserCert", s.downloadUserCert)
 
 	context.Get("/user/queryUser", s.queryUser)
 	context.Post("/user/addUser", s.addUser)
