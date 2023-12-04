@@ -53,10 +53,10 @@ func (s *Server) queryNode(req *web.Request) (any, error) {
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.call = &call{httpClient: core.NewHttpClient(context)}
-	s.context.SetDiscoverServer(s)
 	if !s.context.GetServerConfig().HasInit() {
 		return
 	}
+	s.context.SetDiscoverServer(s)
 	s.Start()
 }
 func (s *Server) nodeList(req *web.Request) (any, error) {
@@ -90,14 +90,12 @@ func (s *Server) Start() {
 		return
 	}
 	s.table = NewTable(s.context, localNode, s.call)
-	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:2156")
-	if err == nil {
-		s.table.addNursery(addr)
-		s.table.run()
-	} else {
-		log.Println(err)
+	s.table.run()
+}
+func (s *Server) Stop() {
+	if s.table != nil {
+		s.table.stop()
 	}
-
 }
 
 func (s *Server) GetName() string {

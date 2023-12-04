@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"gorm.io/gorm"
 	"log"
 	"time"
@@ -51,6 +52,9 @@ func (u *ConfigModel) GetValue(key string) (string, bool) {
 func (u *ConfigModel) GetValues(keys ...string) ([]*Config, error) {
 	var configs []*Config
 	tx := u.db.Table(u.tableName).Where("`key` in ?", keys).First(&configs)
+	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
+		return configs, nil
+	}
 	return configs, tx.Error
 }
 

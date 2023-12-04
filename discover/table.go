@@ -2,6 +2,7 @@ package discover
 
 import (
 	"container/list"
+	"context"
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
 	"log"
@@ -42,13 +43,15 @@ type Table struct {
 	config     *core.Config
 	buckets    [nBuckets]*bucket
 	nursery    []*node //bootstrap nodes
-	context    *core.Context
+	coreCtx    *core.Context
 	localNode  *Node
 	ips        DistinctNetSet //IP计数
 	natClients *NodeStore
 	clients    *NodeStore
 	rand       *rand.Rand
 	call       *call
+	ctx        context.Context
+	ctxCancel  context.CancelFunc
 }
 
 func (table *Table) loop() {
@@ -61,6 +64,11 @@ func (table *Table) loop() {
 	go table.doRefresh(refreshDone)
 	for {
 		select {
+
+		case <-table.ctx.Done():
+			{
+				break
+			}
 		case <-refresh.C:
 			{
 				if refreshDone == nil {
@@ -79,9 +87,7 @@ func (table *Table) loop() {
 				revalidateDone = nil
 			}
 		case <-refreshDone:
-
 			refresh.Reset(table.nextRefreshTime())
-
 		}
 	}
 }
@@ -104,7 +110,15 @@ func (table *Table) doRevalidate(done chan<- struct{}) {
 }
 
 func (table *Table) run() {
+
+	//table.coreCtx.GetDB().GetAddressModel()
+
 	go table.loop()
+}
+func (table *Table) stop() {
+	if table.ctxCancel != nil {
+		table.ctxCancel()
+	}
 }
 
 type NodeStore struct {
@@ -300,10 +314,10 @@ func (table *Table) doRefresh(done chan<- struct{}) {
 	}
 }
 func (table *Table) lookupSelf() {
-	table.newLookup(table.context, table.self().ID())
+	table.newLookup(table.coreCtx, table.self().ID())
 }
 func (table *Table) lookupRandom() {
-	table.newLookup(table.context, table.self().ID())
+	table.newLookup(table.coreCtx, table.self().ID())
 }
 
 func (table *Table) newLookup(ctx *core.Context, target ID) {
@@ -444,14 +458,19 @@ func (table *Table) queryNode(nodeType, pageNo, pageSize int) ([]*node, int) {
 	return nodes, 0
 }
 
-func NewTable(context *core.Context, localNode *Node, call *call) *Table {
+func NewTable(coreCtx *core.Context, localNode *Node, call *call) *Table {
+
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
 	table := &Table{
-		context:    context,
+		coreCtx:    coreCtx,
 		localNode:  localNode,
 		rand:       rand.New(rand.NewSource(0)),
 		call:       call,
 		natClients: NewNodeStore(),
 		clients:    NewNodeStore(),
+		ctx:        ctx,
+		ctxCancel:  ctxCancel,
 	}
 	for i := range table.buckets {
 		table.buckets[i] = &bucket{

@@ -171,6 +171,10 @@ func (s *Server) reset(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	ds, b := s.context.GetDiscoverServer()
+	if b {
+		ds.Stop()
+	}
 	return web.ResponseOK("ok"), nil
 }
 
@@ -211,12 +215,11 @@ func (s *Server) clientSignIn(req *web.Request) (any, error) {
 func (s *Server) downloadCert(req *web.Request) (any, error) {
 	username := req.GetTokenUsername()
 	log.Println("username:", username)
-	_, err := s.context.GetCertManager().CreateClientCert(username)
+	cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(username)
 	if err != nil {
 		return nil, err
 	}
-	//return web.ResponseFile(cert.ClientCertPath), nil
-	return web.ResponseOK("ok"), nil
+	return web.ResponseFile(cert), nil
 }
 func (s *Server) addPath(req *web.Request) (any, error) {
 	var path db.Path

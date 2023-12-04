@@ -63,15 +63,27 @@ func (c *Context) GetHttpClient(address string) (*khttp.Client, error) {
 }
 
 func (c *Context) Post(relativePath string, handlers ...HandlerFunc) {
+	_, ok := c.paths[relativePath]
+	if ok {
+		return
+	}
 	c.paths[relativePath] = true
 	c.engine.POST(relativePath, c.toGinHandlerFunc(handlers)...)
 }
 func (c *Context) Get(relativePath string, handlers ...HandlerFunc) {
+	_, ok := c.paths[relativePath]
+	if ok {
+		return
+	}
 	c.paths[relativePath] = true
 	c.engine.GET(relativePath, c.toGinHandlerFunc(handlers)...)
 }
 
 func (c *Context) GetRemote(relativePath string, handlers ...HandlerFunc) {
+	_, ok := c.paths[relativePath]
+	if ok {
+		return
+	}
 	c.Get(relativePath, handlers...)
 	c.remotePaths[relativePath] = true
 	c.paths[relativePath] = true
