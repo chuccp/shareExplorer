@@ -271,7 +271,7 @@ func (s *Server) queryPath(req *web.Request) (any, error) {
 	return web.ResponseOK(pageAble), nil
 }
 func (s *Server) queryAllPath(req *web.Request) (any, error) {
-	list, num, err := s.context.GetDB().GetPathModel().QueryPage(0, 100)
+	list, num, err := s.context.GetDB().GetPathModel().QueryPage(1, 100)
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +279,7 @@ func (s *Server) queryAllPath(req *web.Request) (any, error) {
 	return web.ResponseOK(pageAble), nil
 }
 func (s *Server) queryUser(req *web.Request) (any, error) {
-	list, num, err := s.context.GetDB().GetUserModel().QueryPage(0, 100)
+	list, num, err := s.context.GetDB().GetUserModel().QueryPage(1, 100)
 	if err != nil {
 		return nil, err
 	}
