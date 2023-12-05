@@ -163,6 +163,16 @@ func (nss *NodeStore) addNode(n *node) {
 	}
 }
 
+func (nss *NodeStore) queryONode(serverName string) *node {
+	nss.mutex.RLock()
+	defer nss.mutex.RUnlock()
+	v, ok := nss.memberMap[serverName]
+	if ok {
+		return v
+	}
+	return nil
+}
+
 func (table *Table) addNursery(addr *net.UDPAddr) {
 	if !containsAddress(table.nursery, addr) {
 		n := wrapNode(NewNursery(addr))
@@ -429,14 +439,14 @@ func (table *Table) findNode(n *Node, distances []uint) ([]*Node, error) {
 	return nodes, err
 
 }
-func (table *Table) findnodeByID(target ID, nresults int, preferLive bool) *nodesByDistance {
+func (table *Table) findNodeByID(target ID, nResults int, preferLive bool) *nodesByDistance {
 	nodes := &nodesByDistance{target: target}
 	liveNodes := &nodesByDistance{target: target}
 	for _, b := range &table.buckets {
 		for _, n := range b.entries {
-			nodes.push(n, nresults)
+			nodes.push(n, nResults)
 			if preferLive && n.liveNessChecks > 0 {
-				liveNodes.push(n, nresults)
+				liveNodes.push(n, nResults)
 			}
 		}
 	}
@@ -456,6 +466,26 @@ func (table *Table) queryNode(nodeType, pageNo, pageSize int) ([]*node, int) {
 	}
 
 	return nodes, 0
+}
+
+func (table *Table) queryOneNode(serverName string) *node {
+	node := table.natClients.queryONode(serverName)
+	return node
+}
+
+func (table *Table) FindLocalNodeAddress() (string, error) {
+	serverName := table.localNode.serverName
+	n, err := table.FindValue(serverName)
+	if err != nil {
+		return "", err
+	}
+	return n.addr.String(), nil
+}
+func (table *Table) FindValue(serverName string) (*node, error) {
+
+	table.call.queryNode(table.localNode)
+
+	return nil, nil
 }
 
 func NewTable(coreCtx *core.Context, localNode *Node, call *call) *Table {

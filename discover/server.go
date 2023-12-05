@@ -47,6 +47,7 @@ func (s *Server) findNode(req *web.Request) (any, error) {
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
 func (s *Server) queryNode(req *web.Request) (any, error) {
+
 	return web.ResponseOK(""), nil
 }
 
@@ -70,6 +71,9 @@ func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
 }
 
+func (s *Server) FindAddress() (string, error) {
+	return "", nil
+}
 func (s *Server) Connect(address string) error {
 	_, err := s.call.httpClient.GetRequest(address, "/discover/connect")
 	if err != nil {

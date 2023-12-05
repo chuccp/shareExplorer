@@ -351,7 +351,7 @@ func (s *Server) Init(context *core.Context) {
 	context.Get("/user/reset", s.reset)
 	context.Post("/user/addAdmin", s.addAdmin)
 	context.Post("/user/addClient", s.addClient)
-	context.Post("/user/signIn", s.signIn)
+
 	context.Post("/user/clientSignIn", s.clientSignIn)
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/connect", s.connect)
@@ -369,5 +369,7 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/editPath", s.editPath)
 	context.Get("/user/deletePath", s.deletePath)
 	context.Get("/user/queryPath", s.queryPath)
+
 	context.GetRemote("/user/queryAllPath", s.queryAllPath)
+	context.GetRemote("/user/signIn", s.signIn)
 }

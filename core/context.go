@@ -140,8 +140,20 @@ func (c *Context) GetReverseProxy(remoteAddress string, cert *cert.Certificate) 
 func (c *Context) RemoteHandle() {
 	c.engine.Use(func(context *gin.Context) {
 		if c.isRemote(context) {
-			//req := web.NewRequest(context, c.jwt)
-			//c.traversal.ReverseProxy(req.GetTokenUsername(), context.Writer, context.Request)
+			ds, fa := c.GetDiscoverServer()
+			if fa {
+				address, err := ds.FindAddress()
+				if err != nil {
+					context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
+				} else {
+					reverseProxy, err := c.GetReverseProxy(address, nil)
+					if err != nil {
+						return
+					} else {
+						reverseProxy.ServeHTTP(context.Writer, context.Request)
+					}
+				}
+			}
 			context.Abort()
 		}
 	})

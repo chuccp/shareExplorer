@@ -16,6 +16,7 @@ type (
 	QueryNode struct {
 		FormId string `json:"formId"`
 		ToId   string `json:"toId"`
+		Step   int    `json:"step"`
 	}
 	ResponseNode struct {
 		Id          string `json:"id"`

@@ -12,17 +12,17 @@ type lookup struct {
 	context   *core.Context
 	result    nodesByDistance
 	target    ID
-	queryfunc queryFunc
+	queryFunc queryFunc
 }
 
-func newLookup(tab *Table, target ID, context *core.Context, queryfunc queryFunc) *lookup {
-	return &lookup{tab: tab, target: target, context: context, queryfunc: queryfunc}
+func newLookup(tab *Table, target ID, context *core.Context, queryFunc queryFunc) *lookup {
+	return &lookup{tab: tab, target: target, context: context, queryFunc: queryFunc}
 }
 func (l *lookup) run() *lookup {
 
-	nodesByDistance := l.tab.findnodeByID(l.target, bucketSize, false)
+	nodesByDistance := l.tab.findNodeByID(l.target, bucketSize, false)
 	for _, entry := range nodesByDistance.entries {
-		go l.queryfunc(entry)
+		go l.queryFunc(entry)
 	}
 	return l
 }

@@ -52,3 +52,19 @@ func (call *call) findNode(node *Node, toNode *Node, address string, distances [
 	}
 	return nil, errors.New(response.Error)
 }
+func (call *call) queryNode(node *Node, toNode *Node, address string) (*Node, error) {
+	var queryNode = &QueryNode{FormId: node.serverName, ToId: toNode.serverName}
+	data, _ := json.Marshal(queryNode)
+	value, err := call.httpClient.PostRequest(address, "/discover/queryNode", string(data))
+	if err != nil {
+		return nil, err
+	}
+	response, err := web.JsonToResponse[*Node](value)
+	if err != nil {
+		return nil, err
+	}
+	if response.IsOk() {
+		return response.Data, nil
+	}
+	return nil, errors.New(response.Error)
+}
