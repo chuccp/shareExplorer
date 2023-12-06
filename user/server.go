@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+	"github.com/chuccp/kuic/cert"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/db"
 	"github.com/chuccp/shareExplorer/entity"
@@ -227,6 +228,51 @@ func (s *Server) downloadUserCert(req *web.Request) (any, error) {
 	}
 	return web.ResponseFile(cert), nil
 }
+
+func (s *Server) uploadUserCert(req *web.Request) (any, error) {
+
+	addresses := req.FormValue("addresses")
+	if len(addresses) > 0 {
+
+	}
+	file, err := req.FormFile("cert")
+	if err != nil {
+		return nil, err
+	}
+	certPath := "client/" + file.Filename
+	err = web.SaveUploadedFile(file, certPath)
+	if err != nil {
+		return nil, err
+	}
+	_, c, err := cert.ParseClientKuicCertFile(certPath)
+	if err != nil {
+		return nil, err
+	}
+	var client entity.Client
+	client.Username = c.UserName
+	client.ServerName = c.ServerName
+	err = s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
+		err := s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", "false")
+		if err != nil {
+			return err
+		}
+		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
+		err = addressModel.AddAddress(strings.Split(addresses, ";"))
+		if err != nil {
+			return err
+		}
+		err = s.context.GetDB().GetUserModel().NewModel(tx).AddClientUser(client.Username, certPath)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK(&client), nil
+}
+
 func (s *Server) addPath(req *web.Request) (any, error) {
 	var path db.Path
 	err := req.BodyJson(&path)
@@ -357,6 +403,8 @@ func (s *Server) Init(context *core.Context) {
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)
 	context.Get("/user/downloadUserCert", s.downloadUserCert)
+	context.Post("/user/uploadUserCert", s.uploadUserCert)
+	//uploadUserCert
 
 	context.Get("/user/queryUser", s.queryUser)
 	context.Post("/user/addUser", s.addUser)
@@ -371,5 +419,5 @@ func (s *Server) Init(context *core.Context) {
 	context.Get("/user/queryPath", s.queryPath)
 
 	context.GetRemote("/user/queryAllPath", s.queryAllPath)
-	context.GetRemote("/user/signIn", s.signIn)
+	context.PostRemote("/user/signIn", s.signIn)
 }

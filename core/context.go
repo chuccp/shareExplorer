@@ -89,6 +89,16 @@ func (c *Context) GetRemote(relativePath string, handlers ...HandlerFunc) {
 	c.paths[relativePath] = true
 }
 
+func (c *Context) PostRemote(relativePath string, handlers ...HandlerFunc) {
+	_, ok := c.paths[relativePath]
+	if ok {
+		return
+	}
+	c.Post(relativePath, handlers...)
+	c.remotePaths[relativePath] = true
+	c.paths[relativePath] = true
+}
+
 func (c *Context) HasPaths(queryPath string) bool {
 	_, ok := c.paths[queryPath]
 	return ok
@@ -148,7 +158,7 @@ func (c *Context) RemoteHandle() {
 				} else {
 					reverseProxy, err := c.GetReverseProxy(address, nil)
 					if err != nil {
-						return
+						context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
 					} else {
 						reverseProxy.ServeHTTP(context.Writer, context.Request)
 					}

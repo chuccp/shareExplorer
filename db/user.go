@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
-	"log"
 	"time"
 )
 
@@ -14,6 +13,7 @@ type User struct {
 	Password   string    `gorm:"column:password" json:"password"`
 	Role       string    `gorm:"column:role" json:"role"`
 	PathIds    string    `gorm:"column:path_ids" json:"pathIds"`
+	CertPath   string    `gorm:"column:cert_path" json:"certPath"`
 	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"updateTime"`
 }
@@ -27,7 +27,10 @@ func (u *UserModel) DeleteTable() error {
 	if !u.IsExist() {
 		return nil
 	}
-	log.Println("UserModel")
+	tx := u.db.Table(u.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&User{})
+	return tx.Error
+}
+func (u *UserModel) deleteTable() error {
 	tx := u.db.Table(u.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&User{})
 	return tx.Error
 }
@@ -117,6 +120,28 @@ func (u *UserModel) AddGuestUser(username string, password string, pathIds strin
 		Password:   password,
 		Role:       "guest",
 		PathIds:    pathIds,
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
+	})
+	return tx.Error
+}
+func (u *UserModel) AddClientUser(username string, certPath string) error {
+	if !u.IsExist() {
+		err := u.createTable()
+		if err != nil {
+			return err
+		}
+	}
+	err := u.deleteTable()
+	if err != nil {
+		return err
+	}
+	tx := u.db.Table(u.tableName).Create(&User{
+		Username:   username,
+		Password:   "",
+		Role:       "client",
+		CertPath:   certPath,
+		PathIds:    "",
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 	})

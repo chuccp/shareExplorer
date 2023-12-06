@@ -110,9 +110,6 @@ func (table *Table) doRevalidate(done chan<- struct{}) {
 }
 
 func (table *Table) run() {
-
-	//table.coreCtx.GetDB().GetAddressModel()
-
 	go table.loop()
 }
 func (table *Table) stop() {
@@ -482,8 +479,6 @@ func (table *Table) FindLocalNodeAddress() (string, error) {
 	return n.addr.String(), nil
 }
 func (table *Table) FindValue(serverName string) (*node, error) {
-
-	table.call.queryNode(table.localNode)
 
 	return nil, nil
 }
