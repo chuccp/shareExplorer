@@ -404,7 +404,6 @@ func (s *Server) Init(context *core.Context) {
 	context.Get("/user/downloadCert", s.downloadCert)
 	context.Get("/user/downloadUserCert", s.downloadUserCert)
 	context.Post("/user/uploadUserCert", s.uploadUserCert)
-	//uploadUserCert
 
 	context.Get("/user/queryUser", s.queryUser)
 	context.Post("/user/addUser", s.addUser)

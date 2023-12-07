@@ -97,6 +97,7 @@ func (table *Table) nextRevalidateTime() time.Duration {
 	defer table.mutex.Unlock()
 	return time.Duration(table.rand.Int63n(int64(10 * time.Second)))
 }
+
 func (table *Table) nextRefreshTime() time.Duration {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()
@@ -470,17 +471,13 @@ func (table *Table) queryOneNode(serverName string) *node {
 	return node
 }
 
-func (table *Table) FindLocalNodeAddress() (string, error) {
-	serverName := table.localNode.serverName
-	n, err := table.FindValue(serverName)
-	if err != nil {
-		return "", err
-	}
-	return n.addr.String(), nil
-}
-func (table *Table) FindValue(serverName string) (*node, error) {
+func (table *Table) FindValue(serverName string, maxBucket uint) (queryNode []*Node, local *Node, err error) {
+	if table.localNode.IsServer() {
 
-	return nil, nil
+	} else {
+
+	}
+	return nil, nil, nil
 }
 
 func NewTable(coreCtx *core.Context, localNode *Node, call *call) *Table {

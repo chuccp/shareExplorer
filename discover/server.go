@@ -81,7 +81,15 @@ func (s *Server) Connect(address string) error {
 	}
 	return nil
 }
+
+func (s *Server) nodeStatus(req *web.Request) (any, error) {
+
+	return "", nil
+}
 func (s *Server) Start() {
+	if !s.context.GetServerConfig().IsServer() {
+		s.context.Get("/discover/nodeStatus", s.nodeStatus)
+	}
 	s.context.Post("/discover/register", s.register)
 	s.context.Post("/discover/connect", s.connect)
 	s.context.Get("/discover/nodeList", s.nodeList)
