@@ -71,6 +71,9 @@ func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
 }
 
+func (s *Server) FindStatus() (string, error) {
+	return "", nil
+}
 func (s *Server) FindAddress() (string, error) {
 	return "", nil
 }
@@ -84,7 +87,7 @@ func (s *Server) Connect(address string) error {
 
 func (s *Server) nodeStatus(req *web.Request) (any, error) {
 
-	return "", nil
+	return web.ResponseOK("ok"), nil
 }
 func (s *Server) Start() {
 	if !s.context.GetServerConfig().IsServer() {

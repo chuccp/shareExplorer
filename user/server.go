@@ -155,14 +155,25 @@ func (s *Server) info(req *web.Request) (any, error) {
 	system.HasInit = fa
 	if fa {
 		system.IsServer = strings.Contains(exist, "true")
+		if !system.IsServer {
+			discoverServer, fa := s.context.GetDiscoverServer()
+			if fa {
+				address, err := discoverServer.FindStatus()
+				if err == nil && len(address) > 0 {
+					system.HasServer = true
+				}
+			}
+		}
 		username := req.GetTokenUsername()
 		if len(username) > 0 {
 			system.HasSignIn = true
 		} else {
 			system.HasSignIn = false
 		}
+
+	} else {
+		system.RemoteAddress = s.context.GetConfigArray("traversal", "remote.address")
 	}
-	system.RemoteAddress = s.context.GetConfigArray("traversal", "remote.address")
 	return &system, nil
 }
 

@@ -17,5 +17,6 @@ type DiscoverServer interface {
 	Start()
 	Connect(address string) error
 	Stop()
+	FindStatus() (string, error)
 	FindAddress() (string, error)
 }
