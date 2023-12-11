@@ -143,6 +143,9 @@ func (c *Context) isRemote(context *gin.Context) bool {
 	return false
 }
 func (c *Context) GetReverseProxy(remoteAddress string, cert *cert.Certificate) (*khttp.ReverseProxy, error) {
+	if cert == nil {
+		return c.server.GetReverseProxy(remoteAddress)
+	}
 	proxy, err := c.server.GetTlsReverseProxy(remoteAddress, cert)
 	return proxy, err
 }
@@ -160,6 +163,11 @@ func (c *Context) RemoteHandle() {
 					if err != nil {
 						context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
 					} else {
+
+						log.Println("remote", address, context.Request.URL)
+
+						context.Request.Header.Del("Referer")
+						context.Request.Header.Del("Origin")
 						reverseProxy.ServeHTTP(context.Writer, context.Request)
 					}
 				}

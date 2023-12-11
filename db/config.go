@@ -50,6 +50,9 @@ func (u *ConfigModel) GetValue(key string) (string, bool) {
 }
 
 func (u *ConfigModel) GetValues(keys ...string) ([]*Config, error) {
+	if !u.IsExist() {
+		u.createTable()
+	}
 	var configs []*Config
 	tx := u.db.Table(u.tableName).Where("`key` in ?", keys).First(&configs)
 	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {

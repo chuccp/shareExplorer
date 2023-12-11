@@ -98,10 +98,10 @@ func (s *Server) paths(req *web.Request) (any, error) {
 }
 
 func (s *Server) Init(context *core.Context) {
-	context.Get("/file/index", s.index)
-	context.Get("/file/files", s.files)
-	context.Post("/file/upload", s.Upload)
-	context.Get("/file/root", s.root)
-	context.Get("/file/paths", s.paths)
-	context.Post("/file/createNewFolder", s.createNewFolder)
+	context.GetRemote("/file/root", s.root)
+	context.GetRemote("/file/paths", s.paths)
+	context.GetRemote("/file/index", s.index)
+	context.GetRemote("/file/files", s.files)
+	context.PostRemote("/file/upload", s.Upload)
+	context.PostRemote("/file/createNewFolder", s.createNewFolder)
 }

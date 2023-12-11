@@ -75,7 +75,7 @@ func (s *Server) FindStatus() (string, error) {
 	return "", nil
 }
 func (s *Server) FindAddress() (string, error) {
-	return "", nil
+	return "127.0.0.1:2157", nil
 }
 func (s *Server) Connect(address string) error {
 	_, err := s.call.httpClient.GetRequest(address, "/discover/connect")

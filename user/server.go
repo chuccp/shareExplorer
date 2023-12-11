@@ -164,13 +164,14 @@ func (s *Server) info(req *web.Request) (any, error) {
 				}
 			}
 		}
-		username := req.GetTokenUsername()
-		if len(username) > 0 {
-			system.HasSignIn = true
-		} else {
-			system.HasSignIn = false
+		if system.IsServer {
+			username := req.GetTokenUsername()
+			if len(username) > 0 {
+				system.HasSignIn = true
+			} else {
+				system.HasSignIn = false
+			}
 		}
-
 	} else {
 		system.RemoteAddress = s.context.GetConfigArray("traversal", "remote.address")
 	}
@@ -426,8 +427,8 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/addPath", s.addPath)
 	context.Post("/user/editPath", s.editPath)
 	context.Get("/user/deletePath", s.deletePath)
-	context.Get("/user/queryPath", s.queryPath)
 
+	context.GetRemote("/user/queryPath", s.queryPath)
 	context.GetRemote("/user/queryAllPath", s.queryAllPath)
 	context.PostRemote("/user/signIn", s.signIn)
 }
