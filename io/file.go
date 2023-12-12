@@ -3,8 +3,10 @@ package io
 import (
 	"fmt"
 	"github.com/chuccp/kuic/util"
+	"github.com/juju/ratelimit"
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -36,6 +38,10 @@ func (f *File) List() ([]*FileInfo, error) {
 		info, err := dir.Info()
 		if err == nil {
 			path := filepath.Join(f.normal, info.Name())
+			IsHidden, err := IsHiddenFile(path)
+			if err != nil || IsHidden {
+				continue
+			}
 			files = append(files, &FileInfo{IsDir: dir.IsDir(), Name: info.Name(), Path: path, Size: info.Size(), ModifyTime: info.ModTime().UnixMilli()})
 		}
 	}
@@ -52,13 +58,10 @@ func (f *File) ListDir() ([]*FileInfo, error) {
 		if err == nil && dir.IsDir() {
 			path := filepath.Join(f.normal, info.Name())
 			IsHidden, err := IsHiddenFile(path)
-			if err != nil {
+			if err != nil || IsHidden {
 				continue
 			}
-			if !IsHidden {
-				files = append(files, &FileInfo{IsDir: dir.IsDir(), Name: info.Name(), Path: path, Size: info.Size(), ModifyTime: info.ModTime().UnixMilli()})
-			}
-
+			files = append(files, &FileInfo{IsDir: dir.IsDir(), Name: info.Name(), Path: path, Size: info.Size(), ModifyTime: info.ModTime().UnixMilli()})
 		}
 	}
 	return files, nil
@@ -174,4 +177,10 @@ func IsHiddenFile(filename string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func Copy(dst io.Writer, src io.Reader) (written int64, err error) {
+	var bucket = ratelimit.NewBucketWithRate(100_000, 100)
+	reader := ratelimit.Reader(src, bucket)
+	return io.Copy(dst, reader)
 }

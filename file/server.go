@@ -5,6 +5,7 @@ import (
 	"github.com/chuccp/shareExplorer/io"
 	"github.com/chuccp/shareExplorer/web"
 	"os"
+	"path"
 )
 
 type Server struct {
@@ -28,6 +29,17 @@ func (s *Server) files(req *web.Request) (any, error) {
 	}
 	return nil, os.ErrNotExist
 }
+
+func (s *Server) download(req *web.Request) (any, error) {
+	Path := req.FormValue("Path")
+	RootPath := req.FormValue("RootPath")
+	if len(Path) > 0 && len(RootPath) > 0 {
+		file := path.Join(RootPath, Path)
+		return web.ResponseFile(file), nil
+	}
+	return nil, os.ErrNotExist
+}
+
 func (s *Server) Upload(req *web.Request) (any, error) {
 	file, err := req.FormFile("file")
 	if err != nil {
@@ -101,6 +113,7 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemote("/file/root", s.root)
 	context.GetRemote("/file/paths", s.paths)
 	context.GetRemote("/file/index", s.index)
+	context.GetRemote("/file/download", s.download)
 	context.GetRemote("/file/files", s.files)
 	context.PostRemote("/file/upload", s.Upload)
 	context.PostRemote("/file/createNewFolder", s.createNewFolder)

@@ -16,6 +16,7 @@ func (fm *FileManage) Children(path string) ([]*FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 	list, err := file.List()
 	for _, info := range list {
 		info.Path, err = filepath.Rel(fm.base, info.Path)
