@@ -54,7 +54,7 @@ func (s *Server) upload(req *web.Request) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return file.Filename, err
+		return web.ResponseOK(file.Filename), err
 	}
 	return nil, os.ErrNotExist
 
@@ -71,7 +71,7 @@ func (s *Server) upload2(req *web.Request) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return Name, err
+		return web.ResponseOK(Name), err
 	}
 	return nil, os.ErrNotExist
 
