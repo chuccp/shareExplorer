@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"mime/multipart"
+	"net/http"
 	"strconv"
 	"strings"
 )
@@ -65,6 +66,9 @@ func (r *Request) GetPage() *Page {
 	page.PageNo = r.FormIntValue("pageNo")
 	page.PageSize = r.FormIntValue("pageSize")
 	return &page
+}
+func (r *Request) GetRawRequest() *http.Request {
+	return r.context.Request
 }
 
 func (r *Request) BodyJson(v any) error {

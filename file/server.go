@@ -40,13 +40,13 @@ func (s *Server) download(req *web.Request) (any, error) {
 	return nil, os.ErrNotExist
 }
 
-func (s *Server) Upload(req *web.Request) (any, error) {
+func (s *Server) upload(req *web.Request) (any, error) {
 	file, err := req.FormFile("file")
 	if err != nil {
 		return nil, err
 	}
-	Path := req.FormValue("Path")
-	RootPath := req.FormValue("RootPath")
+	Path := req.FormValue("path")
+	RootPath := req.FormValue("rootPath")
 	if len(Path) > 0 && len(RootPath) > 0 {
 		fileManage := io.CreateFileManage(RootPath)
 		absolute := fileManage.Absolute(Path, file.Filename)
@@ -55,6 +55,23 @@ func (s *Server) Upload(req *web.Request) (any, error) {
 			return nil, err
 		}
 		return file.Filename, err
+	}
+	return nil, os.ErrNotExist
+
+}
+func (s *Server) upload2(req *web.Request) (any, error) {
+	reader := req.GetRawRequest().Body
+	Path := req.FormValue("path")
+	RootPath := req.FormValue("rootPath")
+	Name := req.FormValue("name")
+	if len(Path) > 0 && len(RootPath) > 0 && len(Name) > 0 {
+		fileManage := io.CreateFileManage(RootPath)
+		absolute := fileManage.Absolute(Path, Name)
+		err := web.SaveUploadedFile2(reader, absolute)
+		if err != nil {
+			return nil, err
+		}
+		return Name, err
 	}
 	return nil, os.ErrNotExist
 
@@ -115,6 +132,7 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemote("/file/index", s.index)
 	context.GetRemote("/file/download", s.download)
 	context.GetRemote("/file/files", s.files)
-	context.PostRemote("/file/upload", s.Upload)
+	context.PostRemote("/file/upload", s.upload)
+	context.PostRemote("/file/upload2", s.upload2)
 	context.PostRemote("/file/createNewFolder", s.createNewFolder)
 }
