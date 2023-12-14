@@ -64,10 +64,11 @@ func (s *Server) upload2(req *web.Request) (any, error) {
 	Path := req.FormValue("path")
 	RootPath := req.FormValue("rootPath")
 	Name := req.FormValue("name")
+	seq := req.FormIntValue("seq")
 	if len(Path) > 0 && len(RootPath) > 0 && len(Name) > 0 {
 		fileManage := io.CreateFileManage(RootPath)
 		absolute := fileManage.Absolute(Path, Name)
-		err := web.SaveUploadedFile2(reader, absolute)
+		err := web.SaveUploadedFile2(reader, absolute, seq)
 		if err != nil {
 			return nil, err
 		}

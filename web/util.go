@@ -26,12 +26,15 @@ func SaveUploadedFile(file *multipart.FileHeader, dst string) error {
 	_, err = io.Copy(out, src)
 	return err
 }
-func SaveUploadedFile2(src io.Reader, dst string) error {
+func SaveUploadedFile2(src io.Reader, dst string, seq int) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
 		return err
 	}
-
-	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	flag := os.O_WRONLY | os.O_CREATE | os.O_APPEND
+	if seq == 0 {
+		flag = os.O_RDWR | os.O_CREATE | os.O_TRUNC
+	}
+	out, err := os.OpenFile(dst, flag, 0666)
 	if err != nil {
 		return err
 	}
