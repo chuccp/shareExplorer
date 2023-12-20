@@ -39,26 +39,38 @@ func (s *Server) download(req *web.Request) (any, error) {
 	}
 	return nil, os.ErrNotExist
 }
+func (s *Server) cancel(req *web.Request) (any, error) {
 
-func (s *Server) upload(req *web.Request) (any, error) {
-	file, err := req.FormFile("file")
-	if err != nil {
-		return nil, err
-	}
-	Path := req.FormValue("path")
-	RootPath := req.FormValue("rootPath")
-	if len(Path) > 0 && len(RootPath) > 0 {
-		fileManage := io.CreateFileManage(RootPath)
-		absolute := fileManage.Absolute(Path, file.Filename)
-		err = web.SaveUploadedFile(file, absolute)
-		if err != nil {
-			return nil, err
-		}
-		return web.ResponseOK(file.Filename), err
-	}
-	return nil, os.ErrNotExist
+	path := req.FormValue("path")
+	rootPath := req.FormValue("rootPath")
+	name := req.FormValue("name")
+	//seq := req.FormIntValue("seq")
 
+	fileManage := io.CreateFileManage(rootPath)
+	absolute := fileManage.Absolute(path, name)
+	err := web.SaveUploadedCancel(absolute)
+	return web.ResponseOK(""), err
 }
+
+//	func (s *Server) upload(req *web.Request) (any, error) {
+//		file, err := req.FormFile("file")
+//		if err != nil {
+//			return nil, err
+//		}
+//		Path := req.FormValue("path")
+//		RootPath := req.FormValue("rootPath")
+//		if len(Path) > 0 && len(RootPath) > 0 {
+//			fileManage := io.CreateFileManage(RootPath)
+//			absolute := fileManage.Absolute(Path, file.Filename)
+//			err = web.SaveUploadedFile(file, absolute)
+//			if err != nil {
+//				return nil, err
+//			}
+//			return web.ResponseOK(file.Filename), err
+//		}
+//		return nil, os.ErrNotExist
+//
+// }
 func (s *Server) upload2(req *web.Request) (any, error) {
 	reader := req.GetRawRequest().Body
 	Path := req.FormValue("path")
@@ -132,8 +144,9 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemote("/file/paths", s.paths)
 	context.GetRemote("/file/index", s.index)
 	context.GetRemote("/file/download", s.download)
+	context.GetRemote("/file/cancel", s.cancel)
 	context.GetRemote("/file/files", s.files)
-	context.PostRemote("/file/upload", s.upload)
+	//context.PostRemote("/file/upload", s.upload)
 	context.PostRemote("/file/upload2", s.upload2)
 	context.PostRemote("/file/createNewFolder", s.createNewFolder)
 }

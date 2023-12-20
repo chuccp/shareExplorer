@@ -3,8 +3,8 @@ package web
 import "testing"
 
 func TestAAAAAA(t *testing.T) {
-	reverseRequest, err := CreateReverseRequest("/aaaa")
+	//reverseRequest, err := CreateReverseRequest("/aaaa")
 
-	t.Log(reverseRequest, err)
+	//t.Log(reverseRequest, err)
 
 }
