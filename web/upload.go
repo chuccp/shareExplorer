@@ -2,44 +2,13 @@ package web
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"io"
 	"os"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
-
-func SplitFile(src string, dst string, num int) ([]*TempUpload, error) {
-	srcFile, err := os.OpenFile(src, os.O_RDONLY, 0666)
-	if err != nil {
-		return nil, err
-	}
-	defer srcFile.Close()
-	stat, err := srcFile.Stat()
-	if err != nil {
-		return nil, err
-	}
-	total := stat.Size()
-	nums := splitNumber(total, int64(num))
-	tempUploads := make([]*TempUpload, len(nums))
-
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return nil, err
-	}
-
-	size := int64(0)
-
-	for i, _ := range tempUploads {
-		buff := bytes.NewReader(data[size:(size + nums[i])])
-		size = size + nums[i]
-		tempUploads[i] = NewTempUpload(buff, dst, i, len(nums), nums[i], total)
-	}
-	return tempUploads, nil
-}
 
 type TempUpload struct {
 	dst    string
@@ -81,7 +50,10 @@ func (tempUpload *TempUpload) SaveUploaded() error {
 			return err
 		}
 		if tempUpload.seq == tempUpload.count-1 {
-			tempUpload.finish()
+			err := tempUpload.finish()
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	} else {
@@ -317,22 +289,4 @@ func (tempUpload *TempUpload) readFile() (temp *os.File, err error) {
 		return
 	}
 	return
-}
-func (tempUpload *TempUpload) SaveUploadedFileTemp() error {
-	if err := os.MkdirAll(filepath.Dir(tempUpload.dst), 0750); err != nil {
-		return err
-	}
-	flag := os.O_WRONLY | os.O_CREATE | os.O_APPEND
-	if tempUpload.seq == 0 {
-		flag = os.O_RDWR | os.O_CREATE | os.O_TRUNC
-	}
-	dir, file := path.Split(tempUpload.dst)
-	fileName := file + ".temp"
-	out, err := os.OpenFile(path.Join(dir, fileName), flag, 0666)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, tempUpload.src)
-	return err
 }

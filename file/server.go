@@ -51,36 +51,20 @@ func (s *Server) cancel(req *web.Request) (any, error) {
 	err := web.SaveUploadedCancel(absolute)
 	return web.ResponseOK(""), err
 }
-
-//	func (s *Server) upload(req *web.Request) (any, error) {
-//		file, err := req.FormFile("file")
-//		if err != nil {
-//			return nil, err
-//		}
-//		Path := req.FormValue("path")
-//		RootPath := req.FormValue("rootPath")
-//		if len(Path) > 0 && len(RootPath) > 0 {
-//			fileManage := io.CreateFileManage(RootPath)
-//			absolute := fileManage.Absolute(Path, file.Filename)
-//			err = web.SaveUploadedFile(file, absolute)
-//			if err != nil {
-//				return nil, err
-//			}
-//			return web.ResponseOK(file.Filename), err
-//		}
-//		return nil, os.ErrNotExist
-//
-// }
 func (s *Server) upload2(req *web.Request) (any, error) {
 	reader := req.GetRawRequest().Body
 	Path := req.FormValue("path")
 	RootPath := req.FormValue("rootPath")
 	Name := req.FormValue("name")
 	seq := req.FormIntValue("seq")
-	if len(Path) > 0 && len(RootPath) > 0 && len(Name) > 0 {
+	count := req.FormIntValue("count")
+	size := req.FormInt64Value("size")
+	total := req.FormInt64Value("total")
+	if len(Path) > 0 && len(RootPath) > 0 && len(Name) > 0 && size > 0 && total > 0 && count > 0 {
 		fileManage := io.CreateFileManage(RootPath)
 		absolute := fileManage.Absolute(Path, Name)
-		err := web.SaveUploadedFile2(reader, absolute, seq)
+		tempUpload := web.NewTempUpload(reader, absolute, seq, count, size, total)
+		err := tempUpload.SaveUploaded()
 		if err != nil {
 			return nil, err
 		}

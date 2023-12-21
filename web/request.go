@@ -32,6 +32,14 @@ func (r *Request) FormIntValue(key string) int {
 	}
 	return i
 }
+func (r *Request) FormInt64Value(key string) int64 {
+	v := r.FormValue(key)
+	i, err := strconv.ParseInt(v, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return i
+}
 func (r *Request) GetRemoteAddress() string {
 	address := r.context.Request.RemoteAddr
 	index := strings.Index(address, "_")
