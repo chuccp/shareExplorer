@@ -25,13 +25,14 @@ type TempUpload struct {
 
 var uploadSuffix = ".upload"
 var tempSuffix = ".temp"
+var tempPre = "."
 
 func NewTempUpload(src io.Reader, dst string, seq int, count int, size int64, total int64) *TempUpload {
 	tu := &TempUpload{dst: dst, seq: seq, count: count, size: size, total: total, src: src}
 	dst = strings.ReplaceAll(dst, "\\", "/")
 	tu.dir, tu.file = path.Split(dst)
-	tu.temp = tu.file + tempSuffix
-	tu.upload = tu.file + uploadSuffix
+	tu.temp = tempPre + tu.file + tempSuffix
+	tu.upload = tempPre + tu.file + uploadSuffix
 	return tu
 }
 func (tempUpload *TempUpload) SaveUploaded() error {
@@ -210,7 +211,7 @@ func (tempUpload *TempUpload) serialize() string {
 	return strconv.Itoa(tempUpload.seq) + "_" + strconv.Itoa(tempUpload.count) + "_" + strconv.FormatInt(tempUpload.size, 10) + "_" + strconv.FormatInt(tempUpload.total, 10)
 }
 func (tempUpload *TempUpload) finish() error {
-	uploadPath := path.Join(tempUpload.dir, strings.TrimSuffix(tempUpload.upload, uploadSuffix))
+	uploadPath := path.Join(tempUpload.dir, strings.TrimPrefix(strings.TrimSuffix(tempUpload.upload, uploadSuffix), tempPre))
 	uploadTempPath := path.Join(tempUpload.dir, tempUpload.upload)
 	err := os.Rename(uploadTempPath, uploadPath)
 	if err != nil {
