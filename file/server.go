@@ -39,39 +39,38 @@ func (s *Server) download(req *web.Request) (any, error) {
 	}
 	return nil, os.ErrNotExist
 }
-func (s *Server) cancel(req *web.Request) (any, error) {
-
+func (s *Server) upload(req *web.Request) (any, error) {
+	reader := req.GetRawRequest().Body
 	path := req.FormValue("path")
 	rootPath := req.FormValue("rootPath")
 	name := req.FormValue("name")
-	//seq := req.FormIntValue("seq")
-
-	fileManage := io.CreateFileManage(rootPath)
-	absolute := fileManage.Absolute(path, name)
-	err := web.SaveUploadedCancel(absolute)
-	return web.ResponseOK(""), err
-}
-func (s *Server) upload2(req *web.Request) (any, error) {
-	reader := req.GetRawRequest().Body
-	Path := req.FormValue("path")
-	RootPath := req.FormValue("rootPath")
-	Name := req.FormValue("name")
 	seq := req.FormIntValue("seq")
 	count := req.FormIntValue("count")
 	size := req.FormInt64Value("size")
 	total := req.FormInt64Value("total")
-	if len(Path) > 0 && len(RootPath) > 0 && len(Name) > 0 && size > 0 && total > 0 && count > 0 {
-		fileManage := io.CreateFileManage(RootPath)
-		absolute := fileManage.Absolute(Path, Name)
+	if len(path) > 0 && len(rootPath) > 0 && len(name) > 0 && size > 0 && total > 0 && count > 0 {
+		fileManage := io.CreateFileManage(rootPath)
+		absolute := fileManage.Absolute(path, name)
 		tempUpload := web.NewTempUpload(reader, absolute, seq, count, size, total)
 		err := tempUpload.SaveUploaded()
 		if err != nil {
 			return nil, err
 		}
-		return web.ResponseOK(Name), err
+		return web.ResponseOK(name), err
 	}
 	return nil, os.ErrNotExist
-
+}
+func (s *Server) cancelUpload(req *web.Request) (any, error) {
+	path := req.FormValue("path")
+	rootPath := req.FormValue("rootPath")
+	name := req.FormValue("name")
+	fileManage := io.CreateFileManage(rootPath)
+	absolute := fileManage.Absolute(path, name)
+	err := web.CancelTempUpload(absolute)
+	if err != nil {
+		return nil, err
+	}
+	return nil, os.ErrNotExist
 }
 
 type NewFolder struct {
@@ -128,9 +127,8 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemote("/file/paths", s.paths)
 	context.GetRemote("/file/index", s.index)
 	context.GetRemote("/file/download", s.download)
-	context.GetRemote("/file/cancel", s.cancel)
 	context.GetRemote("/file/files", s.files)
-	//context.PostRemote("/file/upload", s.upload)
-	context.PostRemote("/file/upload2", s.upload2)
+	context.PostRemote("/file/upload", s.upload)
+	context.GetRemote("/file/cancelUpload", s.cancelUpload)
 	context.PostRemote("/file/createNewFolder", s.createNewFolder)
 }

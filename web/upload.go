@@ -35,6 +35,14 @@ func NewTempUpload(src io.Reader, dst string, seq int, count int, size int64, to
 	tu.upload = tempPre + tu.file + uploadSuffix
 	return tu
 }
+func CancelTempUpload(dst string) error {
+	tu := &TempUpload{dst: dst}
+	dst = strings.ReplaceAll(dst, "\\", "/")
+	tu.dir, tu.file = path.Split(dst)
+	tu.temp = tempPre + tu.file + tempSuffix
+	tu.upload = tempPre + tu.file + uploadSuffix
+	return tu.cancel()
+}
 func (tempUpload *TempUpload) SaveUploaded() error {
 
 	if tempUpload.seq != 0 {
@@ -214,6 +222,18 @@ func (tempUpload *TempUpload) finish() error {
 	uploadPath := path.Join(tempUpload.dir, strings.TrimPrefix(strings.TrimSuffix(tempUpload.upload, uploadSuffix), tempPre))
 	uploadTempPath := path.Join(tempUpload.dir, tempUpload.upload)
 	err := os.Rename(uploadTempPath, uploadPath)
+	if err != nil {
+		return err
+	}
+	err = os.Remove(path.Join(tempUpload.dir, tempUpload.temp))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func (tempUpload *TempUpload) cancel() error {
+	uploadTempPath := path.Join(tempUpload.dir, tempUpload.upload)
+	err := os.Remove(uploadTempPath)
 	if err != nil {
 		return err
 	}

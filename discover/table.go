@@ -16,6 +16,7 @@ const (
 	nBuckets                    = 17
 	bucketMinDistance           = 239
 	bucketIPLimit, bucketSubnet = 2, 24 //
+	tableIPLimit, tableSubnet   = 10, 24
 	bucketSize                  = 16
 	maxReplacements             = 10
 	findnodeResultLimit         = 16
@@ -39,21 +40,24 @@ type bucket struct {
 	ips          DistinctNetSet
 }
 type Table struct {
-	mutex      sync.Mutex
-	config     *core.Config
-	buckets    [nBuckets]*bucket
-	nursery    []*node //bootstrap nodes
-	coreCtx    *core.Context
-	localNode  *Node
-	ips        DistinctNetSet //IP计数
-	natClients *NodeStore
-	clients    *NodeStore
-	rand       *rand.Rand
-	call       *call
-	ctx        context.Context
-	ctxCancel  context.CancelFunc
+	mutex     sync.Mutex
+	config    *core.Config
+	buckets   [nBuckets]*bucket
+	nursery   []*node //bootstrap nodes
+	coreCtx   *core.Context
+	localNode *Node
+	ips       DistinctNetSet //IP计数
+	servers   *NodeStore
+	clients   *NodeStore
+	rand      *rand.Rand
+	call      *call
+	ctx       context.Context
+	ctxCancel context.CancelFunc
 }
 
+func (table *Table) ID() ID {
+	return table.localNode.id
+}
 func (table *Table) loop() {
 	var (
 		revalidate     = time.NewTimer(table.nextRevalidateTime())
@@ -155,20 +159,22 @@ func (nss *NodeStore) addNode(n *node) {
 	if !ok {
 		n.addedAt = time.Now()
 		nss.members.PushFront(n)
+		nss.memberMap[key] = n
 	} else {
 		v.addedAt = time.Now()
 		v.addr = n.addr
 	}
 }
 
-func (nss *NodeStore) queryONode(serverName string) *node {
+func (nss *NodeStore) queryOneNode(serverName string) (*node, bool) {
 	nss.mutex.RLock()
 	defer nss.mutex.RUnlock()
+	log.Println(serverName)
 	v, ok := nss.memberMap[serverName]
 	if ok {
-		return v
+		return v, true
 	}
-	return nil
+	return nil, false
 }
 
 func (table *Table) addNursery(addr *net.UDPAddr) {
@@ -271,8 +277,8 @@ func (table *Table) addIP(b *bucket, ip net.IP) bool {
 	}
 	return true
 }
-func (table *Table) addNatClient(n *node) {
-	table.natClients.addNode(n)
+func (table *Table) addServer(n *node) {
+	table.servers.addNode(n)
 }
 func (table *Table) addClient(n *node) {
 	table.clients.addNode(n)
@@ -281,12 +287,12 @@ func (table *Table) addSeenNode(n *node) {
 	if n.ID() == table.self().id {
 		return
 	}
-	if !n.IsServer() {
+	if n.IsClient() {
 		table.addClient(n)
 		return
 	}
-	if n.IsNatClient() {
-		table.addNatClient(n)
+	if n.IsServer() {
+		table.addServer(n)
 	}
 	if n.IsNatServer() {
 		b := table.bucket(n.ID())
@@ -466,33 +472,69 @@ func (table *Table) queryNode(nodeType, pageNo, pageSize int) ([]*node, int) {
 	return nodes, 0
 }
 
-func (table *Table) queryOneNode(serverName string) *node {
-	node := table.natClients.queryONode(serverName)
-	return node
+func (table *Table) queryServerNode(serverName string) (*node, bool) {
+	return table.servers.queryOneNode(serverName)
 }
 
-func (table *Table) FindValue(serverName string, maxBucket uint) (queryNode []*Node, local *Node, err error) {
-	if table.localNode.IsServer() {
-
-	} else {
-
+func (table *Table) FindValue(target string, distances int) ([]*Node, *Node) {
+	node, fa := table.queryServerNode(target)
+	if fa {
+		return nil, &node.Node
 	}
-	return nil, nil, nil
+	return table.collectTableFindValueNode(distances), nil
 }
 
+type RecordBuckets struct {
+	entries  []*Node
+	maxElems int
+}
+
+func (recordBuckets *RecordBuckets) push(node *Node) {
+	recordBuckets.entries = append(recordBuckets.entries, node)
+}
+func (table *Table) collectTableFindValueNode(distances int) (queryNode []*Node) {
+	var recordBuckets = &RecordBuckets{maxElems: findnodeResultLimit}
+	table.collectBucketsFindValueNode(0, distances, recordBuckets)
+	table.collectBucketsFindValueNode(distances, nBuckets, recordBuckets)
+	return recordBuckets.entries
+}
+func (table *Table) collectBucketsFindValueNode(minDistances, maxDistance int, recordBuckets *RecordBuckets) {
+	index := 0
+	for {
+		fa := table.collectBucketsByIndex(index, minDistances, maxDistance, recordBuckets)
+		if fa {
+			break
+		}
+		if len(recordBuckets.entries) == recordBuckets.maxElems {
+			break
+		}
+	}
+}
+func (table *Table) collectBucketsByIndex(index int, minDistances, maxDistance int, recordBuckets *RecordBuckets) bool {
+	isEnd := true
+	for i := minDistances; i < maxDistance; i++ {
+		b := table.buckets[i]
+		if len(b.entries) > index {
+			isEnd = false
+			recordBuckets.push(&b.entries[index].Node)
+		}
+	}
+	return isEnd
+}
 func NewTable(coreCtx *core.Context, localNode *Node, call *call) *Table {
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
 	table := &Table{
-		coreCtx:    coreCtx,
-		localNode:  localNode,
-		rand:       rand.New(rand.NewSource(0)),
-		call:       call,
-		natClients: NewNodeStore(),
-		clients:    NewNodeStore(),
-		ctx:        ctx,
-		ctxCancel:  ctxCancel,
+		coreCtx:   coreCtx,
+		localNode: localNode,
+		rand:      rand.New(rand.NewSource(0)),
+		call:      call,
+		ips:       DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
+		servers:   NewNodeStore(),
+		clients:   NewNodeStore(),
+		ctx:       ctx,
+		ctxCancel: ctxCancel,
 	}
 	for i := range table.buckets {
 		table.buckets[i] = &bucket{

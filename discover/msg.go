@@ -4,7 +4,7 @@ type (
 	Register struct {
 		FormId      string `json:"formId"`
 		IsServer    string `json:"isServer"`
-		IsNatClient string `json:"isNatClient"`
+		IsClient    string `json:"isClient"`
 		IsNatServer string `json:"isNatServer"`
 	}
 
@@ -21,7 +21,7 @@ type (
 	ResponseNode struct {
 		Id          string `json:"id"`
 		IsServer    string `json:"isServer"`
-		IsNatClient string `json:"isNatClient"`
+		IsClient    string `json:"isClient"`
 		IsNatServer string `json:"isNatServer"`
 		Address     string `json:"address"`
 	}
@@ -29,17 +29,17 @@ type (
 	ExNode struct {
 		Id          string `json:"id"`
 		IsServer    string `json:"isServer"`
-		IsNatClient string `json:"isNatClient"`
+		IsClient    string `json:"isClient"`
 		IsNatServer string `json:"isNatServer"`
 		Address     string `json:"address"`
 	}
 )
 
 func wrapResponseNode(n *Node) *ResponseNode {
-	return &ResponseNode{Id: n.serverName, IsServer: n.isServer, IsNatServer: n.isNatServer, IsNatClient: n.isNatClient, Address: n.addr.String()}
+	return &ResponseNode{Id: n.serverName, IsServer: n.isServer, IsNatServer: n.isNatServer, IsClient: n.isClient, Address: n.addr.String()}
 }
 func wrapExNode(n *node) *ExNode {
-	return &ExNode{Id: n.serverName, IsServer: n.isServer, IsNatServer: n.isNatServer, IsNatClient: n.isNatClient, Address: n.addr.String()}
+	return &ExNode{Id: n.serverName, IsServer: n.isServer, IsNatServer: n.isNatServer, IsClient: n.isClient, Address: n.addr.String()}
 }
 
 func wrapExNodes(ns []*node) []*ExNode {

@@ -86,7 +86,6 @@ func (s *Server) Connect(address string) error {
 }
 
 func (s *Server) nodeStatus(req *web.Request) (any, error) {
-
 	return web.ResponseOK("ok"), nil
 }
 func (s *Server) Start() {

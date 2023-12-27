@@ -11,6 +11,11 @@ import (
 
 type ID [32]byte
 
+func StringToId(server string) ID {
+	id, _ := hex.DecodeString(server)
+	return ID(id)
+}
+
 var zeroId ID
 
 func (n ID) IsBlank() bool {
@@ -54,7 +59,7 @@ func wrapNodeFRegister(register *Register, address string) (*Node, error) {
 	var node Node
 	node.id = wrapId(b)
 	node.serverName = register.FormId
-	node.isNatClient = register.IsNatClient
+	node.isClient = register.IsClient
 	node.isNatServer = register.IsNatServer
 	node.isServer = register.IsServer
 	node.addr = addr
@@ -65,7 +70,7 @@ type Node struct {
 	id          ID
 	serverName  string
 	isServer    string
-	isNatClient string
+	isClient    string
 	isNatServer string
 	addr        *net.UDPAddr
 }
@@ -77,8 +82,8 @@ func (n *Node) IP() net.IP {
 func (n *Node) IsServer() bool {
 	return strings.Contains(n.isServer, "true")
 }
-func (n *Node) IsNatClient() bool {
-	return strings.Contains(n.isNatClient, "true")
+func (n *Node) IsClient() bool {
+	return strings.Contains(n.isClient, "true")
 }
 func (n *Node) IsNatServer() bool {
 	return strings.Contains(n.isNatServer, "true")
@@ -92,7 +97,7 @@ func (n *Node) SetID(id ID) {
 }
 
 func NewNursery(addr *net.UDPAddr) *Node {
-	return &Node{addr: addr, isNatServer: "true", isServer: "true", isNatClient: "true"}
+	return &Node{addr: addr, isNatServer: "true", isServer: "true", isClient: "true"}
 }
 
 func createLocalNode(serverName string) (*Node, error) {

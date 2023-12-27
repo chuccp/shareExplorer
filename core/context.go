@@ -163,9 +163,7 @@ func (c *Context) RemoteHandle() {
 					if err != nil {
 						context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
 					} else {
-
 						log.Println("remote", address, context.Request.URL)
-
 						context.Request.Header.Del("Referer")
 						context.Request.Header.Del("Origin")
 						reverseProxy.ServeHTTP(context.Writer, context.Request)

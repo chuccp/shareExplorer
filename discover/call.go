@@ -14,7 +14,7 @@ type call struct {
 }
 
 func (call *call) register(node *Node, address string) (*Node, error) {
-	var register = &Register{FormId: node.serverName, IsServer: node.isServer, IsNatServer: node.isNatServer, IsNatClient: node.isNatClient}
+	var register = &Register{FormId: node.serverName, IsServer: node.isServer, IsNatServer: node.isNatServer, IsClient: node.isClient}
 	data, _ := json.Marshal(register)
 	value, err := call.httpClient.PostRequest(address, "/discover/register", string(data))
 	if err != nil {

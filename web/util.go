@@ -43,10 +43,6 @@ func SaveUploadedFile2(src io.Reader, dst string, seq int) error {
 	_, err = io.Copy(out, src)
 	return err
 }
-func SaveUploadedCancel(dst string) error {
-
-	return nil
-}
 func SaveUploadedFileTemp(src io.Reader, dst string, seq int, count int64, size int, total int) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
 		return err

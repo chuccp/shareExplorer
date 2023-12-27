@@ -12,7 +12,7 @@ type nodeSearch struct {
 	nodeStatus int
 }
 
-func newNodeStatus(table *Table, localNode *Node) *nodeSearch {
+func newNodeSearch(table *Table, localNode *Node) *nodeSearch {
 	return &nodeSearch{table: table, localNode: localNode}
 }
 func (nodeSearch *nodeSearch) run() {
@@ -91,8 +91,13 @@ func NewFindValueNode() *findValueNode {
 func (nodeSearch *nodeSearch) queryNode(done chan<- struct{}) {
 	defer close(done)
 	var findValueNode = NewFindValueNode()
-	queryNode, _, err := nodeSearch.table.FindValue(nodeSearch.localNode.serverName, nBuckets)
-	if err != nil {
+	queryNode, local := nodeSearch.table.FindValue(nodeSearch.localNode.serverName, 0)
+	if local != nil {
+		err := nodeSearch.ping(local)
+		if err != nil {
+			nodeSearch.err = err
+		}
+		nodeSearch.localNode.addr = local.addr
 		return
 	}
 	for _, n := range queryNode {

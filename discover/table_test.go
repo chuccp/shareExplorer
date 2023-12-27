@@ -2,61 +2,80 @@ package discover
 
 import (
 	"crypto/rand"
-	"log"
+	"encoding/hex"
+	"fmt"
+	rand0 "math/rand"
 	"net"
 	"testing"
 )
 
-func TestRun(t *testing.T) {
+func GenerateNode() *Node {
+	var data [32]byte
+	rand.Read(data[:])
+	return &Node{id: data, isServer: "true", isNatServer: "true", serverName: hex.EncodeToString(data[:]), addr: GenerateUDPAddr()}
+}
+func GenerateServerNode() *Node {
+	var data [32]byte
+	rand.Read(data[:])
+	return &Node{id: data, isServer: "true", isNatServer: "true", serverName: hex.EncodeToString(data[:]), addr: GenerateUDPAddr()}
+}
+func GenerateNodes(num int) []*Node {
+	var nodes = make([]*Node, num)
+	for i := 0; i < num; i++ {
+		var data [32]byte
+		rand.Read(data[:])
+		nodes[i] = GenerateNode()
+	}
+	return nodes
+}
+func GenerateServerNodes(num int) []*Node {
+	var nodes = make([]*Node, num)
+	for i := 0; i < num; i++ {
+		nodes[i] = GenerateServerNode()
+	}
+	return nodes
+}
 
-	var id ID
-	rand.Read(id[:])
-	t.Log(id)
-	t.Log(id.IsBlank())
+func GenerateTable() *Table {
+	node := GenerateNode()
+	return NewTable(nil, node, nil)
+}
+func randIPv4() string {
+	var ipBytes [4]byte
+	for i := 0; i < 4; i++ {
+		ipBytes[i] = byte(rand0.Intn(256))
+	}
+	return fmt.Sprintf("%d.%d.%d.%d", ipBytes[0], ipBytes[1], ipBytes[2], ipBytes[3])
+}
+func randPort() int {
+	return 1024 + rand0.Intn(65535-1024)
+}
+func GenerateUDPAddr() *net.UDPAddr {
+	ip := randIPv4()
+	udpAddr := &net.UDPAddr{
+		IP:   net.ParseIP(ip),
+		Port: randPort(),
+	}
+	return udpAddr
+}
+
+func TestTable_AddSeenNode(t *testing.T) {
+
+	table := GenerateTable()
+	node := wrapNode(GenerateServerNode())
+
+	table.addSeenNode(node)
+	node0, fa := table.queryServerNode(node.serverName)
+	t.Log(node0, fa)
 
 }
-func TestAdd(t *testing.T) {
-	var id ID
-	rand.Read(id[:])
+func TestTable_AddSeenNodes(t *testing.T) {
 
-	localNode, err := createLocalNode(id.String())
-	if err != nil {
-		log.Println(err)
+	table := GenerateTable()
+
+	for i := 0; i < 1000; i++ {
+		node := wrapNode(GenerateServerNode())
+		table.addSeenNode(node)
 	}
-
-	table := NewTable(nil, localNode)
-
-	var id2 ID
-	rand.Read(id2[:])
-
-	n, err := createLocalNode(id2.String())
-	if err != nil {
-		log.Println(err)
-	}
-	n.isNatClient = "true"
-	n.isNatServer = "true"
-	n.isServer = "true"
-	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:1236")
-	n.addr = addr
-	table.addSeenNode(wrapNode(n))
-
-	table.addNursery(addr)
-	table.addNursery(addr)
-}
-func TestAdd2(t *testing.T) {
-	var id ID
-	rand.Read(id[:])
-
-	localNode, err := createLocalNode(id.String())
-	if err != nil {
-		log.Println(err)
-	}
-
-	table := NewTable(nil, localNode)
-
-	addr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:1236")
-
-	table.addNursery(addr)
-	//table.addNursery(addr)
-	table.doRefresh()
+	t.Log(table)
 }
