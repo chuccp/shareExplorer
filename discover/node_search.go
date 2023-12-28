@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+const (
+	Searching      = 3
+	SearchFailed   = 4
+	SearchComplete = 5
+)
+
 type nodeSearch struct {
 	table      *Table
 	localNode  *Node
@@ -143,6 +149,7 @@ func (nodeSearch *nodeSearch) queryNode(done chan<- struct{}) {
 
 func (nodeSearch *nodeSearch) ping(node *Node) error {
 	nodeSearch.remoteNode = node
+	nodeSearch.nodeStatus = SearchComplete
 	return nil
 }
 
