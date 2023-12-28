@@ -13,10 +13,9 @@ type (
 		ToId      string `json:"toId"`
 		Distances []uint `json:"distances"`
 	}
-	QueryNode struct {
-		FormId string `json:"formId"`
-		ToId   string `json:"toId"`
-		Step   int    `json:"step"`
+	FindValue struct {
+		Target    string `json:"target"`
+		Distances int    `json:"distances"`
 	}
 	ResponseNode struct {
 		Id          string `json:"id"`

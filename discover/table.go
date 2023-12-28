@@ -463,7 +463,7 @@ func (table *Table) self() *Node {
 	return table.localNode
 }
 
-func (table *Table) queryNode(nodeType, pageNo, pageSize int) ([]*node, int) {
+func (table *Table) nodePage(nodeType, pageNo, pageSize int) ([]*node, int) {
 	var nodes []*node
 	if nodeType == client {
 		return table.clients.queryNode(pageNo, pageSize)
@@ -476,12 +476,12 @@ func (table *Table) queryServerNode(serverName string) (*node, bool) {
 	return table.servers.queryOneNode(serverName)
 }
 
-func (table *Table) FindValue(target string, distances int) ([]*Node, *Node) {
+func (table *Table) FindValue(target string, distances int) []*Node {
 	node, fa := table.queryServerNode(target)
 	if fa {
-		return nil, &node.Node
+		return []*Node{&node.Node}
 	}
-	return table.collectTableFindValueNode(distances), nil
+	return table.collectTableFindValueNode(distances)
 }
 
 type RecordBuckets struct {

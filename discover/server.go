@@ -46,9 +46,14 @@ func (s *Server) findNode(req *web.Request) (any, error) {
 	ns := s.table.HandleFindNode(addr.IP, &findNode)
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
-func (s *Server) queryNode(req *web.Request) (any, error) {
-
-	return web.ResponseOK(""), nil
+func (s *Server) findValue(req *web.Request) (any, error) {
+	var findValue FindValue
+	err := req.BodyJson(&findValue)
+	if err != nil {
+		return nil, err
+	}
+	ns := s.table.FindValue(findValue.Target, findValue.Distances)
+	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
 
 func (s *Server) Init(context *core.Context) {
@@ -64,7 +69,7 @@ func (s *Server) nodeList(req *web.Request) (any, error) {
 	nodeType := req.FormIntValue("nodeType")
 	pageNo := req.FormIntValue("pageNo")
 	pageSize := req.FormIntValue("pageSize")
-	list, num := s.table.queryNode(nodeType, pageNo, pageSize)
+	list, num := s.table.nodePage(nodeType, pageNo, pageSize)
 	return web.ResponsePage(int64(num), wrapExNodes(list)), nil
 }
 func (s *Server) connect(req *web.Request) (any, error) {
@@ -96,7 +101,7 @@ func (s *Server) Start() {
 	s.context.Post("/discover/connect", s.connect)
 	s.context.Get("/discover/nodeList", s.nodeList)
 	s.context.Post("/discover/findNode", s.findNode)
-	s.context.Post("/discover/queryNode", s.queryNode)
+	s.context.Post("/discover/findValue", s.findValue)
 	servername := s.context.GetCertManager().GetServerName()
 	localNode, err := createLocalNode(servername)
 	if err != nil {

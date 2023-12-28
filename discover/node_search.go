@@ -8,6 +8,7 @@ import (
 type nodeSearch struct {
 	table      *Table
 	localNode  *Node
+	remoteNode *Node
 	err        error
 	nodeStatus int
 }
@@ -67,72 +68,84 @@ func (nodeSearch *nodeSearch) refresh(done chan<- struct{}) {
 	defer close(done)
 }
 
-type NodeMaxBucket struct {
-	node      *Node
-	maxBucket uint
-}
-
 type findValueNode struct {
-	useNode map[string]*Node
-	node    *list.List
+	maxDistance int
+	queryNode   *Node
+	fromId      ID
 }
 
-func (f *findValueNode) addNode(target ID, node *Node) {
-
+type findValueNodeQueue struct {
+	useNode   map[string]*findValueNode
+	nodeList  *list.List
+	localNode *Node
 }
-func (f *findValueNode) getNode(maxnum int) ([]*NodeMaxBucket, bool) {
 
+func (f *findValueNodeQueue) addNode0(node *findValueNode) {
+	f.useNode[node.queryNode.serverName] = node
+	f.nodeList.PushBack(node)
+}
+func (f *findValueNodeQueue) addNode(preId ID, fromId ID, node *Node) {
+	if node.serverName == f.localNode.serverName {
+		return
+	}
+	_, ok := f.useNode[node.serverName]
+	if ok {
+		return
+	}
+	maxDistance := LogDist(preId, fromId)
+	queryDistance := LogDist(node.ID(), fromId)
+	fvn := &findValueNode{maxDistance: queryDistance, queryNode: node, fromId: fromId}
+	if queryDistance > maxDistance {
+		fvn.maxDistance = LogDist(preId, node.ID())
+	}
+	f.addNode0(fvn)
+}
+func (f *findValueNodeQueue) getNode() (*findValueNode, bool) {
+	ele := f.nodeList.Front()
+	if ele != nil {
+		return ele.Value.(*findValueNode), true
+	}
 	return nil, false
 }
-func NewFindValueNode() *findValueNode {
-	return &findValueNode{useNode: make(map[string]*Node), node: new(list.List)}
+func NewFindValueNodeQueue(localNode *Node) *findValueNodeQueue {
+	return &findValueNodeQueue{useNode: make(map[string]*findValueNode), nodeList: new(list.List), localNode: localNode}
 }
 
 func (nodeSearch *nodeSearch) queryNode(done chan<- struct{}) {
 	defer close(done)
-	var findValueNode = NewFindValueNode()
-	queryNode, local := nodeSearch.table.FindValue(nodeSearch.localNode.serverName, 0)
-	if local != nil {
-		err := nodeSearch.ping(local)
-		if err != nil {
-			nodeSearch.err = err
-		}
-		nodeSearch.localNode.addr = local.addr
-		return
-	}
+	var findValueNodeQueue = NewFindValueNodeQueue(nodeSearch.localNode)
+	queryNode := nodeSearch.table.FindValue(nodeSearch.localNode.serverName, 0)
 	for _, n := range queryNode {
-		findValueNode.addNode(nodeSearch.localNode.id, n)
+
+		if n.serverName == nodeSearch.localNode.serverName {
+			nodeSearch.ping(n)
+			return
+		}
+		findValueNodeQueue.addNode(nodeSearch.localNode.id, nodeSearch.localNode.id, n)
 	}
 	for {
-		nodes, fa := findValueNode.getNode(16)
-		if fa {
+		node, fa := findValueNodeQueue.getNode()
+		if !fa {
 			break
 		}
-		for _, n := range nodes {
-			queryNode, local, err := nodeSearch.FindValue(nodeSearch.localNode.serverName, n.node, n.maxBucket)
-			if err == nil {
-				if local != nil {
-					err := nodeSearch.ping(local)
-					if err != nil {
-						nodeSearch.err = err
-					}
-					nodeSearch.localNode.addr = local.addr
-					break
-				} else {
-					for _, n := range queryNode {
-						findValueNode.addNode(nodeSearch.localNode.id, n)
-					}
+		queryNode, err := nodeSearch.FindValue(nodeSearch.localNode.serverName, node.queryNode, node.maxDistance)
+		if err == nil {
+			for _, qNode := range queryNode {
+				if qNode.serverName == nodeSearch.localNode.serverName {
+					nodeSearch.ping(qNode)
+					return
 				}
+				findValueNodeQueue.addNode(node.fromId, node.queryNode.id, qNode)
 			}
 		}
 	}
 }
-func (nodeSearch *nodeSearch) ping(node *Node) error {
 
+func (nodeSearch *nodeSearch) ping(node *Node) error {
+	nodeSearch.remoteNode = node
 	return nil
 }
 
-func (nodeSearch *nodeSearch) FindValue(serverName string, node *Node, maxBucket uint) (queryNode []*Node, local *Node, err error) {
-
-	return
+func (nodeSearch *nodeSearch) FindValue(target string, node *Node, distances int) (queryNode []*Node, err error) {
+	return nodeSearch.table.call.findValue(target, distances, node.addr.String())
 }
