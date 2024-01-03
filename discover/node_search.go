@@ -2,28 +2,32 @@ package discover
 
 import (
 	"container/list"
+	"context"
+	"github.com/chuccp/shareExplorer/entity"
 	"time"
-)
-
-const (
-	Searching      = 3
-	SearchFailed   = 4
-	SearchComplete = 5
 )
 
 type nodeSearch struct {
 	table      *Table
 	localNode  *Node
 	remoteNode *Node
-	err        error
-	nodeStatus int
+	nodeStatus *entity.NodeStatus
+	ctxCancel  context.CancelFunc
+	ctx        context.Context
 }
 
 func newNodeSearch(table *Table, localNode *Node) *nodeSearch {
-	return &nodeSearch{table: table, localNode: localNode}
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	return &nodeSearch{table: table, localNode: localNode, nodeStatus: entity.NewNodeStatus(), ctx: ctx, ctxCancel: ctxCancel}
 }
 func (nodeSearch *nodeSearch) run() {
 	go nodeSearch.loop()
+}
+func (nodeSearch *nodeSearch) stop() {
+
+}
+func (nodeSearch *nodeSearch) updateNodeStatus() {
+
 }
 func (nodeSearch *nodeSearch) loop() {
 	var (
@@ -122,7 +126,6 @@ func (nodeSearch *nodeSearch) queryNode(done chan<- struct{}) {
 	var findValueNodeQueue = NewFindValueNodeQueue(nodeSearch.localNode)
 	queryNode := nodeSearch.table.FindValue(nodeSearch.localNode.serverName, 0)
 	for _, n := range queryNode {
-
 		if n.serverName == nodeSearch.localNode.serverName {
 			nodeSearch.ping(n)
 			return
@@ -147,12 +150,11 @@ func (nodeSearch *nodeSearch) queryNode(done chan<- struct{}) {
 	}
 }
 
-func (nodeSearch *nodeSearch) ping(node *Node) error {
+func (nodeSearch *nodeSearch) ping(node *Node) {
 	nodeSearch.remoteNode = node
-	nodeSearch.nodeStatus = SearchComplete
-	return nil
+	nodeSearch.nodeStatus.SearchComplete(node.addr)
 }
 
 func (nodeSearch *nodeSearch) FindValue(target string, node *Node, distances int) (queryNode []*Node, err error) {
-	return nodeSearch.table.call.findValue(target, distances, node.addr.String())
+	return nodeSearch.table.call.findValue(target, distances, node.addr)
 }

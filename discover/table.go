@@ -399,6 +399,12 @@ func (table *Table) bucketAtDistance(d int) *bucket {
 	}
 	return table.buckets[d-bucketMinDistance-1]
 }
+func (table *Table) bucketIndexAtDistance(d int) int {
+	if d <= bucketMinDistance {
+		return 0
+	}
+	return d - bucketMinDistance - 1
+}
 func (table *Table) nodeToRevalidate() (n *node, bi int) {
 	for _, bi = range table.rand.Perm(len(table.buckets)) {
 		b := table.buckets[bi]
@@ -429,9 +435,8 @@ func (table *Table) register() {
 }
 
 func (table *Table) register0(node *node) {
-	value, err := table.call.register(table.localNode, node.addr.String())
+	value, err := table.call.register(table.localNode, node.addr)
 	if err != nil {
-		log.Println(err)
 		return
 	}
 	node.liveNessChecks++
@@ -439,7 +444,7 @@ func (table *Table) register0(node *node) {
 }
 
 func (table *Table) findNode(n *Node, distances []uint) ([]*Node, error) {
-	nodes, err := table.call.findNode(table.localNode, n, n.addr.String(), distances)
+	nodes, err := table.call.findNode(table.localNode, n, n.addr, distances)
 	return nodes, err
 
 }
@@ -489,34 +494,44 @@ type RecordBuckets struct {
 	maxElems int
 }
 
-func (recordBuckets *RecordBuckets) push(node *Node) {
+func (recordBuckets *RecordBuckets) push(node *Node) bool {
 	recordBuckets.entries = append(recordBuckets.entries, node)
+	if len(recordBuckets.entries) >= recordBuckets.maxElems {
+		return true
+	}
+	return false
 }
 func (table *Table) collectTableFindValueNode(distances int) (queryNode []*Node) {
 	var recordBuckets = &RecordBuckets{maxElems: findnodeResultLimit}
-	table.collectBucketsFindValueNode(0, distances, recordBuckets)
-	table.collectBucketsFindValueNode(distances, nBuckets, recordBuckets)
+	table.collectBucketsFindValueNode(0, table.bucketIndexAtDistance(distances), recordBuckets)
+	table.collectBucketsFindValueNode(table.bucketIndexAtDistance(distances), nBuckets, recordBuckets)
 	return recordBuckets.entries
 }
-func (table *Table) collectBucketsFindValueNode(minDistances, maxDistance int, recordBuckets *RecordBuckets) {
+func (table *Table) collectBucketsFindValueNode(minBucketIndex, maxBucketIndex int, recordBuckets *RecordBuckets) {
 	index := 0
 	for {
-		fa := table.collectBucketsByIndex(index, minDistances, maxDistance, recordBuckets)
+		fa := table.collectBucketsByIndex(index, minBucketIndex, maxBucketIndex, recordBuckets)
+		index++
 		if fa {
 			break
 		}
-		if len(recordBuckets.entries) == recordBuckets.maxElems {
+		if len(recordBuckets.entries) >= recordBuckets.maxElems {
 			break
 		}
 	}
 }
-func (table *Table) collectBucketsByIndex(index int, minDistances, maxDistance int, recordBuckets *RecordBuckets) bool {
+func (table *Table) collectBucketsByIndex(index int, minBucketIndex, maxBucketIndex int, recordBuckets *RecordBuckets) bool {
 	isEnd := true
-	for i := minDistances; i < maxDistance; i++ {
+	for i := minBucketIndex; i < maxBucketIndex; i++ {
 		b := table.buckets[i]
 		if len(b.entries) > index {
-			isEnd = false
-			recordBuckets.push(&b.entries[index].Node)
+			if isEnd {
+				isEnd = false
+			}
+			fill := recordBuckets.push(&b.entries[index].Node)
+			if fill {
+				return true
+			}
 		}
 	}
 	return isEnd

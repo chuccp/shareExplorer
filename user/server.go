@@ -8,6 +8,7 @@ import (
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
+	"net"
 	"strings"
 )
 
@@ -158,8 +159,8 @@ func (s *Server) info(req *web.Request) (any, error) {
 		if !system.IsServer {
 			discoverServer, fa := s.context.GetDiscoverServer()
 			if fa {
-				address, err := discoverServer.FindStatus()
-				if err == nil && len(address) > 0 {
+				nodeStatus := discoverServer.FindStatus()
+				if nodeStatus.IsComplete() {
 					system.HasServer = true
 				}
 			}
@@ -209,9 +210,13 @@ func (s *Server) addRemoteAddress(req *web.Request) (any, error) {
 }
 func (s *Server) connect(req *web.Request) (any, error) {
 	address := req.FormValue("address")
+	addr, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		return nil, err
+	}
 	discoverServer, ok := s.context.GetDiscoverServer()
 	if ok {
-		err := discoverServer.Connect(address)
+		err := discoverServer.Connect(addr)
 		if err != nil {
 			return nil, err
 		}

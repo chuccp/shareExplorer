@@ -1,7 +1,9 @@
 package core
 
 import (
+	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/util"
+	"net"
 )
 
 type Server interface {
@@ -15,8 +17,7 @@ type IRegister interface {
 
 type DiscoverServer interface {
 	Start()
-	Connect(address string) error
+	Connect(address *net.UDPAddr) error
 	Stop()
-	FindStatus() (string, error)
-	FindAddress() (string, error)
+	FindStatus() *entity.NodeStatus
 }

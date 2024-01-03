@@ -28,6 +28,27 @@ func GenerateNodes(num int) []*Node {
 	}
 	return nodes
 }
+
+func TestTable_AddSeenNodes(t *testing.T) {
+	table := GenerateTable()
+	for i := 0; i < 1000; i++ {
+		node := wrapNode(GenerateServerNode())
+		table.addSeenNode(node)
+	}
+	node := GenerateNode()
+	nodes := table.FindValue(node.serverName, 248)
+	t.Log(nodes)
+}
+
+func TestTable_AddSeenNode(t *testing.T) {
+	table := GenerateTable()
+	node := wrapNode(GenerateServerNode())
+	table.addSeenNode(node)
+	node0, fa := table.queryServerNode(node.serverName)
+	t.Log(node0, fa)
+
+}
+
 func GenerateServerNodes(num int) []*Node {
 	var nodes = make([]*Node, num)
 	for i := 0; i < num; i++ {
@@ -57,25 +78,4 @@ func GenerateUDPAddr() *net.UDPAddr {
 		Port: randPort(),
 	}
 	return udpAddr
-}
-
-func TestTable_AddSeenNode(t *testing.T) {
-
-	table := GenerateTable()
-	node := wrapNode(GenerateServerNode())
-
-	table.addSeenNode(node)
-	node0, fa := table.queryServerNode(node.serverName)
-	t.Log(node0, fa)
-
-}
-func TestTable_AddSeenNodes(t *testing.T) {
-
-	table := GenerateTable()
-
-	for i := 0; i < 1000; i++ {
-		node := wrapNode(GenerateServerNode())
-		table.addSeenNode(node)
-	}
-	t.Log(table)
 }

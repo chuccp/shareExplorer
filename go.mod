@@ -5,13 +5,14 @@ go 1.20
 replace github.com/quic-go/quic-go => github.com/chuccp/quic-go v0.0.5
 
 require (
-	github.com/chuccp/kuic v0.1.5
+	github.com/chuccp/kuic v0.1.7
 	github.com/gin-contrib/cors v1.5.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/glebarez/go-sqlite v1.21.2
 	github.com/glebarez/sqlite v1.10.0
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/uuid v1.4.0
+	github.com/juju/ratelimit v1.0.2
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	gopkg.in/ini.v1 v1.67.0
 	gorm.io/gorm v1.25.5
@@ -34,7 +35,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/juju/ratelimit v1.0.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect

@@ -2,6 +2,7 @@ package discover
 
 import (
 	"github.com/chuccp/shareExplorer/core"
+	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
 	"log"
 	"net"
@@ -14,9 +15,10 @@ const (
 )
 
 type Server struct {
-	context *core.Context
-	table   *Table
-	call    *call
+	context    *core.Context
+	table      *Table
+	nodeSearch *nodeSearch
+	call       *call
 }
 
 func (s *Server) register(req *web.Request) (any, error) {
@@ -76,32 +78,37 @@ func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
 }
 
-func (s *Server) FindStatus() (string, error) {
-	return "", nil
+func (s *Server) FindStatus() *entity.NodeStatus {
+	return s.nodeSearch.nodeStatus
 }
-func (s *Server) FindAddress() (string, error) {
-	return "127.0.0.1:2157", nil
-}
-func (s *Server) Connect(address string) error {
+
+func (s *Server) Connect(address *net.UDPAddr) error {
 	_, err := s.call.httpClient.GetRequest(address, "/discover/connect")
 	if err != nil {
 		return err
 	}
 	return nil
 }
-
 func (s *Server) nodeStatus(req *web.Request) (any, error) {
+	var nodeStatus NodeStatus
+	err := req.BodyJson(&nodeStatus)
+	if err != nil {
+		return nil, err
+	}
+	if s.context.GetServerConfig().IsClient() {
+
+	}
 	return web.ResponseOK("ok"), nil
 }
 func (s *Server) Start() {
-	if !s.context.GetServerConfig().IsServer() {
-		s.context.Get("/discover/nodeStatus", s.nodeStatus)
+	if s.context.GetServerConfig().IsNatServer() {
+		s.context.Post("/discover/register", s.register)
+		s.context.Post("/discover/connect", s.connect)
+		s.context.Get("/discover/nodeList", s.nodeList)
+		s.context.Post("/discover/findNode", s.findNode)
+		s.context.Post("/discover/findValue", s.findValue)
 	}
-	s.context.Post("/discover/register", s.register)
-	s.context.Post("/discover/connect", s.connect)
-	s.context.Get("/discover/nodeList", s.nodeList)
-	s.context.Post("/discover/findNode", s.findNode)
-	s.context.Post("/discover/findValue", s.findValue)
+	s.context.Get("/discover/nodeStatus", s.nodeStatus)
 	servername := s.context.GetCertManager().GetServerName()
 	localNode, err := createLocalNode(servername)
 	if err != nil {
@@ -110,10 +117,17 @@ func (s *Server) Start() {
 	}
 	s.table = NewTable(s.context, localNode, s.call)
 	s.table.run()
+	s.nodeSearch = newNodeSearch(s.table, localNode)
+	if s.context.GetServerConfig().IsClient() {
+		s.nodeSearch.run()
+	}
 }
 func (s *Server) Stop() {
 	if s.table != nil {
 		s.table.stop()
+	}
+	if s.nodeSearch != nil {
+		s.nodeSearch.stop()
 	}
 }
 

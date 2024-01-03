@@ -17,6 +17,11 @@ type (
 		Target    string `json:"target"`
 		Distances int    `json:"distances"`
 	}
+
+	NodeStatus struct {
+		FormId string `json:"id"`
+	}
+
 	ResponseNode struct {
 		Id          string `json:"id"`
 		IsServer    string `json:"isServer"`

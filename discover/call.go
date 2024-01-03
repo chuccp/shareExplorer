@@ -7,18 +7,18 @@ import (
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/web"
 	"log"
+	"net"
 )
 
 type call struct {
 	httpClient *core.HttpClient
 }
 
-func (call *call) register(node *Node, address string) (*Node, error) {
+func (call *call) register(node *Node, address *net.UDPAddr) (*Node, error) {
 	var register = &Register{FormId: node.serverName, IsServer: node.isServer, IsNatServer: node.isNatServer, IsClient: node.isClient}
 	data, _ := json.Marshal(register)
 	value, err := call.httpClient.PostRequest(address, "/discover/register", string(data))
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 	response, err := web.JsonToResponse[*Node](value)
@@ -35,7 +35,7 @@ func (call *call) register(node *Node, address string) (*Node, error) {
 	}
 	return nil, errors.New(response.Error)
 }
-func (call *call) findNode(node *Node, toNode *Node, address string, distances []uint) ([]*Node, error) {
+func (call *call) findNode(node *Node, toNode *Node, address *net.UDPAddr, distances []uint) ([]*Node, error) {
 	var queryNode = &FindNode{FormId: node.serverName, ToId: toNode.serverName, Distances: distances}
 	data, _ := json.Marshal(queryNode)
 	value, err := call.httpClient.PostRequest(address, "/discover/queryNode", string(data))
@@ -52,7 +52,7 @@ func (call *call) findNode(node *Node, toNode *Node, address string, distances [
 	}
 	return nil, errors.New(response.Error)
 }
-func (call *call) findValue(target string, distances int, address string) ([]*Node, error) {
+func (call *call) findValue(target string, distances int, address *net.UDPAddr) ([]*Node, error) {
 	var queryNode = &FindValue{Target: target, Distances: distances}
 	data, _ := json.Marshal(queryNode)
 	value, err := call.httpClient.PostRequest(address, "/discover/findValue", string(data))
@@ -67,4 +67,14 @@ func (call *call) findValue(target string, distances int, address string) ([]*No
 		return response.Data, nil
 	}
 	return nil, errors.New(response.Error)
+}
+
+func (call *call) ping(node *Node, address *net.UDPAddr) error {
+	var queryNode = &NodeStatus{FormId: node.serverName}
+	data, _ := json.Marshal(queryNode)
+	_, err := call.httpClient.PostRequest(address, "/discover/nodeStatus", string(data))
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/chuccp/shareExplorer/web"
 	"github.com/gin-gonic/gin"
 	"log"
+	"net"
 	"path"
 	"strings"
 )
@@ -58,7 +59,7 @@ func (c *Context) GetDiscoverServer() (DiscoverServer, bool) {
 func (c *Context) GetConfigInt(section, name string) (int, error) {
 	return c.register.GetConfig().GetInt(section, name)
 }
-func (c *Context) GetHttpClient(address string) (*khttp.Client, error) {
+func (c *Context) GetHttpClient(address *net.UDPAddr) (*khttp.Client, error) {
 	return c.server.GetHttpClient(address)
 }
 
@@ -142,7 +143,7 @@ func (c *Context) isRemote(context *gin.Context) bool {
 	}
 	return false
 }
-func (c *Context) GetReverseProxy(remoteAddress string, cert *cert.Certificate) (*khttp.ReverseProxy, error) {
+func (c *Context) GetReverseProxy(remoteAddress *net.UDPAddr, cert *cert.Certificate) (*khttp.ReverseProxy, error) {
 	if cert == nil {
 		return c.server.GetReverseProxy(remoteAddress)
 	}
@@ -155,15 +156,15 @@ func (c *Context) RemoteHandle() {
 		if c.isRemote(context) {
 			ds, fa := c.GetDiscoverServer()
 			if fa {
-				address, err := ds.FindAddress()
-				if err != nil {
-					context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
+				status := ds.FindStatus()
+				if status.GetError() != nil {
+					context.AbortWithStatusJSON(200, web.ResponseError(status.GetError().Error()))
 				} else {
-					reverseProxy, err := c.GetReverseProxy(address, nil)
+					reverseProxy, err := c.GetReverseProxy(status.GetAddress(), nil)
 					if err != nil {
 						context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
 					} else {
-						log.Println("remote", address, context.Request.URL)
+						log.Println("remote", status.GetAddress().String(), context.Request.URL)
 						context.Request.Header.Del("Referer")
 						context.Request.Header.Del("Origin")
 						reverseProxy.ServeHTTP(context.Writer, context.Request)
@@ -175,21 +176,21 @@ func (c *Context) RemoteHandle() {
 	})
 }
 
-func (c *Context) Request(path string, handelFunc func(response *web.ReverseResponse)) error {
-	client, err := web.CreateReverseClient(path)
-	if err != nil {
-		return err
-	}
-	reverseResponse := client.GetReverseResponse()
-	handelFunc(reverseResponse)
-	proxy, err := c.server.GetReverseProxy("127.0.0.1:2156")
-	if err == nil {
-		proxy.ServeHTTP(client.Response, client.Request)
-		return nil
-	} else {
-		return err
-	}
-}
+//func (c *Context) Request(path string, handelFunc func(response *web.ReverseResponse)) error {
+//	client, err := web.CreateReverseClient(path)
+//	if err != nil {
+//		return err
+//	}
+//	reverseResponse := client.GetReverseResponse()
+//	handelFunc(reverseResponse)
+//	proxy, err := c.server.GetReverseProxy("127.0.0.1:2156")
+//	if err == nil {
+//		proxy.ServeHTTP(client.Response, client.Request)
+//		return nil
+//	} else {
+//		return err
+//	}
+//}
 
 func (c *Context) toGinHandlerFunc(handlers []HandlerFunc) []gin.HandlerFunc {
 	var handlerFunc = make([]gin.HandlerFunc, len(handlers))
