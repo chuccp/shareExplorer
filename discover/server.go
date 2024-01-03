@@ -61,10 +61,16 @@ func (s *Server) findValue(req *web.Request) (any, error) {
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.call = &call{httpClient: core.NewHttpClient(context)}
+	s.context.SetDiscoverServer(s)
+	s.context.Post("/discover/register", s.register)
+	s.context.Post("/discover/connect", s.connect)
+	s.context.Get("/discover/nodeList", s.nodeList)
+	s.context.Post("/discover/findNode", s.findNode)
+	s.context.Post("/discover/findValue", s.findValue)
+	s.context.Get("/discover/nodeStatus", s.nodeStatus)
 	if !s.context.GetServerConfig().HasInit() {
 		return
 	}
-	s.context.SetDiscoverServer(s)
 	s.Start()
 }
 func (s *Server) nodeList(req *web.Request) (any, error) {
@@ -101,15 +107,8 @@ func (s *Server) nodeStatus(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
 }
 func (s *Server) Start() {
-	if s.context.GetServerConfig().IsNatServer() {
-		s.context.Post("/discover/register", s.register)
-		s.context.Post("/discover/connect", s.connect)
-		s.context.Get("/discover/nodeList", s.nodeList)
-		s.context.Post("/discover/findNode", s.findNode)
-		s.context.Post("/discover/findValue", s.findValue)
-	}
-	s.context.Get("/discover/nodeStatus", s.nodeStatus)
 	servername := s.context.GetCertManager().GetServerName()
+	log.Println("==============================", "start", servername)
 	localNode, err := createLocalNode(servername)
 	if err != nil {
 		log.Println(err)

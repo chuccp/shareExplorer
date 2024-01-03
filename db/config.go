@@ -54,7 +54,7 @@ func (u *ConfigModel) GetValues(keys ...string) ([]*Config, error) {
 		u.createTable()
 	}
 	var configs []*Config
-	tx := u.db.Table(u.tableName).Where("`key` in ?", keys).First(&configs)
+	tx := u.db.Table(u.tableName).Where("`key` in ?", keys).Find(&configs)
 	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
 		return configs, nil
 	}

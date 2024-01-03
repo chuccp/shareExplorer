@@ -55,9 +55,7 @@ func (se *ShareExplorer) Start() error {
 	if err != nil {
 		return err
 	}
-
 	se.context.RemoteHandle()
-
 	se.register.Range(func(server Server) bool {
 		server.Init(se.context)
 		return true

@@ -40,7 +40,7 @@ func (sc *ServerConfig) GetConfig() *Config {
 	return sc.config
 }
 func (sc *ServerConfig) HasInit() bool {
-	return len(sc.config.IsServer) > 0
+	return len(sc.config.IsServer) > 0 || len(sc.config.IsClient) > 0 || len(sc.config.IsNatServer) > 0
 }
 func (sc *ServerConfig) IsServer() bool {
 	return strings.Contains(sc.config.IsServer, "true")

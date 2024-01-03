@@ -8,6 +8,7 @@ import (
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
+	"log"
 	"net"
 	"strings"
 )
@@ -16,7 +17,7 @@ type admin struct {
 	Username    string   `json:"username"`
 	Password    string   `json:"password"`
 	RePassword  string   `json:"rePassword"`
-	IsNatClient bool     `json:"isNatClient"`
+	IsServer    bool     `json:"isServer"`
 	IsNatServer bool     `json:"isNatServer"`
 	Addresses   []string `json:"addresses"`
 }
@@ -55,6 +56,7 @@ func (s *Server) signIn(req *web.Request) (any, error) {
 }
 func (s *Server) addAdmin(req *web.Request) (any, error) {
 	var admin admin
+	log.Println("#################", admin)
 	req.BodyJson(&admin)
 	if len(admin.Username) == 0 {
 		return web.ResponseError("用户名不能为空"), nil
@@ -68,26 +70,22 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 	if admin.RePassword != admin.Password {
 		return web.ResponseError("两次密码输入不同"), nil
 	}
-	if admin.IsNatServer || admin.IsNatClient {
+	if admin.IsNatServer || admin.IsServer {
 		if admin.Addresses == nil || len(admin.Addresses) == 0 {
 			return web.ResponseError("远程节点不能为空"), nil
 		}
 	}
 
 	err := s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
-		err := s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", "true")
+		err := s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin")
 		if err != nil {
 			return err
 		}
-		err = s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin")
-		if err != nil {
-			return err
+		IsServer := "false"
+		if admin.IsServer {
+			IsServer = "true"
 		}
-		isNatClient := "false"
-		if admin.IsNatClient {
-			isNatClient = "true"
-		}
-		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isNatClient", isNatClient)
+		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", IsServer)
 		if err != nil {
 			return err
 		}
@@ -99,7 +97,6 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 		if err != nil {
 			return err
 		}
-
 		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
 		err = addressModel.AddAddress(admin.Addresses)
 		if err != nil {
@@ -111,6 +108,10 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 		return web.ResponseError(err.Error()), err
 	}
 	sub, err := req.SignedUsername(admin.Username)
+	if err != nil {
+		return nil, err
+	}
+	err = s.context.GetServerConfig().Init()
 	if err != nil {
 		return nil, err
 	}
@@ -151,11 +152,11 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 }
 
 func (s *Server) info(req *web.Request) (any, error) {
-	exist, fa := s.context.GetDB().GetConfigModel().GetValue("isServer")
+	ServerConfig := s.context.GetServerConfig()
 	var system entity.System
-	system.HasInit = fa
-	if fa {
-		system.IsServer = strings.Contains(exist, "true")
+	system.HasInit = ServerConfig.HasInit()
+	if system.HasInit {
+		system.IsServer = ServerConfig.IsServer()
 		if !system.IsServer {
 			discoverServer, fa := s.context.GetDiscoverServer()
 			if fa {

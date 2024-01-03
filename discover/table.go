@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
-	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -58,6 +57,26 @@ type Table struct {
 func (table *Table) ID() ID {
 	return table.localNode.id
 }
+
+func (table *Table) loadAddress() {
+	seeds := make([]*node, 0)
+	addresses, err := table.coreCtx.GetDB().GetAddressModel().QueryAddresses()
+	if err != nil {
+		return
+	}
+	for _, address := range addresses {
+		if len(address.Address) > 0 {
+			addr, err := net.ResolveUDPAddr("udp", address.Address)
+			if err != nil {
+				continue
+			} else {
+				seeds = append(seeds, wrapNode(&Node{addr: addr}))
+			}
+		}
+	}
+	table.nursery = seeds
+}
+
 func (table *Table) loop() {
 	var (
 		revalidate     = time.NewTimer(table.nextRevalidateTime())
@@ -65,6 +84,7 @@ func (table *Table) loop() {
 		revalidateDone chan struct{}
 		refreshDone    = make(chan struct{})
 	)
+	table.loadAddress()
 	go table.doRefresh(refreshDone)
 	for {
 		select {
@@ -169,7 +189,6 @@ func (nss *NodeStore) addNode(n *node) {
 func (nss *NodeStore) queryOneNode(serverName string) (*node, bool) {
 	nss.mutex.RLock()
 	defer nss.mutex.RUnlock()
-	log.Println(serverName)
 	v, ok := nss.memberMap[serverName]
 	if ok {
 		return v, true

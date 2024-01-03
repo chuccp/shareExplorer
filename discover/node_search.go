@@ -24,6 +24,9 @@ func (nodeSearch *nodeSearch) run() {
 	go nodeSearch.loop()
 }
 func (nodeSearch *nodeSearch) stop() {
+	if nodeSearch.ctxCancel != nil {
+		nodeSearch.ctxCancel()
+	}
 
 }
 func (nodeSearch *nodeSearch) updateNodeStatus() {
@@ -69,7 +72,10 @@ func (nodeSearch *nodeSearch) loop() {
 				refresh.Reset(time.Second * 10)
 				refreshDone = nil
 			}
-
+		case <-nodeSearch.ctx.Done():
+			{
+				break
+			}
 		}
 	}
 
