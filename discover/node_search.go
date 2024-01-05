@@ -97,14 +97,14 @@ type findValueNodeQueue struct {
 }
 
 func (f *findValueNodeQueue) addNode0(node *findValueNode) {
-	f.useNode[node.queryNode.serverName] = node
+	f.useNode[node.queryNode.ServerName()] = node
 	f.nodeList.PushBack(node)
 }
 func (f *findValueNodeQueue) addNode(preId ID, fromId ID, node *Node) {
-	if node.serverName == f.localNode.serverName {
+	if node.id == f.localNode.id {
 		return
 	}
-	_, ok := f.useNode[node.serverName]
+	_, ok := f.useNode[node.ServerName()]
 	if ok {
 		return
 	}
@@ -130,9 +130,9 @@ func NewFindValueNodeQueue(localNode *Node) *findValueNodeQueue {
 func (nodeSearch *nodeSearch) queryNode(done chan<- struct{}) {
 	defer close(done)
 	var findValueNodeQueue = NewFindValueNodeQueue(nodeSearch.localNode)
-	queryNode := nodeSearch.table.FindValue(nodeSearch.localNode.serverName, 0)
+	queryNode := nodeSearch.table.FindValue(nodeSearch.localNode.ServerName(), 0)
 	for _, n := range queryNode {
-		if n.serverName == nodeSearch.localNode.serverName {
+		if n.id == nodeSearch.localNode.id {
 			nodeSearch.ping(n)
 			return
 		}
@@ -143,10 +143,10 @@ func (nodeSearch *nodeSearch) queryNode(done chan<- struct{}) {
 		if !fa {
 			break
 		}
-		queryNode, err := nodeSearch.FindValue(nodeSearch.localNode.serverName, node.queryNode, node.maxDistance)
+		queryNode, err := nodeSearch.FindValue(nodeSearch.localNode.ServerName(), node.queryNode, node.maxDistance)
 		if err == nil {
 			for _, qNode := range queryNode {
-				if qNode.serverName == nodeSearch.localNode.serverName {
+				if qNode.id == nodeSearch.localNode.id {
 					nodeSearch.ping(qNode)
 					return
 				}

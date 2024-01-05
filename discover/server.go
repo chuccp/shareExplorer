@@ -10,7 +10,7 @@ import (
 
 const (
 	client = iota + 1
-	natClient
+	server
 	natServer
 )
 
@@ -108,8 +108,7 @@ func (s *Server) nodeStatus(req *web.Request) (any, error) {
 }
 func (s *Server) Start() {
 	servername := s.context.GetCertManager().GetServerName()
-	log.Println("==============================", "start", servername)
-	localNode, err := createLocalNode(servername)
+	localNode, err := createLocalNode(servername, s.context.GetServerConfig())
 	if err != nil {
 		log.Println(err)
 		return

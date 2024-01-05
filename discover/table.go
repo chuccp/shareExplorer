@@ -3,8 +3,10 @@ package discover
 import (
 	"container/list"
 	"context"
+	"encoding/hex"
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
+	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -130,6 +132,7 @@ func (table *Table) nextRefreshTime() time.Duration {
 }
 
 func (table *Table) doRevalidate(done chan<- struct{}) {
+	log.Println("===", "doRevalidate")
 	defer close(done)
 	table.register()
 }
@@ -174,7 +177,7 @@ func (nss *NodeStore) queryNode(pageNo, pageSize int) ([]*node, int) {
 func (nss *NodeStore) addNode(n *node) {
 	nss.mutex.Lock()
 	defer nss.mutex.Unlock()
-	key := n.serverName
+	key := hex.EncodeToString(n.id[:])
 	v, ok := nss.memberMap[key]
 	if !ok {
 		n.addedAt = time.Now()
@@ -306,6 +309,7 @@ func (table *Table) addSeenNode(n *node) {
 	if n.ID() == table.self().id {
 		return
 	}
+	log.Println("addSeenNode:", n.ServerName(), "IsClient:", n.IsClient(), "IsServer:", n.IsServer(), "IsNatServer:", n.IsNatServer())
 	if n.IsClient() {
 		table.addClient(n)
 		return
@@ -313,6 +317,7 @@ func (table *Table) addSeenNode(n *node) {
 	if n.IsServer() {
 		table.addServer(n)
 	}
+	log.Println("===addSeenNode", n.ID())
 	if n.IsNatServer() {
 		b := table.bucket(n.ID())
 		if contains(b.entries, n.ID()) {
@@ -327,6 +332,7 @@ func (table *Table) addSeenNode(n *node) {
 		}
 		n.addedAt = time.Now()
 		b.entries = append(b.entries, n)
+		log.Println("===addSeenNode!!!!", n.ID())
 		b.replacements = deleteNode(b.replacements, n)
 	}
 }
@@ -340,6 +346,7 @@ func deleteNode(list []*node, n *node) []*node {
 }
 func (table *Table) doRefresh(done chan<- struct{}) {
 	defer close(done)
+	log.Println("======", "doRefresh")
 	table.loadSeedNodes()
 	table.lookupSelf()
 	for i := 0; i < 3; i++ {
@@ -401,6 +408,7 @@ func (table *Table) loadSeedNodes() {
 
 func contains(ns []*node, id ID) bool {
 	for _, n := range ns {
+		log.Println("contains", n.ID(), id)
 		if n.ID() == id {
 			return true
 		}
@@ -448,17 +456,30 @@ func (table *Table) registerNursery() {
 func (table *Table) register() {
 	node, _ := table.nodeToRevalidate()
 	if node != nil {
-		table.register0(node)
+		table.validate(node)
 	}
 
 }
-
-func (table *Table) register0(node *node) {
+func (table *Table) validate(node *node) {
+	log.Println("======", "validate addr:", node.addr)
 	value, err := table.call.register(table.localNode, node.addr)
+	log.Println("======", "validate addr:", node.addr, "vvvvvv", value)
 	if err != nil {
 		return
 	}
+	if node.id != value.id {
+		//id 不一致 删除当前node
+		return
+	}
 	node.liveNessChecks++
+}
+func (table *Table) register0(node *node) {
+	log.Println("======", "register0 addr:", node.addr)
+	value, err := table.call.register(table.localNode, node.addr)
+	log.Println("======", "register0 addr:", node.addr, "vvvvvv", value)
+	if err != nil {
+		return
+	}
 	node.SetID(value.ID())
 }
 
@@ -492,8 +513,38 @@ func (table *Table) nodePage(nodeType, pageNo, pageSize int) ([]*node, int) {
 	if nodeType == client {
 		return table.clients.queryNode(pageNo, pageSize)
 	}
-
+	if nodeType == server {
+		return table.servers.queryNode(pageNo, pageSize)
+	}
+	if nodeType == natServer {
+		return table.page(pageNo, pageSize)
+	}
 	return nodes, 0
+}
+func (table *Table) page(pageNo, pageSize int) ([]*node, int) {
+	nodes := make([]*node, 0)
+	skeep := (pageNo - 1) * pageSize
+	var start = 0
+	var total = 0
+	for _, b := range table.buckets {
+		for _, entry := range b.entries {
+			if start >= skeep {
+				log.Println("page==========", entry.ID())
+				nodes = append(nodes, entry)
+				if len(nodes) >= pageSize {
+					break
+				}
+			}
+			start++
+		}
+		if len(nodes) >= pageSize {
+			break
+		}
+	}
+	for _, b := range table.buckets {
+		total = total + len(b.entries)
+	}
+	return nodes, total
 }
 
 func (table *Table) queryServerNode(serverName string) (*node, bool) {

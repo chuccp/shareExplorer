@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/chuccp/shareExplorer/core"
 	"math/bits"
 	"net"
 	"strings"
@@ -58,20 +59,18 @@ func wrapNodeFRegister(register *Register, address string) (*Node, error) {
 	}
 	var node Node
 	node.id = wrapId(b)
-	node.serverName = register.FormId
-	node.isClient = register.IsClient
-	node.isNatServer = register.IsNatServer
-	node.isServer = register.IsServer
+	node.isClient = strings.Contains(register.IsClient, "true")
+	node.isNatServer = strings.Contains(register.IsNatServer, "true")
+	node.isServer = strings.Contains(register.IsServer, "true")
 	node.addr = addr
 	return &node, nil
 }
 
 type Node struct {
 	id          ID
-	serverName  string
-	isServer    string
-	isClient    string
-	isNatServer string
+	isServer    bool
+	isClient    bool
+	isNatServer bool
 	addr        *net.UDPAddr
 }
 
@@ -80,13 +79,16 @@ func (n *Node) IP() net.IP {
 }
 
 func (n *Node) IsServer() bool {
-	return strings.Contains(n.isServer, "true")
+	return n.isServer
 }
 func (n *Node) IsClient() bool {
-	return strings.Contains(n.isClient, "true")
+	return n.isClient
 }
 func (n *Node) IsNatServer() bool {
-	return strings.Contains(n.isNatServer, "true")
+	return n.isNatServer
+}
+func (n *Node) ServerName() string {
+	return hex.EncodeToString(n.id[:])
 }
 
 func (n *Node) ID() ID {
@@ -97,15 +99,15 @@ func (n *Node) SetID(id ID) {
 }
 
 func NewNursery(addr *net.UDPAddr) *Node {
-	return &Node{addr: addr, isNatServer: "true", isServer: "true", isClient: "true"}
+	return &Node{addr: addr}
 }
 
-func createLocalNode(serverName string) (*Node, error) {
+func createLocalNode(serverName string, config *core.ServerConfig) (*Node, error) {
 	id, err := hex.DecodeString(serverName)
 	if err != nil {
 		return nil, err
 	}
-	return &Node{serverName: serverName, id: wrapId(id)}, nil
+	return &Node{id: wrapId(id), isServer: config.IsServer(), isClient: config.IsClient(), isNatServer: config.IsNatServer()}, nil
 }
 
 func LogDist(a, b ID) int {

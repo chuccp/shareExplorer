@@ -2,7 +2,6 @@ package discover
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	rand0 "math/rand"
 	"net"
@@ -12,12 +11,12 @@ import (
 func GenerateNode() *Node {
 	var data [32]byte
 	rand.Read(data[:])
-	return &Node{id: data, isServer: "true", isNatServer: "true", serverName: hex.EncodeToString(data[:]), addr: GenerateUDPAddr()}
+	return &Node{id: data, isServer: true, isNatServer: true, addr: GenerateUDPAddr()}
 }
 func GenerateServerNode() *Node {
 	var data [32]byte
 	rand.Read(data[:])
-	return &Node{id: data, isServer: "true", isNatServer: "true", serverName: hex.EncodeToString(data[:]), addr: GenerateUDPAddr()}
+	return &Node{id: data, isServer: true, isNatServer: true, addr: GenerateUDPAddr()}
 }
 func GenerateNodes(num int) []*Node {
 	var nodes = make([]*Node, num)
@@ -34,9 +33,11 @@ func TestTable_AddSeenNodes(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		node := wrapNode(GenerateServerNode())
 		table.addSeenNode(node)
+		node2 := wrapNode(GenerateServerNode())
+		table.addSeenNode(node2)
 	}
 	node := GenerateNode()
-	nodes := table.FindValue(node.serverName, 248)
+	nodes := table.FindValue(node.ServerName(), 248)
 	t.Log(nodes)
 }
 
@@ -44,7 +45,7 @@ func TestTable_AddSeenNode(t *testing.T) {
 	table := GenerateTable()
 	node := wrapNode(GenerateServerNode())
 	table.addSeenNode(node)
-	node0, fa := table.queryServerNode(node.serverName)
+	node0, fa := table.queryServerNode(node.ServerName())
 	t.Log(node0, fa)
 
 }

@@ -1,7 +1,6 @@
 package discover
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
@@ -14,29 +13,29 @@ type call struct {
 	httpClient *core.HttpClient
 }
 
-func (call *call) register(node *Node, address *net.UDPAddr) (*Node, error) {
-	var register = &Register{FormId: node.serverName, IsServer: node.isServer, IsNatServer: node.isNatServer, IsClient: node.isClient}
-	data, _ := json.Marshal(register)
+func (call *call) register(localNode *Node, address *net.UDPAddr) (*Node, error) {
+	log.Println("register==", "serverName:", localNode.ServerName(), " IsServer:", localNode.isServer, " IsNatServer:", localNode.isNatServer, " IsClient:", localNode.isClient)
+	data, _ := json.Marshal(NodeToRegister(localNode))
 	value, err := call.httpClient.PostRequest(address, "/discover/register", string(data))
 	if err != nil {
 		return nil, err
 	}
-	response, err := web.JsonToResponse[*Node](value)
+	response, err := web.JsonToResponse[*ResponseNode](value)
 	if err != nil {
 		return nil, err
 	}
 	if response.IsOk() {
-		id, err := hex.DecodeString(response.Data.serverName)
+		response.Data.Address = address.String()
+		toNode, err := wrapResponseNodeToNode(response.Data)
 		if err != nil {
 			return nil, err
 		}
-		response.Data.SetID(wrapId(id))
-		return response.Data, nil
+		return toNode, nil
 	}
 	return nil, errors.New(response.Error)
 }
 func (call *call) findNode(node *Node, toNode *Node, address *net.UDPAddr, distances []uint) ([]*Node, error) {
-	var queryNode = &FindNode{FormId: node.serverName, ToId: toNode.serverName, Distances: distances}
+	var queryNode = &FindNode{FormId: node.ServerName(), ToId: toNode.ServerName(), Distances: distances}
 	data, _ := json.Marshal(queryNode)
 	value, err := call.httpClient.PostRequest(address, "/discover/queryNode", string(data))
 	if err != nil {
@@ -70,7 +69,7 @@ func (call *call) findValue(target string, distances int, address *net.UDPAddr) 
 }
 
 func (call *call) ping(node *Node, address *net.UDPAddr) error {
-	var queryNode = &NodeStatus{FormId: node.serverName}
+	var queryNode = &NodeStatus{FormId: node.ServerName()}
 	data, _ := json.Marshal(queryNode)
 	_, err := call.httpClient.PostRequest(address, "/discover/nodeStatus", string(data))
 	if err != nil {
