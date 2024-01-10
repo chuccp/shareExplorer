@@ -185,6 +185,10 @@ func (s *Server) reset(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = s.context.GetServerConfig().Init()
+	if err != nil {
+		return nil, err
+	}
 	ds, b := s.context.GetDiscoverServer()
 	if b {
 		ds.Stop()
@@ -270,7 +274,7 @@ func (s *Server) uploadUserCert(req *web.Request) (any, error) {
 	client.Username = c.UserName
 	client.ServerName = c.ServerName
 	err = s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
-		err := s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", "false")
+		err := s.context.GetDB().GetConfigModel().NewModel(tx).Create("isClient", "true")
 		if err != nil {
 			return err
 		}
@@ -285,6 +289,11 @@ func (s *Server) uploadUserCert(req *web.Request) (any, error) {
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	clientCert := s.context.GetClientCert()
+	err = clientCert.LoadUser(client.Username)
 	if err != nil {
 		return nil, err
 	}

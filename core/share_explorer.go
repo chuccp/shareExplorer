@@ -17,6 +17,7 @@ type ShareExplorer struct {
 	server       *khttp.Server
 	certManager  *cert.Manager
 	serverConfig *ServerConfig
+	clientCert   *ClientCert
 }
 
 func CreateShareExplorer(register IRegister) (*ShareExplorer, error) {
@@ -40,8 +41,9 @@ func CreateShareExplorer(register IRegister) (*ShareExplorer, error) {
 	}
 	certManager := cert.NewManager("cert")
 	serverConfig := NewServerConfig(db.GetConfigModel())
-	context := &Context{serverConfig: serverConfig, engine: engine, register: register, server: server, db: db, jwt: util.NewJwt(), paths: make(map[string]any), remotePaths: make(map[string]any), certManager: certManager}
-	return &ShareExplorer{register: register, engine: engine, context: context, server: server, certManager: certManager, serverConfig: serverConfig}, nil
+	clientCert := NewClientCert(db.GetUserModel())
+	context := &Context{clientCert: clientCert, serverConfig: serverConfig, engine: engine, register: register, server: server, db: db, jwt: util.NewJwt(), paths: make(map[string]any), remotePaths: make(map[string]any), certManager: certManager}
+	return &ShareExplorer{clientCert: clientCert, register: register, engine: engine, context: context, server: server, certManager: certManager, serverConfig: serverConfig}, nil
 }
 
 func (se *ShareExplorer) Start() error {
@@ -54,6 +56,11 @@ func (se *ShareExplorer) Start() error {
 	err = se.serverConfig.Init()
 	if err != nil {
 		return err
+	}
+
+	//加载客户端证书
+	if se.serverConfig.IsClient() {
+		se.clientCert.init()
 	}
 	se.context.RemoteHandle()
 	se.register.Range(func(server Server) bool {

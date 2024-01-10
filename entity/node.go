@@ -11,17 +11,19 @@ const (
 
 type NodeStatus struct {
 	address *net.UDPAddr
-	status  int
+	Status  int    `json:"status"`
+	Error   string `json:"error"`
 	err     error
 }
 
 func NewNodeStatus() *NodeStatus {
-	return &NodeStatus{status: SearchInit}
+	return &NodeStatus{Status: SearchInit}
 }
 func (s *NodeStatus) IsComplete() bool {
-	return s.status == SearchComplete
+	return s.Status == SearchComplete
 }
 func (s *NodeStatus) SearchFail(err error) {
+	s.Error = err.Error()
 	s.err = err
 }
 func (s *NodeStatus) GetError() error {
@@ -32,5 +34,7 @@ func (s *NodeStatus) GetAddress() *net.UDPAddr {
 }
 func (s *NodeStatus) SearchComplete(address *net.UDPAddr) {
 	s.address = address
-	s.status = SearchComplete
+	s.Status = SearchComplete
+	s.err = nil
+	s.Error = ""
 }

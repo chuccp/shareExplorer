@@ -19,5 +19,5 @@ type DiscoverServer interface {
 	Start()
 	Connect(address *net.UDPAddr) error
 	Stop()
-	FindStatus() *entity.NodeStatus
+	FindStatus(servername string) *entity.NodeStatus
 }

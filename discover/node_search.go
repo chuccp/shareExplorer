@@ -7,18 +7,49 @@ import (
 	"time"
 )
 
+type nodeSearchManage struct {
+	table        *Table
+	nodeSearches []*nodeSearch
+}
+
+func NewNodeSearchManage(table *Table) *nodeSearchManage {
+	return &nodeSearchManage{table: table}
+}
+
+func (nsm *nodeSearchManage) FindNodeStatus(remoteId ID) *entity.NodeStatus {
+	for _, search := range nsm.nodeSearches {
+		if remoteId == search.remoteNode.id {
+			return search.nodeStatus
+		}
+	}
+	nodeSearch := newNodeSearch(nsm.table, remoteId)
+	nsm.nodeSearches = append(nsm.nodeSearches, nodeSearch)
+	go nodeSearch.run()
+	return nodeSearch.nodeStatus
+}
+func (nsm *nodeSearchManage) stop() {
+	for _, search := range nsm.nodeSearches {
+		search.stop()
+	}
+}
+
+func (nsm *nodeSearchManage) run() {
+
+}
+
 type nodeSearch struct {
 	table      *Table
 	localNode  *Node
 	remoteNode *Node
+	remoteId   ID
 	nodeStatus *entity.NodeStatus
 	ctxCancel  context.CancelFunc
 	ctx        context.Context
 }
 
-func newNodeSearch(table *Table, localNode *Node) *nodeSearch {
+func newNodeSearch(table *Table, remoteId ID) *nodeSearch {
 	ctx, ctxCancel := context.WithCancel(context.Background())
-	return &nodeSearch{table: table, localNode: localNode, nodeStatus: entity.NewNodeStatus(), ctx: ctx, ctxCancel: ctxCancel}
+	return &nodeSearch{table: table, remoteId: remoteId, nodeStatus: entity.NewNodeStatus(), ctx: ctx, ctxCancel: ctxCancel}
 }
 func (nodeSearch *nodeSearch) run() {
 	go nodeSearch.loop()
@@ -35,9 +66,9 @@ func (nodeSearch *nodeSearch) updateNodeStatus() {
 func (nodeSearch *nodeSearch) loop() {
 	var (
 		queryNode     = time.NewTimer(time.Second * 10)
-		refresh       = time.NewTimer(time.Second * 10)
-		queryNodeDone chan struct{}
-		refreshDone   = make(chan struct{})
+		ping          = time.NewTimer(time.Second * 10)
+		pingDone      chan struct{}
+		queryNodeDone = make(chan struct{})
 	)
 	go nodeSearch.queryNode(queryNodeDone)
 	for {
@@ -58,19 +89,19 @@ func (nodeSearch *nodeSearch) loop() {
 				queryNodeDone = nil
 			}
 
-		case <-refresh.C:
+		case <-ping.C:
 			{
 
-				if refreshDone == nil {
-					refreshDone = make(chan struct{})
-					go nodeSearch.queryNode(refreshDone)
+				if pingDone == nil {
+					pingDone = make(chan struct{})
+					go nodeSearch.queryNode(pingDone)
 				}
 
 			}
-		case <-refreshDone:
+		case <-pingDone:
 			{
-				refresh.Reset(time.Second * 10)
-				refreshDone = nil
+				ping.Reset(time.Second * 10)
+				pingDone = nil
 			}
 		case <-nodeSearch.ctx.Done():
 			{

@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"encoding/hex"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
@@ -15,10 +16,10 @@ const (
 )
 
 type Server struct {
-	context    *core.Context
-	table      *Table
-	nodeSearch *nodeSearch
-	call       *call
+	context          *core.Context
+	table            *Table
+	nodeSearchManage *nodeSearchManage
+	call             *call
 }
 
 func (s *Server) register(req *web.Request) (any, error) {
@@ -57,7 +58,10 @@ func (s *Server) findValue(req *web.Request) (any, error) {
 	ns := s.table.FindValue(findValue.Target, findValue.Distances)
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
-
+func (s *Server) nodeStatus(req *web.Request) (any, error) {
+	nodeStatus := s.FindStatus("")
+	return web.ResponseOK(nodeStatus), nil
+}
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.call = &call{httpClient: core.NewHttpClient(context)}
@@ -84,8 +88,9 @@ func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
 }
 
-func (s *Server) FindStatus() *entity.NodeStatus {
-	return s.nodeSearch.nodeStatus
+func (s *Server) FindStatus(servername string) *entity.NodeStatus {
+	id, _ := hex.DecodeString(servername)
+	return s.nodeSearchManage.FindNodeStatus(ID(id))
 }
 
 func (s *Server) Connect(address *net.UDPAddr) error {
@@ -95,17 +100,7 @@ func (s *Server) Connect(address *net.UDPAddr) error {
 	}
 	return nil
 }
-func (s *Server) nodeStatus(req *web.Request) (any, error) {
-	var nodeStatus NodeStatus
-	err := req.BodyJson(&nodeStatus)
-	if err != nil {
-		return nil, err
-	}
-	if s.context.GetServerConfig().IsClient() {
 
-	}
-	return web.ResponseOK("ok"), nil
-}
 func (s *Server) Start() {
 	servername := s.context.GetCertManager().GetServerName()
 	localNode, err := createLocalNode(servername, s.context.GetServerConfig())
@@ -115,17 +110,15 @@ func (s *Server) Start() {
 	}
 	s.table = NewTable(s.context, localNode, s.call)
 	s.table.run()
-	s.nodeSearch = newNodeSearch(s.table, localNode)
-	if s.context.GetServerConfig().IsClient() {
-		s.nodeSearch.run()
-	}
+	s.nodeSearchManage = NewNodeSearchManage(s.table)
+	s.nodeSearchManage.run()
 }
 func (s *Server) Stop() {
 	if s.table != nil {
 		s.table.stop()
 	}
-	if s.nodeSearch != nil {
-		s.nodeSearch.stop()
+	if s.nodeSearchManage != nil {
+		s.nodeSearchManage.stop()
 	}
 }
 

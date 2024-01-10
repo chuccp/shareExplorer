@@ -309,7 +309,6 @@ func (table *Table) addSeenNode(n *node) {
 	if n.ID() == table.self().id {
 		return
 	}
-	log.Println("addSeenNode:", n.ServerName(), "IsClient:", n.IsClient(), "IsServer:", n.IsServer(), "IsNatServer:", n.IsNatServer())
 	if n.IsClient() {
 		table.addClient(n)
 		return
@@ -317,7 +316,6 @@ func (table *Table) addSeenNode(n *node) {
 	if n.IsServer() {
 		table.addServer(n)
 	}
-	log.Println("===addSeenNode", n.ID())
 	if n.IsNatServer() {
 		b := table.bucket(n.ID())
 		if contains(b.entries, n.ID()) {
@@ -332,7 +330,6 @@ func (table *Table) addSeenNode(n *node) {
 		}
 		n.addedAt = time.Now()
 		b.entries = append(b.entries, n)
-		log.Println("===addSeenNode!!!!", n.ID())
 		b.replacements = deleteNode(b.replacements, n)
 	}
 }
@@ -346,7 +343,6 @@ func deleteNode(list []*node, n *node) []*node {
 }
 func (table *Table) doRefresh(done chan<- struct{}) {
 	defer close(done)
-	log.Println("======", "doRefresh")
 	table.loadSeedNodes()
 	table.lookupSelf()
 	for i := 0; i < 3; i++ {
@@ -461,9 +457,7 @@ func (table *Table) register() {
 
 }
 func (table *Table) validate(node *node) {
-	log.Println("======", "validate addr:", node.addr)
 	value, err := table.call.register(table.localNode, node.addr)
-	log.Println("======", "validate addr:", node.addr, "vvvvvv", value)
 	if err != nil {
 		return
 	}
@@ -474,9 +468,7 @@ func (table *Table) validate(node *node) {
 	node.liveNessChecks++
 }
 func (table *Table) register0(node *node) {
-	log.Println("======", "register0 addr:", node.addr)
 	value, err := table.call.register(table.localNode, node.addr)
-	log.Println("======", "register0 addr:", node.addr, "vvvvvv", value)
 	if err != nil {
 		return
 	}
@@ -529,7 +521,6 @@ func (table *Table) page(pageNo, pageSize int) ([]*node, int) {
 	for _, b := range table.buckets {
 		for _, entry := range b.entries {
 			if start >= skeep {
-				log.Println("page==========", entry.ID())
 				nodes = append(nodes, entry)
 				if len(nodes) >= pageSize {
 					break

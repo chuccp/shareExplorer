@@ -26,6 +26,7 @@ type Context struct {
 	remotePaths    map[string]any
 	certManager    *cert.Manager
 	serverConfig   *ServerConfig
+	clientCert     *ClientCert
 }
 
 type HandlersChain []HandlerFunc
@@ -46,6 +47,9 @@ func (c *Context) GetServerConfig() *ServerConfig {
 }
 func (c *Context) GetCertManager() *cert.Manager {
 	return c.certManager
+}
+func (c *Context) GetClientCert() *ClientCert {
+	return c.clientCert
 }
 func (c *Context) GetJwt() *util.Jwt {
 	return c.jwt
@@ -175,23 +179,6 @@ func (c *Context) RemoteHandle() {
 		}
 	})
 }
-
-//func (c *Context) Request(path string, handelFunc func(response *web.ReverseResponse)) error {
-//	client, err := web.CreateReverseClient(path)
-//	if err != nil {
-//		return err
-//	}
-//	reverseResponse := client.GetReverseResponse()
-//	handelFunc(reverseResponse)
-//	proxy, err := c.server.GetReverseProxy("127.0.0.1:2156")
-//	if err == nil {
-//		proxy.ServeHTTP(client.Response, client.Request)
-//		return nil
-//	} else {
-//		return err
-//	}
-//}
-
 func (c *Context) toGinHandlerFunc(handlers []HandlerFunc) []gin.HandlerFunc {
 	var handlerFunc = make([]gin.HandlerFunc, len(handlers))
 	for i, handler := range handlers {

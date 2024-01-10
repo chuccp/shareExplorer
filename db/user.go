@@ -175,6 +175,20 @@ func (u *UserModel) QueryOneUser(username string) (*User, error) {
 	}
 	return nil, tx.Error
 }
+func (u *UserModel) QueryAllUser() ([]*User, error) {
+	if !u.IsExist() {
+		err := u.createTable()
+		if err != nil {
+			return nil, err
+		}
+	}
+	var users01 []*User
+	tx := u.db.Table(u.tableName).Find(&users01)
+	if tx.Error == nil {
+		return users01, nil
+	}
+	return nil, tx.Error
+}
 func (u *UserModel) QueryPage(pageNo int, pageSize int) ([]*User, int64, error) {
 
 	users := make([]*User, 0)
