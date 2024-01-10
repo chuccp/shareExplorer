@@ -29,6 +29,9 @@ func (s *NodeStatus) SearchFail(err error) {
 func (s *NodeStatus) GetError() error {
 	return s.err
 }
+func (s *NodeStatus) GetMsg() string {
+	return "正在查找"
+}
 func (s *NodeStatus) GetAddress() *net.UDPAddr {
 	return s.address
 }

@@ -58,10 +58,6 @@ func (s *Server) findValue(req *web.Request) (any, error) {
 	ns := s.table.FindValue(findValue.Target, findValue.Distances)
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
-func (s *Server) nodeStatus(req *web.Request) (any, error) {
-	nodeStatus := s.FindStatus("")
-	return web.ResponseOK(nodeStatus), nil
-}
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.call = &call{httpClient: core.NewHttpClient(context)}
@@ -71,7 +67,6 @@ func (s *Server) Init(context *core.Context) {
 	s.context.Get("/discover/nodeList", s.nodeList)
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/findValue", s.findValue)
-	s.context.Get("/discover/nodeStatus", s.nodeStatus)
 	if !s.context.GetServerConfig().HasInit() {
 		return
 	}

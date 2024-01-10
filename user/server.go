@@ -157,15 +157,6 @@ func (s *Server) info(req *web.Request) (any, error) {
 	system.HasInit = ServerConfig.HasInit()
 	if system.HasInit {
 		system.IsServer = ServerConfig.IsServer()
-		if !system.IsServer {
-			discoverServer, fa := s.context.GetDiscoverServer()
-			if fa {
-				nodeStatus := discoverServer.FindStatus()
-				if nodeStatus.IsComplete() {
-					system.HasServer = true
-				}
-			}
-		}
 		if system.IsServer {
 			username := req.GetTokenUsername()
 			if len(username) > 0 {

@@ -49,12 +49,20 @@ func (c *ClientCert) getCert(username string) (*cert.Certificate, bool) {
 	}
 	return nil, false
 }
+func (c *ClientCert) getCertServername(username string) (string, bool) {
+	cert, fa := c.getCert(username)
+	if fa {
+		return cert.ServerName, true
+	}
+	return "", false
+}
 func (c *ClientCert) LoadCert(username string, path string) error {
 	_, cc, err := cert.ParseClientKuicCertFile(path)
 	if err != nil {
 		return err
 	}
 	if username == cc.UserName {
+		log.Println("LoadCert username:", username, "ServerName:", cc.ServerName)
 		c.clientCertificates = append(c.clientCertificates, cc)
 		return nil
 	}

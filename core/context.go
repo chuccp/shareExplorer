@@ -158,20 +158,29 @@ func (c *Context) GetReverseProxy(remoteAddress *net.UDPAddr, cert *cert.Certifi
 func (c *Context) RemoteHandle() {
 	c.engine.Use(func(context *gin.Context) {
 		if c.isRemote(context) {
-			ds, fa := c.GetDiscoverServer()
-			if fa {
-				status := ds.FindStatus()
-				if status.GetError() != nil {
-					context.AbortWithStatusJSON(200, web.ResponseError(status.GetError().Error()))
-				} else {
-					reverseProxy, err := c.GetReverseProxy(status.GetAddress(), nil)
-					if err != nil {
-						context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
+			username := context.Request.FormValue("username")
+			certificate, has := c.clientCert.getCert(username)
+			if has {
+				ds, fa := c.GetDiscoverServer()
+				if fa {
+					log.Println("FindStatus", certificate.ServerName)
+					status := ds.FindStatus(certificate.ServerName)
+					if status.GetError() != nil {
+						context.AbortWithStatusJSON(200, web.ResponseError(status.GetError().Error()))
 					} else {
-						log.Println("remote", status.GetAddress().String(), context.Request.URL)
-						context.Request.Header.Del("Referer")
-						context.Request.Header.Del("Origin")
-						reverseProxy.ServeHTTP(context.Writer, context.Request)
+						if status.IsComplete() {
+							reverseProxy, err := c.GetReverseProxy(status.GetAddress(), certificate)
+							if err != nil {
+								context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
+							} else {
+								log.Println("remote", status.GetAddress().String(), context.Request.URL)
+								context.Request.Header.Del("Referer")
+								context.Request.Header.Del("Origin")
+								reverseProxy.ServeHTTP(context.Writer, context.Request)
+							}
+						} else {
+							context.AbortWithStatusJSON(200, web.ResponseError(status.GetMsg()))
+						}
 					}
 				}
 			}
