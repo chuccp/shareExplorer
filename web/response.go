@@ -27,6 +27,9 @@ func ResponseData[T Data](data T) *Response[T] {
 func ResponseError(msg string) *Response[string] {
 	return &Response[string]{Code: 500, Error: msg}
 }
+func ResponseMsg(code int, msg string) *Response[string] {
+	return &Response[string]{Code: code, Error: msg}
+}
 func JsonToResponse[T Data](jsonString string) (*Response[T], error) {
 	var response Response[T]
 	err := json.Unmarshal([]byte(jsonString), &response)

@@ -179,10 +179,12 @@ func (c *Context) RemoteHandle() {
 								reverseProxy.ServeHTTP(context.Writer, context.Request)
 							}
 						} else {
-							context.AbortWithStatusJSON(200, web.ResponseError(status.GetMsg()))
+							context.AbortWithStatusJSON(200, web.ResponseMsg(status.GetCode(), status.GetMsg()))
 						}
 					}
 				}
+			} else {
+				context.AbortWithStatusJSON(200, web.ResponseError("用户名有误或未上传证书"))
 			}
 			context.Abort()
 		}

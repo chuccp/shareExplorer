@@ -3,13 +3,16 @@ package discover
 import (
 	"container/list"
 	"context"
+	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/entity"
+	"log"
 	"time"
 )
 
 type nodeSearchManage struct {
 	table        *Table
 	nodeSearches []*nodeSearch
+	coreCtx      *core.Context
 }
 
 func NewNodeSearchManage(table *Table) *nodeSearchManage {
@@ -34,6 +37,8 @@ func (nsm *nodeSearchManage) stop() {
 }
 
 func (nsm *nodeSearchManage) run() {
+
+	//nsm.table
 
 }
 
@@ -155,9 +160,11 @@ func NewFindValueNodeQueue() *findValueNodeQueue {
 
 func (nodeSearch *nodeSearch) queryNode(done chan<- struct{}) {
 	defer close(done)
+	log.Println("queryNode")
 	var findValueNodeQueue = NewFindValueNodeQueue()
 	queryNode := nodeSearch.table.FindValue(nodeSearch.searchNode.ServerName(), 0)
 	for _, n := range queryNode {
+		log.Println("queryNode", n.id.String())
 		if n.id == nodeSearch.searchNode.id {
 			nodeSearch.ping(n)
 			return

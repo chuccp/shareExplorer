@@ -30,7 +30,17 @@ func (s *NodeStatus) GetError() error {
 	return s.err
 }
 func (s *NodeStatus) GetMsg() string {
-	return "正在查找"
+	return "查找节点并登录中..."
+}
+func (s *NodeStatus) GetCode() int {
+
+	if s.Status == Searching || s.Status == SearchInit {
+		return 203
+	}
+	if s.Status == SearchFailed {
+		return 204
+	}
+	return 200
 }
 func (s *NodeStatus) GetAddress() *net.UDPAddr {
 	return s.address
