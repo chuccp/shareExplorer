@@ -6,11 +6,11 @@ import (
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/db"
 	"github.com/chuccp/shareExplorer/entity"
+	"github.com/chuccp/shareExplorer/util"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
 	"log"
 	"net"
-	"strings"
 )
 
 type admin struct {
@@ -133,6 +133,10 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 		if err != nil {
 			return err
 		}
+		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isNatServer", "false")
+		if err != nil {
+			return err
+		}
 		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
 		err = addressModel.AddAddress(admin.Addresses)
 		if err != nil {
@@ -243,43 +247,32 @@ func (s *Server) downloadUserCert(req *web.Request) (any, error) {
 }
 
 func (s *Server) uploadUserCert(req *web.Request) (any, error) {
-
-	addresses := req.FormValue("addresses")
-	if len(addresses) > 0 {
-
-	}
 	file, err := req.FormFile("cert")
 	if err != nil {
 		return nil, err
 	}
-	certPath := "client/" + file.Filename
-	err = web.SaveUploadedFile(file, certPath)
+
+	data, err := web.ReadAllUploadedFile(file)
 	if err != nil {
 		return nil, err
 	}
-	_, c, err := cert.ParseClientKuicCertFile(certPath)
+	filename := util.MD5(data)
+	certPath := "client/" + filename + ".kuic.cert"
+	err = web.SaveData(data, certPath)
+	if err != nil {
+		return nil, err
+	}
+	c, err := cert.ParseClientKuicCertBytes(data)
 	if err != nil {
 		return nil, err
 	}
 	var client entity.Client
 	client.Username = c.UserName
 	client.ServerName = c.ServerName
-	err = s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
-		err := s.context.GetDB().GetConfigModel().NewModel(tx).Create("isClient", "true")
-		if err != nil {
-			return err
-		}
-		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
-		err = addressModel.AddAddress(strings.Split(addresses, ";"))
-		if err != nil {
-			return err
-		}
-		err = s.context.GetDB().GetUserModel().NewModel(tx).AddClientUser(client.Username, certPath)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	err = s.context.GetDB().GetUserModel().AddClientUser(client.Username, certPath)
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}

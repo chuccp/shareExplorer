@@ -27,6 +27,27 @@ func SaveUploadedFile(file *multipart.FileHeader, dst string) error {
 	_, err = io.Copy(out, src)
 	return err
 }
+func SaveData(file []byte, dst string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
+		return err
+	}
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = out.Write(file)
+	return err
+}
+func ReadAllUploadedFile(file *multipart.FileHeader) ([]byte, error) {
+	src, err := file.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer src.Close()
+	return io.ReadAll(src)
+}
+
 func SaveUploadedFile2(src io.Reader, dst string, seq int) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
 		return err
