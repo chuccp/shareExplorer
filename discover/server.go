@@ -1,7 +1,6 @@
 package discover
 
 import (
-	"encoding/hex"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
@@ -55,7 +54,8 @@ func (s *Server) findValue(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	ns := s.table.FindValue(findValue.Target, findValue.Distances)
+	id, _ := wrapIdFName(findValue.Target)
+	ns := s.table.FindValue(id, findValue.Distances)
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
 func (s *Server) Init(context *core.Context) {
@@ -83,9 +83,9 @@ func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
 }
 
-func (s *Server) FindStatus(servername string) *entity.NodeStatus {
-	id, _ := hex.DecodeString(servername)
-	return s.nodeSearchManage.FindNodeStatus(ID(id))
+func (s *Server) FindStatus(servername string, isStart bool) *entity.NodeStatus {
+	id, _ := wrapIdFName(servername)
+	return s.nodeSearchManage.FindNodeStatus(id, isStart)
 }
 
 func (s *Server) Connect(address *net.UDPAddr) error {
@@ -113,7 +113,7 @@ func (s *Server) Stop() {
 		s.table.stop()
 	}
 	if s.nodeSearchManage != nil {
-		s.nodeSearchManage.stop()
+		s.nodeSearchManage.stopAll()
 	}
 }
 

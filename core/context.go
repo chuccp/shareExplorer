@@ -159,12 +159,13 @@ func (c *Context) RemoteHandle() {
 	c.engine.Use(func(context *gin.Context) {
 		if c.isRemote(context) {
 			username := context.Request.FormValue("username")
+			isStart := context.Request.FormValue("start")
 			certificate, has := c.clientCert.getCert(username)
 			if has {
 				ds, fa := c.GetDiscoverServer()
 				if fa {
 					log.Println("FindStatus", certificate.ServerName)
-					status := ds.FindStatus(certificate.ServerName)
+					status := ds.FindStatus(certificate.ServerName, strings.Contains(isStart, "true"))
 					if status.GetError() != nil {
 						context.AbortWithStatusJSON(200, web.ResponseError(status.GetError().Error()))
 					} else {

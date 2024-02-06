@@ -189,10 +189,10 @@ func (nss *NodeStore) addNode(n *node) {
 	}
 }
 
-func (nss *NodeStore) queryOneNode(serverName string) (*node, bool) {
+func (nss *NodeStore) queryNodeById(id ID) (*node, bool) {
 	nss.mutex.RLock()
 	defer nss.mutex.RUnlock()
-	v, ok := nss.memberMap[serverName]
+	v, ok := nss.memberMap[id.String()]
 	if ok {
 		return v, true
 	}
@@ -404,7 +404,6 @@ func (table *Table) loadSeedNodes() {
 
 func contains(ns []*node, id ID) bool {
 	for _, n := range ns {
-		log.Println("contains", n.ID(), id)
 		if n.ID() == id {
 			return true
 		}
@@ -538,16 +537,23 @@ func (table *Table) page(pageNo, pageSize int) ([]*node, int) {
 	return nodes, total
 }
 
-func (table *Table) queryServerNode(serverName string) (*node, bool) {
-	return table.servers.queryOneNode(serverName)
+func (table *Table) queryServerNode(serverName ID) (*node, bool) {
+	return table.servers.queryNodeById(serverName)
 }
 
-func (table *Table) FindValue(target string, distances int) []*Node {
+func (table *Table) FindValue(target ID, distances int) []*Node {
 	node, fa := table.queryServerNode(target)
 	if fa {
 		return []*Node{&node.Node}
 	}
 	return table.collectTableFindValueNode(distances)
+}
+func (table *Table) FindRemoteValue(target ID, node *Node, distances int) (queryNode []*Node, err error) {
+	return table.call.findValue(target, distances, node.addr)
+}
+
+func (table *Table) Ping(node *Node) (err error) {
+	return table.call.ping(node, node.addr)
 }
 
 type RecordBuckets struct {
