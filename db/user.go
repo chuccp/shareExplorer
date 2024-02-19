@@ -9,11 +9,11 @@ import (
 
 type User struct {
 	Id         uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
-	Username   string    `gorm:"unique;column:username" json:"username"`
+	Username   string    `gorm:"column:username" json:"username"`
 	Password   string    `gorm:"column:password" json:"password"`
 	Role       string    `gorm:"column:role" json:"role"`
 	PathIds    string    `gorm:"column:path_ids" json:"pathIds"`
-	CertPath   string    `gorm:"column:cert_path" json:"certPath"`
+	CertPath   string    `gorm:"unique;column:cert_path" json:"certPath"`
 	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"updateTime"`
 }
@@ -131,10 +131,6 @@ func (u *UserModel) AddClientUser(username string, certPath string) error {
 		if err != nil {
 			return err
 		}
-	}
-	err := u.deleteTable()
-	if err != nil {
-		return err
 	}
 	tx := u.db.Table(u.tableName).Create(&User{
 		Username:   username,

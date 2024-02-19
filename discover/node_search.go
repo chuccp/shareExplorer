@@ -174,18 +174,19 @@ func (qv *queryServer) stop() {
 }
 
 type nodeSearch struct {
-	queryTable    queryTable
-	searchNode    *Node
-	nodeStatus    *entity.NodeStatus
-	ctxCancel     context.CancelFunc
-	ctx           context.Context
-	tempQueryNode *queryServer
-	once          sync.Once
+	queryTable     queryTable
+	searchNode     *Node
+	nodeStatus     *entity.NodeStatus
+	tempNodeStatus *entity.NodeStatus
+	ctxCancel      context.CancelFunc
+	ctx            context.Context
+	tempQueryNode  *queryServer
+	once           sync.Once
 }
 
 func newNodeSearch(queryTable queryTable, searchId ID) *nodeSearch {
 	ctx, ctxCancel := context.WithCancel(context.Background())
-	return &nodeSearch{queryTable: queryTable, searchNode: &Node{id: searchId}, nodeStatus: entity.NewNodeStatus(), ctx: ctx, ctxCancel: ctxCancel}
+	return &nodeSearch{queryTable: queryTable, searchNode: &Node{id: searchId}, tempNodeStatus: entity.NewNodeStatus(), nodeStatus: entity.NewNodeStatus(), ctx: ctx, ctxCancel: ctxCancel}
 }
 func (nodeSearch *nodeSearch) run() {
 	go nodeSearch.loop()

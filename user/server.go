@@ -38,7 +38,6 @@ func (s *Server) signIn(req *web.Request) (any, error) {
 	if len(admin.Password) == 0 {
 		return web.ResponseError("密码不能为空"), nil
 	}
-
 	u, err := s.context.GetDB().GetUserModel().QueryUser(admin.Username, admin.Password)
 	if err != nil {
 		return nil, err

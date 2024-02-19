@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
-	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -132,7 +131,6 @@ func (table *Table) nextRefreshTime() time.Duration {
 }
 
 func (table *Table) doRevalidate(done chan<- struct{}) {
-	log.Println("===", "doRevalidate")
 	defer close(done)
 	table.register()
 }
