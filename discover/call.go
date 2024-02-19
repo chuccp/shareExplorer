@@ -51,8 +51,8 @@ func (call *call) findNode(node *Node, toNode *Node, address *net.UDPAddr, dista
 	}
 	return nil, errors.New(response.Error)
 }
-func (call *call) findValue(target ID, distances int, address *net.UDPAddr) ([]*Node, error) {
-	var queryNode = &FindValue{Target: target.String(), Distances: distances}
+func (call *call) findServer(target ID, distances int, address *net.UDPAddr) ([]*Node, error) {
+	var queryNode = &FindServer{Target: target.String(), Distances: distances}
 	data, _ := json.Marshal(queryNode)
 	value, err := call.httpClient.PostRequest(address, "/discover/findValue", string(data))
 	if err != nil {

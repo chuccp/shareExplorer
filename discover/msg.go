@@ -20,7 +20,7 @@ type (
 		ToId      string `json:"toId"`
 		Distances []uint `json:"distances"`
 	}
-	FindValue struct {
+	FindServer struct {
 		Target    string `json:"target"`
 		Distances int    `json:"distances"`
 	}

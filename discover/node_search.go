@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/entity"
+	"log"
 	"sync"
 	"time"
 )
@@ -49,47 +50,55 @@ func (nsm *nodeSearchManage) run() {
 type findValueNode struct {
 	queryNode *Node
 	fromId    ID
+	preId     ID
 }
 
 type findValueNodeQueue struct {
-	useNode  map[string]*findValueNode
-	nodeList *list.List
+	useNode    map[ID]*findValueNode
+	nodeList   *list.List
+	queryTable queryTable
 }
 
 func (f *findValueNodeQueue) addNode0(node *findValueNode) {
-	servername := node.queryNode.ServerName()
+	servername := node.queryNode.ID()
 	_, ok := f.useNode[servername]
 	if ok {
 		return
 	}
-	f.useNode[node.queryNode.ServerName()] = node
+	f.useNode[node.queryNode.ID()] = node
 	f.nodeList.PushBack(node)
 }
-func (f *findValueNodeQueue) addNode(fromId ID, queryNode *Node) {
-
-	fvn := &findValueNode{queryNode: queryNode, fromId: fromId}
-	f.addNode0(fvn)
-
+func (f *findValueNodeQueue) addNode(preId ID, fromId ID, queryNode *Node) {
+	maxDistance := LogDist(preId, fromId)
+	queryDistance := LogDist(queryNode.id, fromId)
+	if maxDistance == 0 || queryDistance < maxDistance {
+		fvn := &findValueNode{queryNode: queryNode, fromId: fromId, preId: preId}
+		f.addNode0(fvn)
+	}
+	f.queryTable.AddNatServer(wrapNode(queryNode))
 }
 func (f *findValueNodeQueue) getNode() (*findValueNode, bool) {
 	ele := f.nodeList.Front()
 	if ele != nil {
-		return ele.Value.(*findValueNode), true
+		fvn := ele.Value.(*findValueNode)
+		f.nodeList.Remove(ele)
+		return fvn, true
 	}
 	return nil, false
 }
-func NewFindValueNodeQueue() *findValueNodeQueue {
-	return &findValueNodeQueue{useNode: make(map[string]*findValueNode), nodeList: new(list.List)}
+func NewFindValueNodeQueue(queryTable queryTable) *findValueNodeQueue {
+	return &findValueNodeQueue{queryTable: queryTable, useNode: make(map[ID]*findValueNode), nodeList: new(list.List)}
 }
 
 type queryTable interface {
 	ID() ID
 	Ping(node *Node) error
-	FindRemoteValue(target ID, node *Node, distances int) ([]*Node, error)
-	FindValue(target ID, distances int) []*Node
+	FindRemoteServer(target ID, node *Node, distances int) ([]*Node, error)
+	FindServer(target ID, distances int) []*Node
+	AddNatServer(n *node)
 }
 
-type queryNode struct {
+type queryValue struct {
 	ctxCancel  context.CancelFunc
 	ctx        context.Context
 	queryTable queryTable
@@ -97,38 +106,38 @@ type queryNode struct {
 	once       sync.Once
 }
 
-func NewQueryNode(queryTable queryTable, searchId ID, parentCtx context.Context) *queryNode {
+func NewQueryValue(queryTable queryTable, searchId ID, parentCtx context.Context) *queryValue {
 	ctx, ctxCancel := context.WithCancel(parentCtx)
-	return &queryNode{queryTable: queryTable, searchId: searchId, ctx: ctx, ctxCancel: ctxCancel}
+	return &queryValue{queryTable: queryTable, searchId: searchId, ctx: ctx, ctxCancel: ctxCancel}
 }
-func (qn *queryNode) ping(node *Node) error {
-	return qn.queryTable.Ping(node)
+func (qv *queryValue) ping(node *Node) error {
+	return qv.queryTable.Ping(node)
 }
-func (qn *queryNode) findValue(searchId ID, fromId ID, queryNode *Node) ([]*Node, error) {
-	maxDistance := LogDist(searchId, fromId)
+func (qv *queryValue) findValue(preId ID, fromId ID, searchId ID, queryNode *Node) ([]*Node, error) {
+	maxDistance := LogDist(preId, fromId)
 	queryDistance := LogDist(queryNode.id, fromId)
-	if queryDistance > maxDistance {
-		maxDistance = LogDist(searchId, queryNode.id)
+	if maxDistance != 0 && queryDistance >= maxDistance {
+		queryDistance = LogDist(qv.queryTable.ID(), queryNode.id)
 	}
-	return qn.queryTable.FindRemoteValue(searchId, queryNode, maxDistance)
+	return qv.queryTable.FindRemoteServer(searchId, queryNode, queryDistance)
 }
 
-func (qn *queryNode) StartFindNode() (*Node, error) {
-	var findValueNodeQueue = NewFindValueNodeQueue()
-	queryNode := qn.queryTable.FindValue(qn.searchId, 0)
+func (qv *queryValue) StartFindValue() (*Node, error) {
+	var findValueNodeQueue = NewFindValueNodeQueue(qv.queryTable)
+	queryNode := qv.queryTable.FindServer(qv.searchId, 0)
 	for _, n := range queryNode {
-		if n.id == qn.searchId {
-			err := qn.ping(n)
+		if n.id == qv.searchId {
+			err := qv.ping(n)
 			if err != nil {
 				return nil, err
 			}
 			return n, nil
 		}
-		findValueNodeQueue.addNode(qn.queryTable.ID(), n)
+		findValueNodeQueue.addNode(qv.queryTable.ID(), qv.queryTable.ID(), n)
 	}
 	for {
 		select {
-		case <-qn.ctx.Done():
+		case <-qv.ctx.Done():
 			{
 				break
 			}
@@ -138,27 +147,29 @@ func (qn *queryNode) StartFindNode() (*Node, error) {
 				if !fa {
 					return nil, QueryNotFoundError
 				}
-				queryNode, err := qn.findValue(qn.searchId, node.fromId, node.queryNode)
+				queryNodes, err := qv.findValue(node.preId, node.fromId, qv.searchId, node.queryNode)
 				if err == nil {
-					for _, qNode := range queryNode {
-						if qNode.id == qn.searchId {
-							err := qn.ping(qNode)
+					for _, qNode := range queryNodes {
+						if qNode.id == qv.searchId {
+							err := qv.ping(qNode)
 							if err != nil {
 								return nil, err
 							}
 							return qNode, nil
 						}
-						findValueNodeQueue.addNode(node.queryNode.id, qNode)
+						findValueNodeQueue.addNode(node.fromId, node.queryNode.id, qNode)
 					}
+				} else {
+					log.Println(err)
 				}
 			}
 		}
 	}
 	return nil, QueryCloseError
 }
-func (qn *queryNode) stop() {
-	qn.once.Do(func() {
-		qn.ctxCancel()
+func (qv *queryValue) stop() {
+	qv.once.Do(func() {
+		qv.ctxCancel()
 	})
 }
 
@@ -168,7 +179,7 @@ type nodeSearch struct {
 	nodeStatus    *entity.NodeStatus
 	ctxCancel     context.CancelFunc
 	ctx           context.Context
-	tempQueryNode *queryNode
+	tempQueryNode *queryValue
 	once          sync.Once
 }
 
@@ -182,7 +193,7 @@ func (nodeSearch *nodeSearch) run() {
 
 func (nodeSearch *nodeSearch) tempRun() {
 	nodeSearch.tempClose()
-	queryNode := NewQueryNode(nodeSearch.queryTable, nodeSearch.searchNode.id, nodeSearch.ctx)
+	queryNode := NewQueryValue(nodeSearch.queryTable, nodeSearch.searchNode.id, nodeSearch.ctx)
 	nodeSearch.queryNode0(queryNode)
 }
 func (nodeSearch *nodeSearch) tempClose() {
@@ -250,13 +261,11 @@ func (nodeSearch *nodeSearch) refresh(done chan<- struct{}) {
 
 func (nodeSearch *nodeSearch) queryNode(done chan<- struct{}) {
 	defer close(done)
-	if nodeSearch.searchNode == nil {
-		queryNode := NewQueryNode(nodeSearch.queryTable, nodeSearch.searchNode.id, nodeSearch.ctx)
-		nodeSearch.queryNode0(queryNode)
-	}
+	queryNode := NewQueryValue(nodeSearch.queryTable, nodeSearch.searchNode.id, nodeSearch.ctx)
+	nodeSearch.queryNode0(queryNode)
 }
-func (nodeSearch *nodeSearch) queryNode0(qn *queryNode) {
-	node, err := qn.StartFindNode()
+func (nodeSearch *nodeSearch) queryNode0(qn *queryValue) {
+	node, err := qn.StartFindValue()
 	if err == nil {
 		nodeSearch.searchNode = node
 		nodeSearch.nodeStatus.SearchComplete(node.addr)
@@ -272,5 +281,5 @@ func (nodeSearch *nodeSearch) ping(node *Node) {
 	}
 }
 func (nodeSearch *nodeSearch) FindValue(target ID, node *Node, distances int) (queryNode []*Node, err error) {
-	return nodeSearch.queryTable.FindRemoteValue(target, node, distances)
+	return nodeSearch.queryTable.FindRemoteServer(target, node, distances)
 }

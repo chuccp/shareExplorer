@@ -30,6 +30,13 @@ func GenerateDistanceNodes(id ID, nBuckets int, num int) []*Node {
 	}
 	return nodes
 }
+func GenerateDistanceNodes2(id ID, nBuckets []int, num int) []*Node {
+	nodez := make([]*Node, 0)
+	for _, nBucket := range nBuckets {
+		nodez = append(nodez, GenerateDistanceNodes(id, nBucket, num)...)
+	}
+	return nodez
+}
 
 func ReadBit(src []byte, index int) bool {
 	startByteIndex := (index) / 8
@@ -173,4 +180,29 @@ func GenerateUDPAddr() *net.UDPAddr {
 		Port: randPort(),
 	}
 	return udpAddr
+}
+
+type QueryTable struct {
+	*Table
+	node          *Node
+	queryTableMap map[ID]*QueryTable
+}
+
+func NewQueryTable(table *Table, node *Node) *QueryTable {
+
+	return &QueryTable{Table: table, node: node, queryTableMap: make(map[ID]*QueryTable)}
+}
+
+func (qv *QueryTable) FindRemoteValue(target ID, node *Node, distances int) ([]*Node, error) {
+
+	qt, ok := qv.queryTableMap[node.ID()]
+	if ok {
+		nodes := qt.FindValue(target, distances)
+		return nodes, nil
+	}
+	return nil, QueryNotFoundError
+
+}
+func (qv *QueryTable) AddTable(id ID, queryTable *QueryTable) {
+	qv.queryTableMap[id] = queryTable
 }

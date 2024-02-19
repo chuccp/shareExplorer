@@ -3,7 +3,6 @@ package discover
 import (
 	"container/list"
 	"context"
-	"encoding/hex"
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
 	"log"
@@ -21,6 +20,7 @@ const (
 	bucketSize                  = 16
 	maxReplacements             = 10
 	findnodeResultLimit         = 16
+	findValueResultLimit        = 34
 	lookupRequestLimit          = 3
 )
 
@@ -148,12 +148,12 @@ func (table *Table) stop() {
 
 type NodeStore struct {
 	members   *list.List
-	memberMap map[string]*node
+	memberMap map[ID]*node
 	mutex     sync.RWMutex
 }
 
 func NewNodeStore() *NodeStore {
-	return &NodeStore{members: new(list.List), memberMap: make(map[string]*node)}
+	return &NodeStore{members: new(list.List), memberMap: make(map[ID]*node)}
 }
 
 func (nss *NodeStore) queryNode(pageNo, pageSize int) ([]*node, int) {
@@ -177,7 +177,7 @@ func (nss *NodeStore) queryNode(pageNo, pageSize int) ([]*node, int) {
 func (nss *NodeStore) addNode(n *node) {
 	nss.mutex.Lock()
 	defer nss.mutex.Unlock()
-	key := hex.EncodeToString(n.id[:])
+	key := n.ID()
 	v, ok := nss.memberMap[key]
 	if !ok {
 		n.addedAt = time.Now()
@@ -192,7 +192,7 @@ func (nss *NodeStore) addNode(n *node) {
 func (nss *NodeStore) queryNodeById(id ID) (*node, bool) {
 	nss.mutex.RLock()
 	defer nss.mutex.RUnlock()
-	v, ok := nss.memberMap[id.String()]
+	v, ok := nss.memberMap[id]
 	if ok {
 		return v, true
 	}
@@ -305,6 +305,24 @@ func (table *Table) addServer(n *node) {
 func (table *Table) addClient(n *node) {
 	table.clients.addNode(n)
 }
+
+func (table *Table) AddNatServer(n *node) {
+	b := table.bucket(n.ID())
+	if contains(b.entries, n.ID()) {
+		return
+	}
+	if len(b.entries) >= bucketSize {
+		table.addReplacement(b, n)
+		return
+	}
+	if !table.addIP(b, n.IP()) {
+		return
+	}
+	n.addedAt = time.Now()
+	b.entries = append(b.entries, n)
+	b.replacements = deleteNode(b.replacements, n)
+}
+
 func (table *Table) addSeenNode(n *node) {
 	if n.ID() == table.self().id {
 		return
@@ -317,20 +335,7 @@ func (table *Table) addSeenNode(n *node) {
 		table.addServer(n)
 	}
 	if n.IsNatServer() {
-		b := table.bucket(n.ID())
-		if contains(b.entries, n.ID()) {
-			return
-		}
-		if len(b.entries) >= bucketSize {
-			table.addReplacement(b, n)
-			return
-		}
-		if !table.addIP(b, n.IP()) {
-			return
-		}
-		n.addedAt = time.Now()
-		b.entries = append(b.entries, n)
-		b.replacements = deleteNode(b.replacements, n)
+		table.AddNatServer(n)
 	}
 }
 func deleteNode(list []*node, n *node) []*node {
@@ -416,10 +421,7 @@ func (table *Table) bucket(id ID) *bucket {
 	return table.bucketAtDistance(d)
 }
 func (table *Table) bucketAtDistance(d int) *bucket {
-	if d <= bucketMinDistance {
-		return table.buckets[0]
-	}
-	return table.buckets[d-bucketMinDistance-1]
+	return table.buckets[table.bucketIndexAtDistance(d)]
 }
 func (table *Table) bucketIndexAtDistance(d int) int {
 	if d <= bucketMinDistance {
@@ -541,15 +543,15 @@ func (table *Table) queryServerNode(serverName ID) (*node, bool) {
 	return table.servers.queryNodeById(serverName)
 }
 
-func (table *Table) FindValue(target ID, distances int) []*Node {
+func (table *Table) FindServer(target ID, distances int) []*Node {
 	node, fa := table.queryServerNode(target)
 	if fa {
 		return []*Node{&node.Node}
 	}
-	return table.collectTableFindValueNode(distances)
+	return table.collectTableFindNode(distances)
 }
-func (table *Table) FindRemoteValue(target ID, node *Node, distances int) (queryNode []*Node, err error) {
-	return table.call.findValue(target, distances, node.addr)
+func (table *Table) FindRemoteServer(target ID, node *Node, distances int) (queryNode []*Node, err error) {
+	return table.call.findServer(target, distances, node.addr)
 }
 
 func (table *Table) Ping(node *Node) (err error) {
@@ -568,26 +570,27 @@ func (recordBuckets *RecordBuckets) push(node *Node) bool {
 	}
 	return false
 }
-func (table *Table) collectTableFindValueNode(distances int) (queryNode []*Node) {
-	var recordBuckets = &RecordBuckets{maxElems: findnodeResultLimit}
-	table.collectBucketsFindValueNode(0, table.bucketIndexAtDistance(distances), recordBuckets)
-	table.collectBucketsFindValueNode(table.bucketIndexAtDistance(distances), nBuckets, recordBuckets)
+func (table *Table) collectTableFindNode(distances int) (queryNode []*Node) {
+	var recordBuckets = &RecordBuckets{maxElems: findValueResultLimit}
+	table.collectBucketsFindNode(0, table.bucketIndexAtDistance(distances), recordBuckets)
+	table.collectBucketsFindNode(table.bucketIndexAtDistance(distances), nBuckets, recordBuckets)
 	return recordBuckets.entries
 }
-func (table *Table) collectBucketsFindValueNode(minBucketIndex, maxBucketIndex int, recordBuckets *RecordBuckets) {
+func (table *Table) collectBucketsFindNode(minBucketIndex, maxBucketIndex int, recordBuckets *RecordBuckets) {
 	index := 0
 	for {
 		fa := table.collectBucketsByIndex(index, minBucketIndex, maxBucketIndex, recordBuckets)
-		index++
+
 		if fa {
 			break
 		}
 		if len(recordBuckets.entries) >= recordBuckets.maxElems {
 			break
 		}
+		index++
 	}
 }
-func (table *Table) collectBucketsByIndex(index int, minBucketIndex, maxBucketIndex int, recordBuckets *RecordBuckets) bool {
+func (table *Table) collectBucketsByIndex(index, minBucketIndex, maxBucketIndex int, recordBuckets *RecordBuckets) bool {
 	isEnd := true
 	for i := minBucketIndex; i < maxBucketIndex; i++ {
 		b := table.buckets[i]
