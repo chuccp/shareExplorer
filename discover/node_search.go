@@ -113,7 +113,7 @@ func NewQueryServer(queryTable queryTable, searchId ID, parentCtx context.Contex
 func (qv *queryServer) ping(node *Node) error {
 	return qv.queryTable.Ping(node)
 }
-func (qv *queryServer) findValue(preId ID, fromId ID, searchId ID, queryNode *Node) ([]*Node, error) {
+func (qv *queryServer) findServer(preId ID, fromId ID, searchId ID, queryNode *Node) ([]*Node, error) {
 	maxDistance := LogDist(preId, fromId)
 	queryDistance := LogDist(queryNode.id, fromId)
 	if maxDistance != 0 && queryDistance >= maxDistance {
@@ -147,7 +147,7 @@ func (qv *queryServer) StartFind() (*Node, error) {
 				if !fa {
 					return nil, QueryNotFoundError
 				}
-				queryNodes, err := qv.findValue(node.preId, node.fromId, qv.searchId, node.queryNode)
+				queryNodes, err := qv.findServer(node.preId, node.fromId, qv.searchId, node.queryNode)
 				if err == nil {
 					for _, qNode := range queryNodes {
 						if qNode.id == qv.searchId {

@@ -49,13 +49,13 @@ func (s *Server) findNode(req *web.Request) (any, error) {
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
 func (s *Server) findValue(req *web.Request) (any, error) {
-	var findValue FindValue
+	var findValue FindServer
 	err := req.BodyJson(&findValue)
 	if err != nil {
 		return nil, err
 	}
 	id, _ := wrapIdFName(findValue.Target)
-	ns := s.table.FindValue(id, findValue.Distances)
+	ns := s.table.FindServer(id, findValue.Distances)
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
 func (s *Server) Init(context *core.Context) {

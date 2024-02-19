@@ -138,7 +138,7 @@ func TestTable_AddSeenNodes(t *testing.T) {
 		table.addSeenNode(node2)
 	}
 	node := GenerateNode()
-	nodes := table.FindValue(node.ID(), 248)
+	nodes := table.FindServer(node.ID(), 248)
 	t.Log(nodes)
 }
 
@@ -193,11 +193,11 @@ func NewQueryTable(table *Table, node *Node) *QueryTable {
 	return &QueryTable{Table: table, node: node, queryTableMap: make(map[ID]*QueryTable)}
 }
 
-func (qv *QueryTable) FindRemoteValue(target ID, node *Node, distances int) ([]*Node, error) {
+func (qv *QueryTable) FindRemoteServer(target ID, node *Node, distances int) ([]*Node, error) {
 
 	qt, ok := qv.queryTableMap[node.ID()]
 	if ok {
-		nodes := qt.FindValue(target, distances)
+		nodes := qt.FindServer(target, distances)
 		return nodes, nil
 	}
 	return nil, QueryNotFoundError
