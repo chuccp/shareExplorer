@@ -162,6 +162,9 @@ func (c *Context) RemoteHandle() {
 			code := context.Request.FormValue("code")
 			isStart := context.Request.FormValue("start")
 			certificate, has := c.clientCert.getCertByCode(username, code)
+
+			log.Println("getCertByCode username:", username, " code:", code, "  has:", has)
+
 			if has {
 				ds, fa := c.GetDiscoverServer()
 				if fa {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
+	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -132,6 +133,7 @@ func (table *Table) nextRefreshTime() time.Duration {
 
 func (table *Table) doRevalidate(done chan<- struct{}) {
 	defer close(done)
+	log.Println("doRevalidate")
 	table.register()
 }
 
@@ -346,6 +348,7 @@ func deleteNode(list []*node, n *node) []*node {
 }
 func (table *Table) doRefresh(done chan<- struct{}) {
 	defer close(done)
+	log.Println("doRefresh")
 	table.loadSeedNodes()
 	table.lookupSelf()
 	for i := 0; i < 3; i++ {
@@ -441,7 +444,11 @@ func (table *Table) nodeToRevalidate() (n *node, bi int) {
 func (table *Table) registerNursery() {
 	for _, n := range table.nursery {
 		if n.ID().IsBlank() {
-			table.register0(n)
+			err := table.register0(n)
+			if err == nil {
+				log.Println("registerNursery", n)
+				table.addSeenNode(n)
+			}
 		} else {
 			table.addSeenNode(n)
 		}
@@ -449,7 +456,8 @@ func (table *Table) registerNursery() {
 }
 
 func (table *Table) register() {
-	node, _ := table.nodeToRevalidate()
+	node, bi := table.nodeToRevalidate()
+	log.Println("node:", node, "bi:", bi)
 	if node != nil {
 		table.validate(node)
 	}
@@ -466,12 +474,19 @@ func (table *Table) validate(node *node) {
 	}
 	node.liveNessChecks++
 }
-func (table *Table) register0(node *node) {
+func (table *Table) register0(node *node) error {
 	value, err := table.call.register(table.localNode, node.addr)
 	if err != nil {
-		return
+		return err
 	}
+	log.Println("register0 value", value)
+	log.Println("register0", node.ID())
 	node.SetID(value.ID())
+	node.isClient = value.isClient
+	node.isServer = value.isServer
+	node.isNatServer = value.isNatServer
+	log.Println("register0", node.ID())
+	return nil
 }
 
 func (table *Table) findNode(n *Node, distances []uint) ([]*Node, error) {

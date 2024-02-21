@@ -7,6 +7,7 @@ import (
 	"github.com/chuccp/shareExplorer/util"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"log"
 	"strconv"
 )
 
@@ -58,6 +59,7 @@ func (se *ShareExplorer) Start() error {
 		return err
 	}
 
+	log.Println("IsClient:", se.serverConfig.IsClient())
 	//加载客户端证书
 	if se.serverConfig.IsClient() {
 		se.clientCert.init()

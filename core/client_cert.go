@@ -32,7 +32,7 @@ func (c *ClientCert) loadAllUser() error {
 		return err
 	}
 	for _, user := range users {
-		log.Println("loadAllUser username:", user.Username, "Path:", user.CertPath)
+		log.Println("loadAllUser username:", user.Username, " code:", user.Code, "Path:", user.CertPath)
 		err := c.LoadCert(user.Username, user.Code, user.CertPath)
 		if err != nil {
 			return err
@@ -74,7 +74,7 @@ func (c *ClientCert) LoadCert(username string, code string, path string) error {
 		return err
 	}
 	if username == cc.UserName {
-		log.Println("LoadCert username:", username, "ServerName:", cc.ServerName)
+		log.Println("LoadCert username:", username, "code:", code, " ServerName:", cc.ServerName)
 		c.codeClientCerts = append(c.codeClientCerts, &codeClientCert{clientCertificate: cc, code: code})
 		return nil
 	}
