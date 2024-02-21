@@ -14,6 +14,7 @@ type User struct {
 	Role       string    `gorm:"column:role" json:"role"`
 	PathIds    string    `gorm:"column:path_ids" json:"pathIds"`
 	CertPath   string    `gorm:"unique;column:cert_path" json:"certPath"`
+	Code       string    `gorm:"unique;column:code" json:"code"`
 	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"updateTime"`
 }
@@ -125,19 +126,37 @@ func (u *UserModel) AddGuestUser(username string, password string, pathIds strin
 	})
 	return tx.Error
 }
-func (u *UserModel) AddClientUser(username string, certPath string) error {
+func (u *UserModel) AddClientUser(username string, code string, certPath string) error {
 	if !u.IsExist() {
 		err := u.createTable()
 		if err != nil {
 			return err
 		}
 	}
-	tx := u.db.Table(u.tableName).Create(&User{
+
+	var count2 int64
+	tx := u.db.Table(u.tableName).Where("code=?  limit 1", code).Count(&count2)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if count2 > 0 {
+		return errors.New("code已经存在")
+	}
+	var count int64
+	tx = u.db.Table(u.tableName).Where("cert_path=?  limit 1", certPath).Count(&count)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if count > 0 {
+		return errors.New("证书已经存在")
+	}
+	tx = u.db.Table(u.tableName).Create(&User{
 		Username:   username,
 		Password:   "",
 		Role:       "client",
 		CertPath:   certPath,
 		PathIds:    "",
+		Code:       code,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 	})
@@ -157,7 +176,7 @@ func (u *UserModel) QueryUser(username string, password string) (*User, error) {
 	}
 	return nil, tx.Error
 }
-func (u *UserModel) QueryOneUser(username string) (*User, error) {
+func (u *UserModel) QueryOneUser(username string, code string) (*User, error) {
 	if !u.IsExist() {
 		err := u.createTable()
 		if err != nil {
@@ -165,7 +184,7 @@ func (u *UserModel) QueryOneUser(username string) (*User, error) {
 		}
 	}
 	var user User
-	tx := u.db.Table(u.tableName).Find(&user, "username=?  limit 1", username)
+	tx := u.db.Table(u.tableName).Find(&user, "username=? and code=? limit 1", username, code)
 	if tx.Error == nil {
 		return &user, nil
 	}

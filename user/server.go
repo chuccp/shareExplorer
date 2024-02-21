@@ -96,6 +96,12 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 		if err != nil {
 			return err
 		}
+
+		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isClient", "false")
+		if err != nil {
+			return err
+		}
+
 		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
 		err = addressModel.AddAddress(admin.Addresses)
 		if err != nil {
@@ -136,6 +142,11 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 		if err != nil {
 			return err
 		}
+		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isClient", "true")
+		if err != nil {
+			return err
+		}
+
 		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
 		err = addressModel.AddAddress(admin.Addresses)
 		if err != nil {
@@ -143,6 +154,10 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	err = s.context.GetServerConfig().Init()
 	if err != nil {
 		return nil, err
 	}
@@ -246,6 +261,11 @@ func (s *Server) downloadUserCert(req *web.Request) (any, error) {
 }
 
 func (s *Server) uploadUserCert(req *web.Request) (any, error) {
+
+	code := req.FormValue("code")
+	if len(code) == 0 {
+		return nil, errors.New("code can't blank")
+	}
 	file, err := req.FormFile("cert")
 	if err != nil {
 		return nil, err
@@ -268,7 +288,7 @@ func (s *Server) uploadUserCert(req *web.Request) (any, error) {
 	var client entity.Client
 	client.Username = c.UserName
 	client.ServerName = c.ServerName
-	err = s.context.GetDB().GetUserModel().AddClientUser(client.Username, certPath)
+	err = s.context.GetDB().GetUserModel().AddClientUser(client.Username, code, certPath)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +296,7 @@ func (s *Server) uploadUserCert(req *web.Request) (any, error) {
 		return nil, err
 	}
 	clientCert := s.context.GetClientCert()
-	err = clientCert.LoadUser(client.Username)
+	err = clientCert.LoadUser(client.Username, code)
 	if err != nil {
 		return nil, err
 	}
@@ -383,8 +403,9 @@ func (s *Server) editUser(req *web.Request) (any, error) {
 }
 func (s *Server) queryOneUser(req *web.Request) (any, error) {
 	username := req.FormValue("username")
+	code := req.FormValue("code")
 	if len(username) > 0 {
-		user, err := s.context.GetDB().GetUserModel().QueryOneUser(username)
+		user, err := s.context.GetDB().GetUserModel().QueryOneUser(username, code)
 		if err != nil {
 			return nil, err
 		}

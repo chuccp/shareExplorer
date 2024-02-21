@@ -24,9 +24,12 @@ func (nsm *nodeSearchManage) FindNodeStatus(searchId ID, isStart bool) *entity.N
 	for _, search := range nsm.nodeSearches {
 		if searchId == search.searchNode.id {
 			if isStart && !search.nodeStatus.IsComplete() {
+				if isStart {
+					search.tempNodeStatus = entity.NewNodeStatus()
+				}
 				go search.tempRun()
 			}
-			return search.nodeStatus
+			return search.tempNodeStatus
 		}
 	}
 	nodeSearch := newNodeSearch(nsm.table, searchId)
@@ -270,8 +273,10 @@ func (nodeSearch *nodeSearch) queryNode0(qn *queryServer) {
 	if err == nil {
 		nodeSearch.searchNode = node
 		nodeSearch.nodeStatus.SearchComplete(node.addr)
+		nodeSearch.tempNodeStatus.SearchComplete(node.addr)
 	} else {
 		nodeSearch.nodeStatus.SearchFail(err)
+		nodeSearch.tempNodeStatus.SearchFail(err)
 	}
 }
 

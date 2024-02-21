@@ -159,8 +159,9 @@ func (c *Context) RemoteHandle() {
 	c.engine.Use(func(context *gin.Context) {
 		if c.isRemote(context) {
 			username := context.Request.FormValue("username")
+			code := context.Request.FormValue("code")
 			isStart := context.Request.FormValue("start")
-			certificate, has := c.clientCert.getCert(username)
+			certificate, has := c.clientCert.getCertByCode(username, code)
 			if has {
 				ds, fa := c.GetDiscoverServer()
 				if fa {
