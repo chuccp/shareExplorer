@@ -133,7 +133,7 @@ func (table *Table) nextRefreshTime() time.Duration {
 
 func (table *Table) doRevalidate(done chan<- struct{}) {
 	defer close(done)
-	log.Println("doRevalidate")
+	//log.Println("doRevalidate")
 	table.register()
 }
 
@@ -456,8 +456,8 @@ func (table *Table) registerNursery() {
 }
 
 func (table *Table) register() {
-	node, bi := table.nodeToRevalidate()
-	log.Println("node:", node, "bi:", bi)
+	node, _ := table.nodeToRevalidate()
+	//log.Println("node:", node, "bi:", bi)
 	if node != nil {
 		table.validate(node)
 	}

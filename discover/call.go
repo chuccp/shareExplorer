@@ -14,7 +14,7 @@ type call struct {
 }
 
 func (call *call) register(localNode *Node, address *net.UDPAddr) (*Node, error) {
-	log.Println("register==", "serverName:", localNode.ServerName(), " IsServer:", localNode.isServer, " IsNatServer:", localNode.isNatServer, " IsClient:", localNode.isClient)
+	//log.Println("register==", "serverName:", localNode.ServerName(), " IsServer:", localNode.isServer, " IsNatServer:", localNode.isNatServer, " IsClient:", localNode.isClient)
 	data, _ := json.Marshal(NodeToRegister(localNode))
 	value, err := call.httpClient.PostRequest(address, "/discover/register", string(data))
 	if err != nil {
