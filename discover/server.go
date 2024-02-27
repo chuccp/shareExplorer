@@ -58,12 +58,21 @@ func (s *Server) findValue(req *web.Request) (any, error) {
 	ns := s.table.FindServer(id, findValue.Distances)
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
+
+func (s *Server) nodeStatus(req *web.Request) (any, error) {
+	//var nodeStatus NodeStatus
+	//err := req.BodyJson(&nodeStatus)
+	return web.ResponseOK("ok"), nil
+}
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.call = &call{httpClient: core.NewHttpClient(context)}
 	s.context.SetDiscoverServer(s)
 	s.context.Post("/discover/register", s.register)
 	s.context.Post("/discover/connect", s.connect)
+	s.context.Post("/discover/nodeStatus", s.nodeStatus)
+	//nodeStatus
+
 	s.context.Get("/discover/nodeList", s.nodeList)
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/findValue", s.findValue)

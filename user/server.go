@@ -442,10 +442,10 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/editUser", s.editUser)
 	context.Get("/user/queryOneUser", s.queryOneUser)
 
-	context.Get("/user/queryOnePath", s.queryOnePath)
-	context.Post("/user/addPath", s.addPath)
-	context.Post("/user/editPath", s.editPath)
-	context.Get("/user/deletePath", s.deletePath)
+	context.PostRemote("/user/queryOnePath", s.queryOnePath)
+	context.PostRemote("/user/addPath", s.addPath)
+	context.PostRemote("/user/editPath", s.editPath)
+	context.PostRemote("/user/deletePath", s.deletePath)
 
 	context.GetRemote("/user/queryPath", s.queryPath)
 	context.GetRemote("/user/queryAllPath", s.queryAllPath)
