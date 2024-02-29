@@ -22,6 +22,9 @@ func NewNodeStatus() *NodeStatus {
 func (s *NodeStatus) IsComplete() bool {
 	return s.Status == SearchComplete
 }
+func (s *NodeStatus) IsOK() bool {
+	return s.Status == SearchComplete && s.err == nil
+}
 func (s *NodeStatus) SearchFail(err error) {
 	s.Error = err.Error()
 	s.err = err

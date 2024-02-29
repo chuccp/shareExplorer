@@ -9,7 +9,6 @@ import (
 	"github.com/chuccp/shareExplorer/util"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
-	"log"
 	"net"
 )
 
@@ -55,7 +54,6 @@ func (s *Server) signIn(req *web.Request) (any, error) {
 }
 func (s *Server) addAdmin(req *web.Request) (any, error) {
 	var admin admin
-	log.Println("#################", admin)
 	req.BodyJson(&admin)
 	if len(admin.Username) == 0 {
 		return web.ResponseError("用户名不能为空"), nil
@@ -75,8 +73,13 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 		}
 	}
 
-	err := s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
-		err := s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin")
+	cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(admin.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
+		err := s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin", cert)
 		if err != nil {
 			return err
 		}
@@ -373,7 +376,13 @@ func (s *Server) addUser(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = s.context.GetDB().GetUserModel().AddGuestUser(user.Username, user.Password, user.PathIds)
+
+	cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(user.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.context.GetDB().GetUserModel().AddGuestUser(user.Username, user.Password, user.PathIds, cert)
 	if err != nil {
 		return nil, err
 	}
@@ -433,14 +442,14 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/connect", s.connect)
 	context.Get("/user/downloadCert", s.downloadCert)
-	context.Get("/user/downloadUserCert", s.downloadUserCert)
+	context.GetRemote("/user/downloadUserCert", s.downloadUserCert)
 	context.Post("/user/uploadUserCert", s.uploadUserCert)
 
-	context.Get("/user/queryUser", s.queryUser)
-	context.Post("/user/addUser", s.addUser)
-	context.Get("/user/deleteUser", s.deleteUser)
-	context.Post("/user/editUser", s.editUser)
-	context.Get("/user/queryOneUser", s.queryOneUser)
+	context.GetRemote("/user/queryUser", s.queryUser)
+	context.PostRemote("/user/addUser", s.addUser)
+	context.GetRemote("/user/deleteUser", s.deleteUser)
+	context.PostRemote("/user/editUser", s.editUser)
+	context.GetRemote("/user/queryOneUser", s.queryOneUser)
 
 	context.PostRemote("/user/queryOnePath", s.queryOnePath)
 	context.PostRemote("/user/addPath", s.addPath)

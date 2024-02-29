@@ -23,7 +23,7 @@ func NewNodeSearchManage(table *Table) *nodeSearchManage {
 func (nsm *nodeSearchManage) FindNodeStatus(searchId ID, isStart bool) *entity.NodeStatus {
 	for _, search := range nsm.nodeSearches {
 		if searchId == search.searchNode.id {
-			if isStart && !search.nodeStatus.IsComplete() {
+			if isStart && !search.nodeStatus.IsOK() {
 				if isStart {
 					search.tempNodeStatus = entity.NewNodeStatus()
 				}

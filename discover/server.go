@@ -73,7 +73,7 @@ func (s *Server) Init(context *core.Context) {
 	s.context.Post("/discover/nodeStatus", s.nodeStatus)
 	//nodeStatus
 
-	s.context.Get("/discover/nodeList", s.nodeList)
+	s.context.GetRemote("/discover/nodeList", s.nodeList)
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/findValue", s.findValue)
 	if !s.context.GetServerConfig().HasInit() {

@@ -52,7 +52,7 @@ func (u *UserModel) createTable() error {
 func (u *UserModel) NewModel(db *gorm.DB) *UserModel {
 	return &UserModel{db: db, tableName: u.tableName}
 }
-func (u *UserModel) AddUser(username string, password string, role string) error {
+func (u *UserModel) AddUser(username string, password string, role string, path string) error {
 	if !u.IsExist() {
 		err := u.createTable()
 		if err != nil {
@@ -63,6 +63,8 @@ func (u *UserModel) AddUser(username string, password string, role string) error
 		Username:   username,
 		Password:   password,
 		Role:       role,
+		Code:       username,
+		CertPath:   path,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 	})
@@ -109,7 +111,7 @@ func (u *UserModel) EditUser(id uint, username string, password string, pathIds 
 	return tx.Error
 }
 
-func (u *UserModel) AddGuestUser(username string, password string, pathIds string) error {
+func (u *UserModel) AddGuestUser(username string, password string, pathIds string, path string) error {
 	if !u.IsExist() {
 		err := u.createTable()
 		if err != nil {
@@ -120,7 +122,9 @@ func (u *UserModel) AddGuestUser(username string, password string, pathIds strin
 		Username:   username,
 		Password:   password,
 		Role:       "guest",
+		Code:       username,
 		PathIds:    pathIds,
+		CertPath:   path,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 	})

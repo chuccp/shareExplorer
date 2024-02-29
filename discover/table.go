@@ -133,7 +133,6 @@ func (table *Table) nextRefreshTime() time.Duration {
 
 func (table *Table) doRevalidate(done chan<- struct{}) {
 	defer close(done)
-	log.Println("doRevalidate")
 	table.register()
 }
 
