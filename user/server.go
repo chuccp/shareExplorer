@@ -453,6 +453,7 @@ func (s *Server) Init(context *core.Context) {
 
 	context.PostRemote("/user/queryOnePath", s.queryOnePath)
 	context.PostRemote("/user/addPath", s.addPath)
+
 	context.PostRemote("/user/editPath", s.editPath)
 	context.PostRemote("/user/deletePath", s.deletePath)
 
