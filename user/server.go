@@ -189,7 +189,7 @@ func (s *Server) info(req *web.Request) (any, error) {
 	} else {
 		system.RemoteAddress = s.context.GetConfigArray("traversal", "remote.address")
 	}
-	return &system, nil
+	return web.ResponseOK(&system), nil
 }
 
 func (s *Server) reset(req *web.Request) (any, error) {

@@ -31,11 +31,25 @@ func (s *Server) files(req *web.Request) (any, error) {
 }
 
 func (s *Server) download(req *web.Request) (any, error) {
-	Path := req.FormValue("Path")
-	RootPath := req.FormValue("RootPath")
+	Path := req.FormValue("path")
+	RootPath := req.FormValue("rootPath")
 	if len(Path) > 0 && len(RootPath) > 0 {
 		file := path.Join(RootPath, Path)
 		return web.ResponseFile(file), nil
+	}
+	return nil, os.ErrNotExist
+}
+func (s *Server) delete(req *web.Request) (any, error) {
+	Path := req.FormValue("path")
+	RootPath := req.FormValue("rootPath")
+	if len(Path) > 0 && len(RootPath) > 0 {
+		file := path.Join(RootPath, Path)
+		println(file)
+		err := os.Remove(file)
+		if err != nil {
+			return nil, err
+		}
+		return web.ResponseOK("ok"), nil
 	}
 	return nil, os.ErrNotExist
 }
@@ -127,6 +141,7 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemote("/file/paths", s.paths)
 	context.GetRemote("/file/index", s.index)
 	context.GetRemote("/file/download", s.download)
+	context.GetRemote("/file/delete", s.delete)
 	context.GetRemote("/file/files", s.files)
 	context.PostRemote("/file/upload", s.upload)
 	context.GetRemote("/file/cancelUpload", s.cancelUpload)
