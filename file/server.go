@@ -2,6 +2,7 @@ package file
 
 import (
 	"github.com/chuccp/shareExplorer/core"
+	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/io"
 	"github.com/chuccp/shareExplorer/web"
 	"os"
@@ -36,6 +37,26 @@ func (s *Server) download(req *web.Request) (any, error) {
 	if len(Path) > 0 && len(RootPath) > 0 {
 		file := path.Join(RootPath, Path)
 		return web.ResponseFile(file), nil
+	}
+	return nil, os.ErrNotExist
+}
+
+func (s *Server) rename(req *web.Request) (any, error) {
+
+	var rename entity.Rename
+	err := req.BodyJson(&rename)
+	if err != nil {
+		return nil, os.ErrNotExist
+	}
+	if len(rename.Path) > 0 && len(rename.RootPath) > 0 {
+		fileDir := path.Join(rename.RootPath, rename.Path)
+		oldName := path.Join(fileDir, rename.OldName)
+		newFile := path.Join(fileDir, rename.NewName)
+		err := os.Rename(oldName, newFile)
+		if err != nil {
+			return nil, err
+		}
+		return web.ResponseOK("ok"), nil
 	}
 	return nil, os.ErrNotExist
 }
@@ -141,6 +162,7 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemote("/file/paths", s.paths)
 	context.GetRemote("/file/index", s.index)
 	context.GetRemote("/file/download", s.download)
+	context.PostRemote("/file/rename", s.rename)
 	context.GetRemote("/file/delete", s.delete)
 	context.GetRemote("/file/files", s.files)
 	context.PostRemote("/file/upload", s.upload)

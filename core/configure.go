@@ -23,17 +23,24 @@ func (sc *ServerConfig) Init() error {
 	if err != nil {
 		return err
 	}
-	for _, config := range configs {
-		if config.Key == "isServer" {
-			sc.config.IsServer = config.Value
-		}
-		if config.Key == "isClient" {
-			sc.config.IsClient = config.Value
-		}
-		if config.Key == "isNatServer" {
-			sc.config.IsNatServer = config.Value
+	if len(configs) == 0 {
+		sc.config.IsServer = ""
+		sc.config.IsClient = ""
+		sc.config.IsNatServer = ""
+	} else {
+		for _, config := range configs {
+			if config.Key == "isServer" {
+				sc.config.IsServer = config.Value
+			}
+			if config.Key == "isClient" {
+				sc.config.IsClient = config.Value
+			}
+			if config.Key == "isNatServer" {
+				sc.config.IsNatServer = config.Value
+			}
 		}
 	}
+
 	return nil
 }
 func (sc *ServerConfig) GetConfig() *Config {
