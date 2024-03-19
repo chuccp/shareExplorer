@@ -11,12 +11,12 @@ import (
 )
 
 type nodeSearchManage struct {
-	table        *Table2
+	table        *Table
 	nodeSearches []*nodeSearch
 	coreCtx      *core.Context
 }
 
-func NewNodeSearchManage(table *Table2) *nodeSearchManage {
+func NewNodeSearchManage(table *Table) *nodeSearchManage {
 	return &nodeSearchManage{table: table, nodeSearches: make([]*nodeSearch, 0)}
 }
 

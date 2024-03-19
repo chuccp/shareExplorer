@@ -16,7 +16,7 @@ const (
 
 type Server struct {
 	context          *core.Context
-	table            *Table2
+	table            *Table
 	nodeSearchManage *nodeSearchManage
 	call             *call
 	localNode        *Node
