@@ -78,7 +78,7 @@ func (f *findServerNodeQueue) addNode(preId ID, fromId ID, queryNode *Node) {
 		fvn := &findServerNode{queryNode: queryNode, fromId: fromId, preId: preId}
 		f.addNode0(fvn)
 	}
-	f.queryTable.AddNatServer(wrapNode(queryNode))
+	f.queryTable.AddNatServer(queryNode)
 }
 func (f *findServerNodeQueue) getNode() (*findServerNode, bool) {
 	ele := f.nodeList.Front()
@@ -98,7 +98,7 @@ type queryTable interface {
 	Ping(node *Node) error
 	FindRemoteServer(target ID, node *Node, distances int) (*Node, []*Node, error)
 	FindServer(target ID, distances int) (*Node, []*Node)
-	AddNatServer(n *node)
+	AddNatServer(n *Node)
 }
 
 type queryServer struct {

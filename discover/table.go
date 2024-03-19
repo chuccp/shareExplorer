@@ -1,8 +1,8 @@
 package discover
 
 import (
-	"container/list"
 	"context"
+	"errors"
 	"github.com/chuccp/shareExplorer/core"
 	"log"
 	"math/rand"
@@ -11,69 +11,110 @@ import (
 	"time"
 )
 
-type node struct {
-	Node
-	addedAt        time.Time
-	lastLiveTime   time.Time
-	liveNessChecks uint
-}
-
-func wrapNode(n *Node) *node {
-	return &node{Node: *n}
-}
-
-type Table struct {
-	mutex     sync.Mutex
-	config    *core.Config
-	buckets   [nBuckets]*bucket
-	nursery   []*node //bootstrap nodes
-	coreCtx   *core.Context
-	localNode *Node
-	ips       DistinctNetSet //IP计数
-	servers   *NodeStore
-	clients   *NodeStore
+type Table2 struct {
 	rand      *rand.Rand
+	mutex     sync.Mutex
+	nodeTable *NodeTable
+	localNode *Node
 	call      *call
+	coreCtx   *core.Context
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 }
 
-func (table *Table) ID() ID {
-	return table.localNode.id
+func (t *Table2) ID() ID {
+	return t.localNode.id
+}
+func (t *Table2) Ping(node *Node) error {
+	return t.call.ping(node.addr)
+}
+func (t *Table2) FindRemoteServer(target ID, node *Node, distances int) (*Node, []*Node, error) {
+
+	return nil, nil, nil
+}
+func (t *Table2) FindServer(target ID, distances int) (*Node, []*Node) {
+	return nil, nil
+}
+func (t *Table2) AddNatServer(n *node) {
+
 }
 
-func (table *Table) loadAddress() {
-	seeds := make([]*node, 0)
-	addresses, err := table.coreCtx.GetDB().GetAddressModel().QueryAddresses()
+func (t *Table2) addNode(n *Node) {
+	t.nodeTable.addNode(n)
+}
+func (t *Table2) addSeedNode(n *Node) {
+	t.nodeTable.addSeedNode(n)
+}
+func (t *Table2) queryByFindNode(findNode *FindNode) []*Node {
+	return nil
+}
+
+func (t *Table2) loadAddress() error {
+	seeds := make([]*Node, 0)
+	addresses, err := t.coreCtx.GetDB().GetAddressModel().QueryAddresses()
 	if err != nil {
-		return
+		return err
 	}
 	for _, address := range addresses {
 		if len(address.Address) > 0 {
 			addr, err := net.ResolveUDPAddr("udp", address.Address)
 			if err != nil {
+				log.Println(err)
 				continue
 			} else {
-				seeds = append(seeds, wrapNode(&Node{addr: addr}))
+				node := &Node{addr: addr, isServer: false, isNatServer: true, isClient: false}
+				if len(address.ServerName) >= 64 {
+					id, err := StringToId(address.ServerName)
+					if err == nil {
+						node.id = id
+					} else {
+						log.Println(err)
+					}
+				}
+				seeds = append(seeds, node)
 			}
 		}
 	}
-	table.nursery = seeds
+	for _, seed := range seeds {
+		t.addSeedNode(seed)
+	}
+	if len(seeds) < 1 {
+		return errors.New("no node")
+	}
+	return nil
 }
 
-func (table *Table) loop() {
+func (t *Table2) queryForPage(pageNo, pageSize int) ([]*Node, int) {
+	return nil, 0
+}
+
+func (t *Table2) self() *Node {
+	return t.localNode
+}
+
+func (t *Table2) run() {
+	err := t.loadAddress()
+	if err != nil {
+		log.Panic(err)
+		return
+	} else {
+		t.loop()
+	}
+}
+
+func (t *Table2) loop() {
 	var (
-		revalidate     = time.NewTimer(table.nextRevalidateTime())
-		refresh        = time.NewTimer(table.nextRefreshTime())
+		revalidate     = time.NewTimer(t.nextRevalidateTime())
+		refresh        = time.NewTimer(t.nextRefreshTime())
 		revalidateDone chan struct{}
 		refreshDone    = make(chan struct{})
 	)
-	table.loadAddress()
-	go table.doRefresh(refreshDone)
+	t.loadAddress()
+	go t.doRefresh(refreshDone)
 	for {
 		select {
 
-		case <-table.ctx.Done():
+		case <-t.ctx.Done():
 			{
 				break
 			}
@@ -81,549 +122,122 @@ func (table *Table) loop() {
 			{
 				if refreshDone == nil {
 					refreshDone = make(chan struct{})
-					go table.doRefresh(refreshDone)
+					go t.doRefresh(refreshDone)
 				}
 			}
 		case <-revalidate.C:
 			{
 				revalidateDone = make(chan struct{})
-				table.doRevalidate(revalidateDone)
+				t.doRevalidate(revalidateDone)
 			}
 		case <-revalidateDone:
 			{
-				revalidate.Reset(table.nextRevalidateTime())
+				revalidate.Reset(t.nextRevalidateTime())
 				revalidateDone = nil
 			}
 		case <-refreshDone:
-			refresh.Reset(table.nextRefreshTime())
+			refresh.Reset(t.nextRefreshTime())
 		}
 	}
 }
 
-func (table *Table) nextRevalidateTime() time.Duration {
-	table.mutex.Lock()
-	defer table.mutex.Unlock()
-	return time.Duration(table.rand.Int63n(int64(10 * time.Second)))
+func (t *Table2) nextRevalidateTime() time.Duration {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	return time.Duration(t.rand.Int63n(int64(10 * time.Second)))
 }
 
-func (table *Table) nextRefreshTime() time.Duration {
-	table.mutex.Lock()
-	defer table.mutex.Unlock()
+func (t *Table2) nextRefreshTime() time.Duration {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	half := 30 * time.Minute / 2
-	return half + time.Duration(table.rand.Int63n(int64(half)))
+	return half + time.Duration(t.rand.Int63n(int64(half)))
 }
 
-func (table *Table) doRevalidate(done chan<- struct{}) {
-	defer close(done)
-	table.register()
+func (t *Table2) stop() {
+	t.ctxCancel()
 }
 
-func (table *Table) run() {
-	go table.loop()
-}
-func (table *Table) stop() {
-	if table.ctxCancel != nil {
-		table.ctxCancel()
-	}
-}
-
-type NodeStore struct {
-	members   *list.List
-	memberMap map[ID]*node
-	mutex     sync.RWMutex
-}
-
-func NewNodeStore() *NodeStore {
-	return &NodeStore{members: new(list.List), memberMap: make(map[ID]*node)}
-}
-
-func (nss *NodeStore) queryNode(pageNo, pageSize int) ([]*node, int) {
-	nss.mutex.RLock()
-	defer nss.mutex.RUnlock()
-	list := nss.members
-	nodes := make([]*node, 0)
-	start := (pageNo - 1) * pageSize
-	num := 0
-	for ele := list.Front(); ele != nil; ele = ele.Next() {
-		num++
-		if num > start {
-			nodes = append(nodes, ele.Value.(*node))
-			if len(nodes) >= pageSize {
-				break
+func (t *Table2) loadNurseryNodes() {
+	if t.nodeTable.hasNurseryNodes() {
+		deleteNodes := make([]*Node, 0)
+		for _, n := range t.nodeTable.nurseryNodes() {
+			if n.ID().IsBlank() {
+				node, err := t.call.register(n.addr)
+				if err != nil {
+					n.errorNum++
+					return
+				} else {
+					t.addNode(node)
+					deleteNodes = append(deleteNodes, n)
+				}
 			}
 		}
-	}
-	return nodes, list.Len()
-}
-func (nss *NodeStore) addNode(n *node) {
-	nss.mutex.Lock()
-	defer nss.mutex.Unlock()
-	key := n.ID()
-	v, ok := nss.memberMap[key]
-	if !ok {
-		n.addedAt = time.Now()
-		n.lastLiveTime = time.Now()
-		nss.members.PushFront(n)
-		nss.memberMap[key] = n
-	} else {
-		v.lastLiveTime = time.Now()
-		v.addr = n.addr
+		t.nodeTable.removeNurseryNodes(deleteNodes)
 	}
 }
 
-func (nss *NodeStore) queryNodeById(id ID) (*node, bool) {
-	nss.mutex.RLock()
-	defer nss.mutex.RUnlock()
-	v, ok := nss.memberMap[id]
-	if ok {
-		return v, true
-	}
-	return nil, false
-}
-
-func (table *Table) addNursery(addr *net.UDPAddr) {
-	if !containsAddress(table.nursery, addr) {
-		n := wrapNode(NewNursery(addr))
-		n.addedAt = time.Now()
-		table.nursery = append(table.nursery, n)
-	}
-}
-
-func containsAddress(ns []*node, addr *net.UDPAddr) bool {
-	for _, v := range ns {
-		if IsSameAddress(v.addr, addr) {
-			return true
-		}
-	}
-	return false
-}
-func (table *Table) addReplacement(b *bucket, n *node) {
-	//for _, e := range b.replacements {
-	//	if e.ID() == n.ID() {
-	//		return // already in list
-	//	}
-	//}
-	//if !table.addIP(b, n.IP()) {
-	//	return
-	//}
-	//var removed *node
-	//b.replacements, removed = pushNode(b.replacements, n, maxReplacements)
-	//if removed != nil {
-	//	table.removeIP(b, removed.IP())
-	//}
-}
-func (table *Table) removeIP(b *bucket, ip net.IP) {
-	if IsLAN(ip) {
-		return
-	}
-	table.ips.Remove(ip)
-	b.ips.Remove(ip)
-}
-func pushNode(list []*node, n *node, max int) ([]*node, *node) {
-	if len(list) < max {
-		list = append(list, nil)
-	}
-	removed := list[len(list)-1]
-	copy(list[1:], list)
-	list[0] = n
-	return list, removed
-}
-
-func (table *Table) collectTableNodes(rip net.IP, distances []uint, limit int) []*Node {
-	//var nodes []*Node
-	//var processed = make(map[uint]struct{})
-	//for _, dist := range distances {
-	//	_, seen := processed[dist]
-	//	if seen || dist > 256 {
-	//		continue
-	//	}
-	//
-	//	// Get the nodes.
-	//	var bn []*Node
-	//	if dist == 0 {
-	//		bn = []*Node{table.self()}
-	//	} else if dist <= 256 {
-	//
-	//		bn = unwrapNodes(table.bucketAtDistance(int(dist)).entries)
-	//
-	//	}
-	//	processed[dist] = struct{}{}
-	//	for _, n := range bn {
-	//		if CheckRelayIP(rip, n.IP()) != nil {
-	//			continue
-	//		}
-	//		nodes = append(nodes, n)
-	//		if len(nodes) >= limit {
-	//			return nodes
-	//		}
-	//	}
-	//}
-	//return nodes
-	return nil
-}
-
-func (table *Table) HandleFindNode(rip net.IP, findNode *FindNode) []*Node {
-
-	return table.collectTableNodes(rip, findNode.Distances, findnodeResultLimit)
-}
-func (table *Table) addIP(b *bucket, ip net.IP) bool {
-	if len(ip) == 0 {
-		return false // Nodes without IP cannot be added.
-	}
-	if IsLAN(ip) {
-		return true
-	}
-	if !table.ips.Add(ip) {
-		return false
-	}
-	if !b.ips.Add(ip) {
-		table.ips.Remove(ip)
-		return false
-	}
-	return true
-}
-func (table *Table) addServer(n *node) {
-	table.servers.addNode(n)
-}
-func (table *Table) addClient(n *node) {
-	table.clients.addNode(n)
-}
-
-func (table *Table) AddNatServer(n *node) {
-	//b := table.bucket(n.ID())
-	//preNode, fa := contains(b.entries, n.ID())
-	//if fa {
-	//	preNode.lastLiveTime = time.Now()
-	//	return
-	//}
-	//if len(b.entries) >= bucketSize {
-	//	table.addReplacement(b, n)
-	//	return
-	//}
-	//if !table.addIP(b, n.IP()) {
-	//	return
-	//}
-	//n.addedAt = time.Now()
-	//b.entries = append(b.entries, n)
-	//b.replacements = deleteNode(b.replacements, n)
-}
-
-func (table *Table) addSeenNode(n *node) {
-	if n.ID() == table.self().id {
-		return
-	}
-	if n.IsClient() {
-		table.addClient(n)
-		return
-	}
-	if n.IsServer() {
-		table.addServer(n)
-	}
-	if n.IsNatServer() {
-		table.AddNatServer(n)
-	}
-}
-func deleteNode(list []*node, n *node) []*node {
-	for i := range list {
-		if list[i].ID() == n.ID() {
-			return append(list[:i], list[i+1:]...)
-		}
-	}
-	return list
-}
-func (table *Table) doRefresh(done chan<- struct{}) {
+func (t *Table2) doRefresh(done chan struct{}) {
 	defer close(done)
-	log.Println("doRefresh")
-	table.loadSeedNodes()
-	table.lookupSelf()
+	t.loadNurseryNodes()
+	t.lookup()
+}
+func (t *Table2) lookup() {
+	t.lookupSelf()
 	for i := 0; i < 3; i++ {
-		table.lookupRandom()
+		t.lookupRand()
 	}
 }
-func (table *Table) lookupSelf() {
-	table.newLookup(table.coreCtx, table.self().ID())
-}
-func (table *Table) lookupRandom() {
-	table.newLookup(table.coreCtx, table.self().ID())
+func (t *Table2) lookupByTarget(target ID) {
+	nodes := t.nodeTable.queryNodesByIdAndDistance(target, findnodeResultLimit)
+	for _, n := range nodes.entries {
+		nodes, err := t.call.findNode(target, n)
+		if err != nil {
+			n.errorNum++
+			return
+		}
+		for _, n2 := range nodes {
+			t.addNode(n2)
+		}
+	}
 }
 
-func (table *Table) newLookup(ctx *core.Context, target ID) {
-	//newLookup(table, target, ctx, func(n *node) ([]*node, error) {
-	//	return table.lookupWorker(n, target)
-	//}).run()
+func (t *Table2) lookupSelf() {
+	id := t.localNode.ID()
+	t.lookupByTarget(id)
 }
-func (table *Table) newRandomLookup(ctx *core.Context) {
+
+func (t *Table2) lookupRand() {
 	var target ID
-	table.rand.Read(target[:])
-	table.newLookup(ctx, target)
+	t.rand.Read(target[:])
+	t.lookupByTarget(target)
 }
-func lookupDistances(target, dest ID) (dists []uint) {
-	td := LogDist(target, dest)
-	dists = append(dists, uint(td))
-	for i := 1; len(dists) < lookupRequestLimit; i++ {
-		if td+i <= 256 {
-			dists = append(dists, uint(td+i))
+
+func (t *Table2) validate(node *Node, index int) {
+	value, err := t.call.register(node.addr)
+	if err == nil {
+		if node.id != value.id {
+			t.nodeTable.deleteNode(node)
+			t.addNode(value)
+			return
 		}
-		if td-i > 0 {
-			dists = append(dists, uint(td-i))
-		}
+		node.liveNessChecks++
+		return
 	}
-	return dists
-}
-func (table *Table) lookupWorker(destNode *node, target ID) ([]*Node, error) {
-	//var (
-	//	dists = lookupDistances(target, destNode.ID())
-	//	nodes = nodesByDistance{target: target}
-	//	err   error
-	//)
-	//var r []*Node
-	//r, err = table.findNode(unwrapNode(destNode), dists)
-	//if errors.Is(err, net.ErrClosed) {
-	//	return nil, err
-	//}
-	//for _, n := range r {
-	//	if n.ID() != table.self().ID() {
-	//		nodes.push(n, findnodeResultLimit)
-	//	}
-	//}
-	return nil, nil
+	node.errorNum++
+	t.nodeTable.replace(index, node)
 }
 
-func (table *Table) loadSeedNodes() {
-	table.registerNursery()
-}
-
-func contains(ns []*node, id ID) (*node, bool) {
-	for _, n := range ns {
-		if n.ID() == id {
-			return n, true
-		}
+func (t *Table2) doRevalidate(done chan struct{}) {
+	defer close(done)
+	t.loadNurseryNodes()
+	node, _, index := t.nodeTable.nodeToRevalidate()
+	if node != nil {
+		t.validate(node, index)
 	}
-	return nil, false
-}
-
-func (table *Table) bucket(id ID) *bucket {
-	d := LogDist(table.localNode.id, id)
-	return table.bucketAtDistance(d)
-}
-func (table *Table) bucketAtDistance(d int) *bucket {
-	return table.buckets[table.bucketIndexAtDistance(d)]
-}
-func (table *Table) bucketIndexAtDistance(d int) int {
-	if d <= bucketMinDistance {
-		return 0
-	}
-	return d - bucketMinDistance - 1
-}
-
-//func (table *Table) nodeToRevalidate() (n *node, bi int) {
-//	//for _, bi = range table.rand.Perm(len(table.buckets)) {
-//	//	b := table.buckets[bi]
-//	//	if len(b.entries) > 0 {
-//	//		last := b.entries[len(b.entries)-1]
-//	//		return last, bi
-//	//	}
-//	//}
-//	return nil, 0
-//}
-
-func (table *Table) registerNursery() {
-	for _, n := range table.nursery {
-		if n.ID().IsBlank() {
-			err := table.register0(n)
-			if err == nil {
-				log.Println("registerNursery", n)
-				table.addSeenNode(n)
-			}
-		}
-	}
-}
-
-func (table *Table) register() {
-	//node, _ := table.nodeToRevalidate()
-	//if node != nil {
-	//	table.validate(node)
-	//}
-	//table.registerNursery()
 
 }
-func (table *Table) validate(node *node) {
-	//value, err := table.call.register(table.localNode, node.addr)
-	//if err != nil {
-	//	return
-	//}
-	//if node.id != value.id {
-	//	//id 不一致 删除当前node
-	//	return
-	//}
-	node.liveNessChecks++
-}
-func (table *Table) register0(node *node) error {
-	//value, err := table.call.register(table.localNode, node.addr)
-	//if err != nil {
-	//	return err
-	//}
-	//log.Println("register0 value", value)
-	//log.Println("register0", node.ID())
-	//node.SetID(value.ID())
-	//node.isClient = value.isClient
-	//node.isServer = value.isServer
-	//node.isNatServer = value.isNatServer
-	//log.Println("register0", node.ID())
-	return nil
-}
-
-func (table *Table) findNode(n *Node, distances []uint) ([]*Node, error) {
-	//nodes, err := table.call.findNode(table.localNode, n, n.addr, distances)
-	return nil, nil
-
-}
-func (table *Table) findNodeByID(target ID, nResults int, preferLive bool) *nodesByDistance {
-	//nodes := &nodesByDistance{target: target}
-	//liveNodes := &nodesByDistance{target: target}
-	//for _, b := range &table.buckets {
-	//	for _, n := range b.entries {
-	//		nodes.push(n, nResults)
-	//		if preferLive && n.liveNessChecks > 0 {
-	//			liveNodes.push(n, nResults)
-	//		}
-	//	}
-	//}
-	//if preferLive && len(liveNodes.entries) > 0 {
-	//	return liveNodes
-	//}
-	return nil
-}
-func (table *Table) self() *Node {
-	return table.localNode
-}
-
-func (table *Table) nodePage(nodeType, pageNo, pageSize int) ([]*node, int) {
-	var nodes []*node
-	if nodeType == client {
-		return table.clients.queryNode(pageNo, pageSize)
-	}
-	if nodeType == server {
-		return table.servers.queryNode(pageNo, pageSize)
-	}
-	if nodeType == natServer {
-		return table.page(pageNo, pageSize)
-	}
-	return nodes, 0
-}
-func (table *Table) page(pageNo, pageSize int) ([]*node, int) {
-	//nodes := make([]*node, 0)
-	//skeep := (pageNo - 1) * pageSize
-	//var start = 0
-	//var total = 0
-	//for _, b := range table.buckets {
-	//	for _, entry := range b.entries {
-	//		if start >= skeep {
-	//			nodes = append(nodes, entry)
-	//			if len(nodes) >= pageSize {
-	//				break
-	//			}
-	//		}
-	//		start++
-	//	}
-	//	if len(nodes) >= pageSize {
-	//		break
-	//	}
-	//}
-	//for _, b := range table.buckets {
-	//	total = total + len(b.entries)
-	//}
-	return nil, 0
-}
-
-func (table *Table) queryServerNode(serverName ID) (*node, bool) {
-	return table.servers.queryNodeById(serverName)
-}
-
-func (table *Table) FindServer(target ID, distances int) []*Node {
-	node, fa := table.queryServerNode(target)
-	if fa {
-		return []*Node{&node.Node}
-	}
-	return table.collectTableFindNode(distances)
-}
-func (table *Table) FindRemoteServer(target ID, node *Node, distances int) (queryNode []*Node, err error) {
-	return table.call.findServer(target, distances, node.addr)
-}
-
-func (table *Table) Ping(node *Node) (err error) {
-	//return table.call.ping(node, node.addr)
-	return nil
-}
-
-type RecordBuckets struct {
-	entries  []*Node
-	maxElems int
-}
-
-func (recordBuckets *RecordBuckets) push(node *Node) bool {
-	recordBuckets.entries = append(recordBuckets.entries, node)
-	if len(recordBuckets.entries) >= recordBuckets.maxElems {
-		return true
-	}
-	return false
-}
-func (table *Table) collectTableFindNode(distances int) (queryNode []*Node) {
-	var recordBuckets = &RecordBuckets{maxElems: findValueResultLimit}
-	table.collectBucketsFindNode(0, table.bucketIndexAtDistance(distances), recordBuckets)
-	table.collectBucketsFindNode(table.bucketIndexAtDistance(distances), nBuckets, recordBuckets)
-	return recordBuckets.entries
-}
-func (table *Table) collectBucketsFindNode(minBucketIndex, maxBucketIndex int, recordBuckets *RecordBuckets) {
-	index := 0
-	for {
-		fa := table.collectBucketsByIndex(index, minBucketIndex, maxBucketIndex, recordBuckets)
-
-		if fa {
-			break
-		}
-		if len(recordBuckets.entries) >= recordBuckets.maxElems {
-			break
-		}
-		index++
-	}
-}
-func (table *Table) collectBucketsByIndex(index, minBucketIndex, maxBucketIndex int, recordBuckets *RecordBuckets) bool {
-	//isEnd := true
-	//for i := minBucketIndex; i < maxBucketIndex; i++ {
-	//	b := table.buckets[i]
-	//	if len(b.entries) > index {
-	//		if isEnd {
-	//			isEnd = false
-	//		}
-	//		fill := recordBuckets.push(&b.entries[index].Node)
-	//		if fill {
-	//			return true
-	//		}
-	//	}
-	//}
-	return false
-}
-func NewTable(coreCtx *core.Context, localNode *Node, call *call) *Table {
-
+func NewTable2(coreCtx *core.Context, localNode *Node, call *call) *Table2 {
 	ctx, ctxCancel := context.WithCancel(context.Background())
-
-	table := &Table{
-		coreCtx:   coreCtx,
-		localNode: localNode,
-		rand:      rand.New(rand.NewSource(0)),
-		call:      call,
-		ips:       DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit},
-		servers:   NewNodeStore(),
-		clients:   NewNodeStore(),
-		ctx:       ctx,
-		ctxCancel: ctxCancel,
-	}
-	for i := range table.buckets {
-		table.buckets[i] = &bucket{
-			index: i,
-			ips:   DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
-		}
-	}
-	return table
+	return &Table2{ctx: ctx, ctxCancel: ctxCancel, coreCtx: coreCtx, nodeTable: NewNodeTable(localNode), localNode: localNode, call: call}
 }
