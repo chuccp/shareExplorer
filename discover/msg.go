@@ -18,15 +18,27 @@ type (
 	FindNode struct {
 		FormId    string `json:"formId"`
 		ToId      string `json:"toId"`
+		TargetId  string `json:"targetId"`
 		Distances []uint `json:"distances"`
+		addr      *net.UDPAddr
 	}
 	FindServer struct {
+		FormId    string `json:"formId"`
 		Target    string `json:"target"`
 		Distances int    `json:"distances"`
 	}
 
 	NodeStatus struct {
-		FormId string `json:"id"`
+		Id          string `json:"id"`
+		IsServer    string `json:"isServer"`
+		IsClient    string `json:"isClient"`
+		IsNatServer string `json:"isNatServer"`
+	}
+	Ping struct {
+		FormId      string `json:"formId"`
+		IsServer    string `json:"isServer"`
+		IsClient    string `json:"isClient"`
+		IsNatServer string `json:"isNatServer"`
 	}
 
 	ResponseNode struct {
@@ -37,13 +49,6 @@ type (
 		Address     string `json:"address"`
 	}
 
-	ExNode struct {
-		Id          string `json:"id"`
-		IsServer    bool   `json:"isServer"`
-		IsClient    bool   `json:"isClient"`
-		IsNatServer bool   `json:"isNatServer"`
-		Address     string `json:"address"`
-	}
 )
 
 func NodeToRegister(n *Node) *Register {
@@ -68,21 +73,6 @@ func wrapResponseNodeToNode(n *ResponseNode) (*Node, error) {
 		return nil, err
 	}
 	return &Node{addr: addr, id: ID(id), isClient: strings.Contains(n.IsClient, "true"), isServer: strings.Contains(n.IsServer, "true"), isNatServer: strings.Contains(n.IsNatServer, "true")}, nil
-}
-
-func wrapExNode(n *Node) *ExNode {
-	return &ExNode{Id: hex.EncodeToString(n.id[:]), IsServer: n.isServer, IsNatServer: n.isNatServer, IsClient: n.isClient, Address: n.addr.String()}
-}
-
-func wrapExNodes(ns []*node) []*ExNode {
-	if ns == nil {
-		return make([]*ExNode, 0)
-	}
-	var responseNodes = make([]*ExNode, len(ns))
-	for i, n := range ns {
-		responseNodes[i] = wrapExNode(&n.Node)
-	}
-	return responseNodes
 }
 
 func wrapResponseNodes(ns []*Node) []*ResponseNode {

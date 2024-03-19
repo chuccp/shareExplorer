@@ -16,9 +16,10 @@ const (
 
 type Server struct {
 	context          *core.Context
-	table            *Table
+	table            *Table2
 	nodeSearchManage *nodeSearchManage
 	call             *call
+	localNode        *Node
 }
 
 func (s *Server) register(req *web.Request) (any, error) {
@@ -31,7 +32,7 @@ func (s *Server) register(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.table.addSeenNode(wrapNode(node))
+	s.table.addNode(node)
 	n := s.table.self()
 	return web.ResponseOK(wrapResponseNode(n)), nil
 }
@@ -45,48 +46,74 @@ func (s *Server) findNode(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	ns := s.table.HandleFindNode(addr.IP, &findNode)
+	findNode.addr = addr
+	ns := s.table.queryByFindNode(&findNode)
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
-func (s *Server) findValue(req *web.Request) (any, error) {
-	var findValue FindServer
-	err := req.BodyJson(&findValue)
+func (s *Server) findServer(req *web.Request) (any, error) {
+	var findServer FindServer
+	err := req.BodyJson(&findServer)
 	if err != nil {
 		return nil, err
 	}
-	id, _ := wrapIdFName(findValue.Target)
-	ns := s.table.FindServer(id, findValue.Distances)
-	return web.ResponseOK(wrapResponseNodes(ns)), nil
+	//id, _ := wrapIdFName(findValue.Target)
+	//ns := s.table.FindServer(id, findValue.Distances)
+	return web.ResponseOK(""), nil
 }
 
 func (s *Server) nodeStatus(req *web.Request) (any, error) {
-	//var nodeStatus NodeStatus
-	//err := req.BodyJson(&nodeStatus)
-	return web.ResponseOK("ok"), nil
+	var nodeStatus NodeStatus
+	nodeStatus.Id = s.localNode.ServerName()
+	serverConfig := s.context.GetServerConfig()
+	if serverConfig.IsServer() {
+		nodeStatus.IsServer = "true"
+	} else {
+		nodeStatus.IsServer = "false"
+	}
+	if serverConfig.IsNatServer() {
+		nodeStatus.IsNatServer = "true"
+	} else {
+		nodeStatus.IsNatServer = "false"
+	}
+	if serverConfig.IsClient() {
+		nodeStatus.IsClient = "true"
+	} else {
+		nodeStatus.IsClient = "false"
+	}
+	return web.ResponseOK(&nodeStatus), nil
 }
 func (s *Server) Init(context *core.Context) {
 	s.context = context
-	s.call = &call{httpClient: core.NewHttpClient(context)}
+	servername := s.context.GetCertManager().GetServerName()
+
+	log.Println("servername len:", len(servername))
+
+	id, err := StringToId(servername)
+	if err != nil {
+		log.Panic(err)
+		return
+	}
+	s.localNode = NewLocalNode(id, s.context.GetServerConfig())
+	s.call = newCall(s.localNode, core.NewHttpClient(context))
 	s.context.SetDiscoverServer(s)
+	s.table = NewTable2(s.context, s.localNode, s.call)
 	s.context.Post("/discover/register", s.register)
 	s.context.Post("/discover/connect", s.connect)
 	s.context.Post("/discover/nodeStatus", s.nodeStatus)
-	//nodeStatus
-
 	s.context.GetRemote("/discover/nodeList", s.nodeList)
 	s.context.Post("/discover/findNode", s.findNode)
-	s.context.Post("/discover/findValue", s.findValue)
+	s.context.Post("/discover/findServer", s.findServer)
 	if !s.context.GetServerConfig().HasInit() {
 		return
 	}
 	s.Start()
 }
 func (s *Server) nodeList(req *web.Request) (any, error) {
-	nodeType := req.FormIntValue("nodeType")
+	//nodeType := req.FormIntValue("nodeType")
 	pageNo := req.FormIntValue("pageNo")
 	pageSize := req.FormIntValue("pageSize")
-	list, num := s.table.nodePage(nodeType, pageNo, pageSize)
-	return web.ResponsePage(int64(num), wrapExNodes(list)), nil
+	list, num := s.table.queryForPage(pageNo, pageSize)
+	return web.ResponsePage(int64(num), list), nil
 }
 func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
@@ -97,8 +124,8 @@ func (s *Server) FindStatus(servername string, isStart bool) *entity.NodeStatus 
 	return s.nodeSearchManage.FindNodeStatus(id, isStart)
 }
 
-func (s *Server) Connect(address *net.UDPAddr) error {
-	_, err := s.call.httpClient.GetRequest(address, "/discover/connect")
+func (s *Server) Ping(address *net.UDPAddr) error {
+	err := s.call.ping(address)
 	if err != nil {
 		return err
 	}
@@ -106,14 +133,7 @@ func (s *Server) Connect(address *net.UDPAddr) error {
 }
 
 func (s *Server) Start() {
-	servername := s.context.GetCertManager().GetServerName()
-	localNode, err := createLocalNode(servername, s.context.GetServerConfig())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	s.table = NewTable(s.context, localNode, s.call)
-	s.table.run()
+	go s.table.run()
 	s.nodeSearchManage = NewNodeSearchManage(s.table)
 	s.nodeSearchManage.run()
 }

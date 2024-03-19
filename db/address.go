@@ -11,6 +11,7 @@ type Address struct {
 	Id           uint      `gorm:"primaryKey;autoIncrement;column:id"`
 	Address      string    `gorm:"unique;column:address"`
 	FailNum      string    `gorm:"column:fail_num"`
+	ServerName   string    `gorm:"unique;column:serverName"`
 	LastFailTime time.Time `gorm:"column:last_fail_time"`
 	CreateTime   time.Time `gorm:"column:create_time"`
 	UpdateTime   time.Time `gorm:"column:update_time"`
@@ -48,14 +49,12 @@ func (a *AddressModel) QueryAddresses() ([]*Address, error) {
 }
 
 func (a *AddressModel) AddAddress(addresses []string) error {
-
 	if !a.IsExist() {
 		err := a.createTable()
 		if err != nil {
 			return err
 		}
 	}
-
 	var addr []*Address
 	tx := a.db.Table(a.tableName).Where(" address IN ?", addresses).Find(&addr)
 	if tx.Error != nil {

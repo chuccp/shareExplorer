@@ -3,7 +3,6 @@ package discover
 import (
 	"container/list"
 	"context"
-	"errors"
 	"github.com/chuccp/shareExplorer/core"
 	"log"
 	"math/rand"
@@ -12,21 +11,10 @@ import (
 	"time"
 )
 
-const (
-	nBuckets                    = 17
-	bucketMinDistance           = 239
-	bucketIPLimit, bucketSubnet = 2, 24 //
-	tableIPLimit, tableSubnet   = 10, 24
-	bucketSize                  = 16
-	maxReplacements             = 10
-	findnodeResultLimit         = 16
-	findValueResultLimit        = 34
-	lookupRequestLimit          = 3
-)
-
 type node struct {
 	Node
 	addedAt        time.Time
+	lastLiveTime   time.Time
 	liveNessChecks uint
 }
 
@@ -34,12 +22,6 @@ func wrapNode(n *Node) *node {
 	return &node{Node: *n}
 }
 
-type bucket struct {
-	entries      []*node
-	replacements []*node
-	index        int
-	ips          DistinctNetSet
-}
 type Table struct {
 	mutex     sync.Mutex
 	config    *core.Config
@@ -180,10 +162,11 @@ func (nss *NodeStore) addNode(n *node) {
 	v, ok := nss.memberMap[key]
 	if !ok {
 		n.addedAt = time.Now()
+		n.lastLiveTime = time.Now()
 		nss.members.PushFront(n)
 		nss.memberMap[key] = n
 	} else {
-		v.addedAt = time.Now()
+		v.lastLiveTime = time.Now()
 		v.addr = n.addr
 	}
 }
@@ -215,19 +198,19 @@ func containsAddress(ns []*node, addr *net.UDPAddr) bool {
 	return false
 }
 func (table *Table) addReplacement(b *bucket, n *node) {
-	for _, e := range b.replacements {
-		if e.ID() == n.ID() {
-			return // already in list
-		}
-	}
-	if !table.addIP(b, n.IP()) {
-		return
-	}
-	var removed *node
-	b.replacements, removed = pushNode(b.replacements, n, maxReplacements)
-	if removed != nil {
-		table.removeIP(b, removed.IP())
-	}
+	//for _, e := range b.replacements {
+	//	if e.ID() == n.ID() {
+	//		return // already in list
+	//	}
+	//}
+	//if !table.addIP(b, n.IP()) {
+	//	return
+	//}
+	//var removed *node
+	//b.replacements, removed = pushNode(b.replacements, n, maxReplacements)
+	//if removed != nil {
+	//	table.removeIP(b, removed.IP())
+	//}
 }
 func (table *Table) removeIP(b *bucket, ip net.IP) {
 	if IsLAN(ip) {
@@ -247,35 +230,36 @@ func pushNode(list []*node, n *node, max int) ([]*node, *node) {
 }
 
 func (table *Table) collectTableNodes(rip net.IP, distances []uint, limit int) []*Node {
-	var nodes []*Node
-	var processed = make(map[uint]struct{})
-	for _, dist := range distances {
-		_, seen := processed[dist]
-		if seen || dist > 256 {
-			continue
-		}
-
-		// Get the nodes.
-		var bn []*Node
-		if dist == 0 {
-			bn = []*Node{table.self()}
-		} else if dist <= 256 {
-
-			bn = unwrapNodes(table.bucketAtDistance(int(dist)).entries)
-
-		}
-		processed[dist] = struct{}{}
-		for _, n := range bn {
-			if CheckRelayIP(rip, n.IP()) != nil {
-				continue
-			}
-			nodes = append(nodes, n)
-			if len(nodes) >= limit {
-				return nodes
-			}
-		}
-	}
-	return nodes
+	//var nodes []*Node
+	//var processed = make(map[uint]struct{})
+	//for _, dist := range distances {
+	//	_, seen := processed[dist]
+	//	if seen || dist > 256 {
+	//		continue
+	//	}
+	//
+	//	// Get the nodes.
+	//	var bn []*Node
+	//	if dist == 0 {
+	//		bn = []*Node{table.self()}
+	//	} else if dist <= 256 {
+	//
+	//		bn = unwrapNodes(table.bucketAtDistance(int(dist)).entries)
+	//
+	//	}
+	//	processed[dist] = struct{}{}
+	//	for _, n := range bn {
+	//		if CheckRelayIP(rip, n.IP()) != nil {
+	//			continue
+	//		}
+	//		nodes = append(nodes, n)
+	//		if len(nodes) >= limit {
+	//			return nodes
+	//		}
+	//	}
+	//}
+	//return nodes
+	return nil
 }
 
 func (table *Table) HandleFindNode(rip net.IP, findNode *FindNode) []*Node {
@@ -306,20 +290,22 @@ func (table *Table) addClient(n *node) {
 }
 
 func (table *Table) AddNatServer(n *node) {
-	b := table.bucket(n.ID())
-	if contains(b.entries, n.ID()) {
-		return
-	}
-	if len(b.entries) >= bucketSize {
-		table.addReplacement(b, n)
-		return
-	}
-	if !table.addIP(b, n.IP()) {
-		return
-	}
-	n.addedAt = time.Now()
-	b.entries = append(b.entries, n)
-	b.replacements = deleteNode(b.replacements, n)
+	//b := table.bucket(n.ID())
+	//preNode, fa := contains(b.entries, n.ID())
+	//if fa {
+	//	preNode.lastLiveTime = time.Now()
+	//	return
+	//}
+	//if len(b.entries) >= bucketSize {
+	//	table.addReplacement(b, n)
+	//	return
+	//}
+	//if !table.addIP(b, n.IP()) {
+	//	return
+	//}
+	//n.addedAt = time.Now()
+	//b.entries = append(b.entries, n)
+	//b.replacements = deleteNode(b.replacements, n)
 }
 
 func (table *Table) addSeenNode(n *node) {
@@ -362,9 +348,9 @@ func (table *Table) lookupRandom() {
 }
 
 func (table *Table) newLookup(ctx *core.Context, target ID) {
-	newLookup(table, target, ctx, func(n *node) ([]*node, error) {
-		return table.lookupWorker(n, target)
-	}).run()
+	//newLookup(table, target, ctx, func(n *node) ([]*node, error) {
+	//	return table.lookupWorker(n, target)
+	//}).run()
 }
 func (table *Table) newRandomLookup(ctx *core.Context) {
 	var target ID
@@ -384,36 +370,36 @@ func lookupDistances(target, dest ID) (dists []uint) {
 	}
 	return dists
 }
-func (table *Table) lookupWorker(destNode *node, target ID) ([]*node, error) {
-	var (
-		dists = lookupDistances(target, destNode.ID())
-		nodes = nodesByDistance{target: target}
-		err   error
-	)
-	var r []*Node
-	r, err = table.findNode(unwrapNode(destNode), dists)
-	if errors.Is(err, net.ErrClosed) {
-		return nil, err
-	}
-	for _, n := range r {
-		if n.ID() != table.self().ID() {
-			nodes.push(wrapNode(n), findnodeResultLimit)
-		}
-	}
-	return nodes.entries, err
+func (table *Table) lookupWorker(destNode *node, target ID) ([]*Node, error) {
+	//var (
+	//	dists = lookupDistances(target, destNode.ID())
+	//	nodes = nodesByDistance{target: target}
+	//	err   error
+	//)
+	//var r []*Node
+	//r, err = table.findNode(unwrapNode(destNode), dists)
+	//if errors.Is(err, net.ErrClosed) {
+	//	return nil, err
+	//}
+	//for _, n := range r {
+	//	if n.ID() != table.self().ID() {
+	//		nodes.push(n, findnodeResultLimit)
+	//	}
+	//}
+	return nil, nil
 }
 
 func (table *Table) loadSeedNodes() {
 	table.registerNursery()
 }
 
-func contains(ns []*node, id ID) bool {
+func contains(ns []*node, id ID) (*node, bool) {
 	for _, n := range ns {
 		if n.ID() == id {
-			return true
+			return n, true
 		}
 	}
-	return false
+	return nil, false
 }
 
 func (table *Table) bucket(id ID) *bucket {
@@ -429,16 +415,17 @@ func (table *Table) bucketIndexAtDistance(d int) int {
 	}
 	return d - bucketMinDistance - 1
 }
-func (table *Table) nodeToRevalidate() (n *node, bi int) {
-	for _, bi = range table.rand.Perm(len(table.buckets)) {
-		b := table.buckets[bi]
-		if len(b.entries) > 0 {
-			last := b.entries[len(b.entries)-1]
-			return last, bi
-		}
-	}
-	return nil, 0
-}
+
+//func (table *Table) nodeToRevalidate() (n *node, bi int) {
+//	//for _, bi = range table.rand.Perm(len(table.buckets)) {
+//	//	b := table.buckets[bi]
+//	//	if len(b.entries) > 0 {
+//	//		last := b.entries[len(b.entries)-1]
+//	//		return last, bi
+//	//	}
+//	//}
+//	return nil, 0
+//}
 
 func (table *Table) registerNursery() {
 	for _, n := range table.nursery {
@@ -453,60 +440,59 @@ func (table *Table) registerNursery() {
 }
 
 func (table *Table) register() {
-	node, _ := table.nodeToRevalidate()
-	//log.Println("node:", node, "bi:", bi)
-	if node != nil {
-		table.validate(node)
-	}
-	table.registerNursery()
+	//node, _ := table.nodeToRevalidate()
+	//if node != nil {
+	//	table.validate(node)
+	//}
+	//table.registerNursery()
 
 }
 func (table *Table) validate(node *node) {
-	value, err := table.call.register(table.localNode, node.addr)
-	if err != nil {
-		return
-	}
-	if node.id != value.id {
-		//id 不一致 删除当前node
-		return
-	}
+	//value, err := table.call.register(table.localNode, node.addr)
+	//if err != nil {
+	//	return
+	//}
+	//if node.id != value.id {
+	//	//id 不一致 删除当前node
+	//	return
+	//}
 	node.liveNessChecks++
 }
 func (table *Table) register0(node *node) error {
-	value, err := table.call.register(table.localNode, node.addr)
-	if err != nil {
-		return err
-	}
-	log.Println("register0 value", value)
-	log.Println("register0", node.ID())
-	node.SetID(value.ID())
-	node.isClient = value.isClient
-	node.isServer = value.isServer
-	node.isNatServer = value.isNatServer
-	log.Println("register0", node.ID())
+	//value, err := table.call.register(table.localNode, node.addr)
+	//if err != nil {
+	//	return err
+	//}
+	//log.Println("register0 value", value)
+	//log.Println("register0", node.ID())
+	//node.SetID(value.ID())
+	//node.isClient = value.isClient
+	//node.isServer = value.isServer
+	//node.isNatServer = value.isNatServer
+	//log.Println("register0", node.ID())
 	return nil
 }
 
 func (table *Table) findNode(n *Node, distances []uint) ([]*Node, error) {
-	nodes, err := table.call.findNode(table.localNode, n, n.addr, distances)
-	return nodes, err
+	//nodes, err := table.call.findNode(table.localNode, n, n.addr, distances)
+	return nil, nil
 
 }
 func (table *Table) findNodeByID(target ID, nResults int, preferLive bool) *nodesByDistance {
-	nodes := &nodesByDistance{target: target}
-	liveNodes := &nodesByDistance{target: target}
-	for _, b := range &table.buckets {
-		for _, n := range b.entries {
-			nodes.push(n, nResults)
-			if preferLive && n.liveNessChecks > 0 {
-				liveNodes.push(n, nResults)
-			}
-		}
-	}
-	if preferLive && len(liveNodes.entries) > 0 {
-		return liveNodes
-	}
-	return nodes
+	//nodes := &nodesByDistance{target: target}
+	//liveNodes := &nodesByDistance{target: target}
+	//for _, b := range &table.buckets {
+	//	for _, n := range b.entries {
+	//		nodes.push(n, nResults)
+	//		if preferLive && n.liveNessChecks > 0 {
+	//			liveNodes.push(n, nResults)
+	//		}
+	//	}
+	//}
+	//if preferLive && len(liveNodes.entries) > 0 {
+	//	return liveNodes
+	//}
+	return nil
 }
 func (table *Table) self() *Node {
 	return table.localNode
@@ -526,28 +512,28 @@ func (table *Table) nodePage(nodeType, pageNo, pageSize int) ([]*node, int) {
 	return nodes, 0
 }
 func (table *Table) page(pageNo, pageSize int) ([]*node, int) {
-	nodes := make([]*node, 0)
-	skeep := (pageNo - 1) * pageSize
-	var start = 0
-	var total = 0
-	for _, b := range table.buckets {
-		for _, entry := range b.entries {
-			if start >= skeep {
-				nodes = append(nodes, entry)
-				if len(nodes) >= pageSize {
-					break
-				}
-			}
-			start++
-		}
-		if len(nodes) >= pageSize {
-			break
-		}
-	}
-	for _, b := range table.buckets {
-		total = total + len(b.entries)
-	}
-	return nodes, total
+	//nodes := make([]*node, 0)
+	//skeep := (pageNo - 1) * pageSize
+	//var start = 0
+	//var total = 0
+	//for _, b := range table.buckets {
+	//	for _, entry := range b.entries {
+	//		if start >= skeep {
+	//			nodes = append(nodes, entry)
+	//			if len(nodes) >= pageSize {
+	//				break
+	//			}
+	//		}
+	//		start++
+	//	}
+	//	if len(nodes) >= pageSize {
+	//		break
+	//	}
+	//}
+	//for _, b := range table.buckets {
+	//	total = total + len(b.entries)
+	//}
+	return nil, 0
 }
 
 func (table *Table) queryServerNode(serverName ID) (*node, bool) {
@@ -566,7 +552,8 @@ func (table *Table) FindRemoteServer(target ID, node *Node, distances int) (quer
 }
 
 func (table *Table) Ping(node *Node) (err error) {
-	return table.call.ping(node, node.addr)
+	//return table.call.ping(node, node.addr)
+	return nil
 }
 
 type RecordBuckets struct {
@@ -602,20 +589,20 @@ func (table *Table) collectBucketsFindNode(minBucketIndex, maxBucketIndex int, r
 	}
 }
 func (table *Table) collectBucketsByIndex(index, minBucketIndex, maxBucketIndex int, recordBuckets *RecordBuckets) bool {
-	isEnd := true
-	for i := minBucketIndex; i < maxBucketIndex; i++ {
-		b := table.buckets[i]
-		if len(b.entries) > index {
-			if isEnd {
-				isEnd = false
-			}
-			fill := recordBuckets.push(&b.entries[index].Node)
-			if fill {
-				return true
-			}
-		}
-	}
-	return isEnd
+	//isEnd := true
+	//for i := minBucketIndex; i < maxBucketIndex; i++ {
+	//	b := table.buckets[i]
+	//	if len(b.entries) > index {
+	//		if isEnd {
+	//			isEnd = false
+	//		}
+	//		fill := recordBuckets.push(&b.entries[index].Node)
+	//		if fill {
+	//			return true
+	//		}
+	//	}
+	//}
+	return false
 }
 func NewTable(coreCtx *core.Context, localNode *Node, call *call) *Table {
 

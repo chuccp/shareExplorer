@@ -8,13 +8,14 @@ import (
 	"math/bits"
 	"net"
 	"strings"
+	"time"
 )
 
 type ID [32]byte
 
-func StringToId(server string) ID {
-	id, _ := hex.DecodeString(server)
-	return ID(id)
+func StringToId(server string) (ID, error) {
+	id, err := hex.DecodeString(server)
+	return ID(id), err
 }
 
 var zeroId ID
@@ -67,11 +68,16 @@ func wrapNodeFRegister(register *Register, address string) (*Node, error) {
 }
 
 type Node struct {
-	id          ID
-	isServer    bool
-	isClient    bool
-	isNatServer bool
-	addr        *net.UDPAddr
+	id              ID
+	isServer        bool
+	isClient        bool
+	isNatServer     bool
+	addr            *net.UDPAddr
+	addTime         time.Time
+	lastUpdateTime  time.Time
+	lastRefreshTime time.Time
+	errorNum        int
+	liveNessChecks  int
 }
 
 func (n *Node) IP() net.IP {
@@ -90,7 +96,9 @@ func (n *Node) IsNatServer() bool {
 func (n *Node) ServerName() string {
 	return hex.EncodeToString(n.id[:])
 }
-
+func (n *Node) HasId() bool {
+	return n.id.IsBlank()
+}
 func (n *Node) ID() ID {
 	return n.id
 }
@@ -102,12 +110,8 @@ func NewNursery(addr *net.UDPAddr) *Node {
 	return &Node{addr: addr}
 }
 
-func createLocalNode(serverName string, config *core.ServerConfig) (*Node, error) {
-	id, err := hex.DecodeString(serverName)
-	if err != nil {
-		return nil, err
-	}
-	return &Node{id: wrapId(id), isServer: config.IsServer(), isClient: config.IsClient(), isNatServer: config.IsNatServer()}, nil
+func NewLocalNode(id ID, config *core.ServerConfig) *Node {
+	return &Node{id: id, isServer: config.IsServer(), isClient: config.IsClient(), isNatServer: config.IsNatServer()}
 }
 
 func LogDist(a, b ID) int {
@@ -134,14 +138,4 @@ func DistCmp(target, a, b ID) int {
 		}
 	}
 	return 0
-}
-func unwrapNodes(ns []*node) []*Node {
-	result := make([]*Node, len(ns))
-	for i, n := range ns {
-		result[i] = unwrapNode(n)
-	}
-	return result
-}
-func unwrapNode(n *node) *Node {
-	return &n.Node
 }

@@ -225,7 +225,7 @@ func (s *Server) addRemoteAddress(req *web.Request) (any, error) {
 	}
 	return web.ResponseOK("ok"), nil
 }
-func (s *Server) connect(req *web.Request) (any, error) {
+func (s *Server) ping(req *web.Request) (any, error) {
 	address := req.FormValue("address")
 	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
@@ -233,7 +233,7 @@ func (s *Server) connect(req *web.Request) (any, error) {
 	}
 	discoverServer, ok := s.context.GetDiscoverServer()
 	if ok {
-		err := discoverServer.Connect(addr)
+		err := discoverServer.Ping(addr)
 		if err != nil {
 			return nil, err
 		}
@@ -440,7 +440,7 @@ func (s *Server) Init(context *core.Context) {
 
 	context.Post("/user/clientSignIn", s.clientSignIn)
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
-	context.Get("/user/connect", s.connect)
+	context.Get("/user/ping", s.ping)
 	context.Get("/user/downloadCert", s.downloadCert)
 	context.GetRemote("/user/downloadUserCert", s.downloadUserCert)
 	context.Post("/user/uploadUserCert", s.uploadUserCert)

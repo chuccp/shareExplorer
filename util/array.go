@@ -25,3 +25,19 @@ func DeleteElement[T comparable](list []T, ele T) []T {
 	}
 	return result
 }
+func DeleteElements[T comparable](list []T, eles []T) []T {
+	result := make([]T, 0)
+	for _, v := range list {
+		has := false
+		for _, ele := range eles {
+			if v == ele {
+				has = true
+				break
+			}
+		}
+		if !has {
+			result = append(result, v)
+		}
+	}
+	return result
+}

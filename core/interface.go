@@ -17,7 +17,7 @@ type IRegister interface {
 
 type DiscoverServer interface {
 	Start()
-	Connect(address *net.UDPAddr) error
+	Ping(address *net.UDPAddr) error
 	Stop()
 	FindStatus(servername string, isStart bool) *entity.NodeStatus
 }

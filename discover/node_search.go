@@ -11,12 +11,12 @@ import (
 )
 
 type nodeSearchManage struct {
-	table        *Table
+	table        *Table2
 	nodeSearches []*nodeSearch
 	coreCtx      *core.Context
 }
 
-func NewNodeSearchManage(table *Table) *nodeSearchManage {
+func NewNodeSearchManage(table *Table2) *nodeSearchManage {
 	return &nodeSearchManage{table: table, nodeSearches: make([]*nodeSearch, 0)}
 }
 
@@ -96,8 +96,8 @@ func NewFindServerNodeQueue(queryTable queryTable) *findServerNodeQueue {
 type queryTable interface {
 	ID() ID
 	Ping(node *Node) error
-	FindRemoteServer(target ID, node *Node, distances int) ([]*Node, error)
-	FindServer(target ID, distances int) []*Node
+	FindRemoteServer(target ID, node *Node, distances int) (*Node, []*Node, error)
+	FindServer(target ID, distances int) (*Node, []*Node)
 	AddNatServer(n *node)
 }
 
@@ -116,7 +116,7 @@ func NewQueryServer(queryTable queryTable, searchId ID, parentCtx context.Contex
 func (qv *queryServer) ping(node *Node) error {
 	return qv.queryTable.Ping(node)
 }
-func (qv *queryServer) findServer(preId ID, fromId ID, searchId ID, queryNode *Node) ([]*Node, error) {
+func (qv *queryServer) findServer(preId ID, fromId ID, searchId ID, queryNode *Node) (*Node, []*Node, error) {
 	maxDistance := LogDist(preId, fromId)
 	queryDistance := LogDist(queryNode.id, fromId)
 	if maxDistance != 0 && queryDistance >= maxDistance {
@@ -127,7 +127,7 @@ func (qv *queryServer) findServer(preId ID, fromId ID, searchId ID, queryNode *N
 
 func (qv *queryServer) StartFind() (*Node, error) {
 	var findValueNodeQueue = NewFindServerNodeQueue(qv.queryTable)
-	queryNode := qv.queryTable.FindServer(qv.searchId, 0)
+	_, queryNode := qv.queryTable.FindServer(qv.searchId, 0)
 	for _, n := range queryNode {
 		if n.id == qv.searchId {
 			err := qv.ping(n)
@@ -150,7 +150,7 @@ func (qv *queryServer) StartFind() (*Node, error) {
 				if !fa {
 					return nil, QueryNotFoundError
 				}
-				queryNodes, err := qv.findServer(node.preId, node.fromId, qv.searchId, node.queryNode)
+				_, queryNodes, err := qv.findServer(node.preId, node.fromId, qv.searchId, node.queryNode)
 				if err == nil {
 					for _, qNode := range queryNodes {
 						if qNode.id == qv.searchId {
@@ -286,6 +286,6 @@ func (nodeSearch *nodeSearch) ping(node *Node) {
 		nodeSearch.nodeStatus.SearchFail(err)
 	}
 }
-func (nodeSearch *nodeSearch) FindValue(target ID, node *Node, distances int) (queryNode []*Node, err error) {
+func (nodeSearch *nodeSearch) FindRemoteServer(target ID, node *Node, distances int) (n *Node, queryNode []*Node, err error) {
 	return nodeSearch.queryTable.FindRemoteServer(target, node, distances)
 }
