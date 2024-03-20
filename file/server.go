@@ -5,11 +5,13 @@ import (
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/io"
 	"github.com/chuccp/shareExplorer/web"
+	"go.uber.org/zap"
 	"os"
 	"path"
 )
 
 type Server struct {
+	context *core.Context
 }
 
 func (s *Server) index(req *web.Request) (any, error) {
@@ -44,8 +46,9 @@ func (s *Server) download(req *web.Request) (any, error) {
 func (s *Server) rename(req *web.Request) (any, error) {
 
 	var rename entity.Rename
-	err := req.BodyJson(&rename)
+	v, err := req.BodyJson(&rename)
 	if err != nil {
+		s.context.GetLog().Error("addUser", zap.Error(err), zap.String("body", v))
 		return nil, os.ErrNotExist
 	}
 	if len(rename.Path) > 0 && len(rename.RootPath) > 0 {
@@ -116,8 +119,9 @@ type NewFolder struct {
 
 func (s *Server) createNewFolder(req *web.Request) (any, error) {
 	var folder NewFolder
-	err := req.BodyJson(&folder)
+	v, err := req.BodyJson(&folder)
 	if err != nil {
+		s.context.GetLog().Error("addUser", zap.Error(err), zap.String("body", v))
 		return nil, err
 	}
 	if len(folder.Path) > 0 && len(folder.Folder) > 0 && len(folder.RootPath) > 0 {
@@ -158,6 +162,7 @@ func (s *Server) paths(req *web.Request) (any, error) {
 }
 
 func (s *Server) Init(context *core.Context) {
+	s.context = context
 	context.GetRemote("/file/root", s.root)
 	context.GetRemote("/file/paths", s.paths)
 	context.GetRemote("/file/index", s.index)

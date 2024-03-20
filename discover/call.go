@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/web"
+	"go.uber.org/zap"
 	"net"
 	"strconv"
 )
@@ -27,10 +28,12 @@ func (call *call) register(remoteAddress *net.UDPAddr) (*Node, error) {
 		IsClient:    strconv.FormatBool(call.localNode.isClient),
 	}
 	data, _ := json.Marshal(register)
+	call.context.GetLog().Debug("register", zap.String("send", string(data)))
 	value, err := call.httpClient.PostRequest(remoteAddress, "/discover/register", string(data))
 	if err != nil {
 		return nil, err
 	}
+	call.context.GetLog().Debug("register", zap.String("receive", value))
 	response, err := web.JsonToResponse[*ResponseNode](value)
 	if err != nil {
 		return nil, err

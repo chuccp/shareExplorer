@@ -1,1 +1,8 @@
 {"level":"error","ts":"2024-03-20 22:15:18","caller":"discover/server.go:29","msg":"register","error":"unexpected end of JSON input"}
+{"level":"panic","ts":"2024-03-20 22:19:37","caller":"discover/table.go:249","msg":"validate","error":"json: cannot unmarshal string into Go struct field Response[*github.com/chuccp/shareExplorer/discover.ResponseNode].data of type discover.ResponseNode"}
+{"level":"error","ts":"2024-03-20 22:23:16","caller":"discover/table.go:249","msg":"validate","error":"Post \"https://127.0.0.1:2157/discover/register\": timeout: no recent network activity"}
+{"level":"panic","ts":"2024-03-20 22:23:16","caller":"discover/table.go:216","msg":"lookupByTarget","error":"Post \"https://127.0.0.1:2157/discover/findNode\": timeout: no recent network activity"}
+{"level":"error","ts":"2024-03-20 22:25:55","caller":"discover/table.go:216","msg":"lookupByTarget","error":"Post \"https://127.0.0.1:2157/discover/findNode\": timeout: no recent network activity"}
+{"level":"error","ts":"2024-03-20 22:25:55","caller":"discover/table.go:249","msg":"validate","error":"Post \"https://127.0.0.1:2157/discover/register\": timeout: no recent network activity"}
+{"level":"error","ts":"2024-03-20 22:26:00","caller":"discover/table.go:216","msg":"lookupByTarget","error":"Post \"https://127.0.0.1:2157/discover/findNode\": timeout: no recent network activity"}
+{"level":"error","ts":"2024-03-20 22:28:09","caller":"discover/server.go:29","msg":"register","error":"unexpected end of JSON input"}

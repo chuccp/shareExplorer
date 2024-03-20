@@ -107,7 +107,7 @@ func (table *Table) run() {
 	defer table.mutex.Unlock()
 	err := table.loadAddress()
 	if err != nil {
-		table.coreCtx.GetLog().Panic("run", zap.Error(err))
+		table.coreCtx.GetLog().Error("run", zap.Error(err))
 		return
 	} else {
 		go table.loop(table.ctx)
@@ -181,7 +181,7 @@ func (table *Table) loadNurseryNodes() {
 			if n.ID().IsBlank() {
 				node, err := table.call.register(n.addr)
 				if err != nil {
-					table.coreCtx.GetLog().Panic("loadNurseryNodes", zap.Error(err))
+					table.coreCtx.GetLog().Error("loadNurseryNodes", zap.Error(err))
 					n.errorNum++
 					return
 				} else {
@@ -213,7 +213,7 @@ func (table *Table) lookupByTarget(target ID) {
 	for _, n := range nodes.entries {
 		nodes, err := table.call.findNode(target, n)
 		if err != nil {
-			table.coreCtx.GetLog().Panic("lookupByTarget", zap.Error(err))
+			table.coreCtx.GetLog().Error("lookupByTarget", zap.Error(err))
 			n.errorNum++
 			return
 		}
@@ -246,7 +246,7 @@ func (table *Table) validate(node *Node, index int) {
 		node.liveNessChecks++
 		return
 	} else {
-		table.coreCtx.GetLog().Panic("validate", zap.Error(err))
+		table.coreCtx.GetLog().Error("validate", zap.Error(err))
 	}
 
 	node.errorNum++

@@ -76,16 +76,16 @@ func (r *Request) GetRawRequest() *http.Request {
 	return r.context.Request
 }
 
-func (r *Request) BodyJson(v any) error {
+func (r *Request) BodyJson(v any) (string, error) {
 	body, err := io.ReadAll(r.context.Request.Body)
 	if err != nil {
-		return err
+		return string(body), err
 	}
 	err = json.Unmarshal(body, v)
 	if err != nil {
-		return err
+		return string(body), err
 	}
-	return nil
+	return string(body), nil
 }
 
 func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {

@@ -8,6 +8,7 @@ import (
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/util"
 	"github.com/chuccp/shareExplorer/web"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"net"
 )
@@ -211,8 +212,9 @@ func (s *Server) reset(req *web.Request) (any, error) {
 func (s *Server) addRemoteAddress(req *web.Request) (any, error) {
 	println("addRemoteAddress")
 	var addresses []string
-	err := req.BodyJson(&addresses)
+	v, err := req.BodyJson(&addresses)
 	if err != nil {
+		s.context.GetLog().Error("addRemoteAddress", zap.Error(err), zap.String("body", v))
 		return nil, err
 	}
 	if len(addresses) == 0 {
@@ -308,8 +310,9 @@ func (s *Server) uploadUserCert(req *web.Request) (any, error) {
 
 func (s *Server) addPath(req *web.Request) (any, error) {
 	var path db.Path
-	err := req.BodyJson(&path)
+	v, err := req.BodyJson(&path)
 	if err != nil {
+		s.context.GetLog().Error("addPath", zap.Error(err), zap.String("body", v))
 		return nil, err
 	}
 	err = s.context.GetDB().GetPathModel().Create(path.Name, path.Path)
@@ -320,8 +323,9 @@ func (s *Server) addPath(req *web.Request) (any, error) {
 }
 func (s *Server) editPath(req *web.Request) (any, error) {
 	var path db.Path
-	err := req.BodyJson(&path)
+	v, err := req.BodyJson(&path)
 	if err != nil {
+		s.context.GetLog().Error("editPath", zap.Error(err), zap.String("body", v))
 		return nil, err
 	}
 	err = s.context.GetDB().GetPathModel().Update(int(path.Id), path.Name, path.Path)
@@ -372,8 +376,9 @@ func (s *Server) queryOnePath(req *web.Request) (any, error) {
 
 func (s *Server) addUser(req *web.Request) (any, error) {
 	var user db.User
-	err := req.BodyJson(&user)
+	v, err := req.BodyJson(&user)
 	if err != nil {
+		s.context.GetLog().Error("addUser", zap.Error(err), zap.String("body", v))
 		return nil, err
 	}
 
@@ -400,8 +405,9 @@ func (s *Server) deleteUser(req *web.Request) (any, error) {
 
 func (s *Server) editUser(req *web.Request) (any, error) {
 	var user db.User
-	err := req.BodyJson(&user)
+	v, err := req.BodyJson(&user)
 	if err != nil {
+		s.context.GetLog().Error("addUser", zap.Error(err), zap.String("body", v))
 		return nil, err
 	}
 	err = s.context.GetDB().GetUserModel().EditUser(user.Id, user.Username, user.Password, user.PathIds)
