@@ -72,13 +72,6 @@ func (u *UserModel) AddUser(username string, password string, role string, path 
 }
 
 func (u *UserModel) DeleteUser(username string) error {
-	if !u.IsExist() {
-		err := u.createTable()
-		if err != nil {
-			return err
-		}
-	}
-
 	var v User
 	tx := u.db.Table(u.tableName).Where("`username` = ?", username).First(&v)
 	if tx.Error != nil {
@@ -94,12 +87,6 @@ func (u *UserModel) DeleteUser(username string) error {
 	return tx.Error
 }
 func (u *UserModel) EditUser(id uint, username string, password string, pathIds string) error {
-	if !u.IsExist() {
-		err := u.createTable()
-		if err != nil {
-			return err
-		}
-	}
 	tx := u.db.Table(u.tableName).Where(&User{
 		Id: id,
 	}).Updates(&User{

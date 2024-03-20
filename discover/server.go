@@ -47,7 +47,7 @@ func (s *Server) findNode(req *web.Request) (any, error) {
 		return nil, err
 	}
 	findNode.addr = addr
-	ns := s.table.queryByFindNode(&findNode)
+	ns := s.table.FindNode(&findNode)
 	return web.ResponseOK(wrapResponseNodes(ns)), nil
 }
 func (s *Server) findServer(req *web.Request) (any, error) {
@@ -56,9 +56,9 @@ func (s *Server) findServer(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	//id, _ := wrapIdFName(findValue.Target)
-	//ns := s.table.FindServer(id, findValue.Distances)
-	return web.ResponseOK(""), nil
+	id, _ := wrapIdFName(findServer.Target)
+	n, ns := s.table.FindServer(id, findServer.Distances)
+	return web.ResponseOK(wrapFindServerResponse(n, ns)), nil
 }
 
 func (s *Server) nodeStatus(req *web.Request) (any, error) {
@@ -85,9 +85,6 @@ func (s *Server) nodeStatus(req *web.Request) (any, error) {
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	servername := s.context.GetCertManager().GetServerName()
-
-	log.Println("servername len:", len(servername))
-
 	id, err := StringToId(servername)
 	if err != nil {
 		log.Panic(err)
@@ -96,7 +93,7 @@ func (s *Server) Init(context *core.Context) {
 	s.localNode = NewLocalNode(id, s.context.GetServerConfig())
 	s.call = newCall(s.localNode, core.NewHttpClient(context))
 	s.context.SetDiscoverServer(s)
-	s.table = NewTable2(s.context, s.localNode, s.call)
+	s.table = NewTable(s.context, s.localNode, s.call)
 	s.context.Post("/discover/register", s.register)
 	s.context.Post("/discover/connect", s.connect)
 	s.context.Post("/discover/nodeStatus", s.nodeStatus)
@@ -131,7 +128,10 @@ func (s *Server) Ping(address *net.UDPAddr) error {
 	}
 	return nil
 }
-
+func (s *Server) ReStart() {
+	s.table.stop()
+	go s.table.run()
+}
 func (s *Server) Start() {
 	go s.table.run()
 	s.nodeSearchManage = NewNodeSearchManage(s.table)

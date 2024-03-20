@@ -97,7 +97,7 @@ func (n *Node) ServerName() string {
 	return hex.EncodeToString(n.id[:])
 }
 func (n *Node) HasId() bool {
-	return n.id.IsBlank()
+	return !n.id.IsBlank()
 }
 func (n *Node) ID() ID {
 	return n.id

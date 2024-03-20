@@ -78,21 +78,25 @@ func (call *call) findNode(target ID, queryNode *Node) ([]*Node, error) {
 	}
 	return nil, errors.New(response.Error)
 }
-func (call *call) findServer(target ID, distances int, address *net.UDPAddr) ([]*Node, error) {
+func (call *call) findServer(target ID, distances int, address *net.UDPAddr) (*Node, []*Node, error) {
 	var findServer = &FindServer{FormId: call.localNode.ServerName(), Target: target.String(), Distances: distances}
 	data, _ := json.Marshal(findServer)
 	value, err := call.httpClient.PostRequest(address, "/discover/findServer", string(data))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	response, err := web.JsonToResponse[[]*Node](value)
+	response, err := web.JsonToResponse[*FindServerResponse](value)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if response.IsOk() {
-		return response.Data, nil
+		node, err := wrapResponseNodeToNode(response.Data.Server)
+		if err != nil {
+			return nil, nil, err
+		}
+		return node, wrapResponseNodeToNodes(response.Data.Nodes), nil
 	}
-	return nil, errors.New(response.Error)
+	return nil, nil, errors.New(response.Error)
 }
 
 func (call *call) ping(address *net.UDPAddr) error {

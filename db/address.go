@@ -3,7 +3,6 @@ package db
 import (
 	"github.com/chuccp/shareExplorer/util"
 	"gorm.io/gorm"
-	"log"
 	"time"
 )
 
@@ -37,7 +36,6 @@ func (a *AddressModel) DeleteTable() error {
 	if !a.IsExist() {
 		return nil
 	}
-	log.Println("AddressModel")
 	tx := a.db.Table(a.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Address{})
 	return tx.Error
 }
@@ -46,6 +44,16 @@ func (a *AddressModel) QueryAddresses() ([]*Address, error) {
 	var addr []*Address
 	tx := a.db.Table(a.tableName).Find(&addr)
 	return addr, tx.Error
+}
+
+func (a *AddressModel) UpdateServerNameByAddress(address, serverName string) error {
+	tx := a.db.Table(a.tableName).Where(&Address{
+		Address: address,
+	}).Updates(&Address{
+		ServerName: serverName,
+		UpdateTime: time.Now(),
+	})
+	return tx.Error
 }
 
 func (a *AddressModel) AddAddress(addresses []string) error {

@@ -22,36 +22,41 @@ type Table struct {
 	ctxCancel context.CancelFunc
 }
 
-func (t *Table) ID() ID {
-	return t.localNode.id
+func (table *Table) ID() ID {
+	return table.localNode.id
 }
-func (t *Table) Ping(node *Node) error {
-	return t.call.ping(node.addr)
+func (table *Table) Ping(node *Node) error {
+	return table.call.ping(node.addr)
 }
-func (t *Table) FindRemoteServer(target ID, node *Node, distances int) (*Node, []*Node, error) {
+func (table *Table) FindRemoteServer(target ID, node *Node, distances int) (*Node, []*Node, error) {
+	return table.call.findServer(target, distances, node.addr)
+}
+func (table *Table) FindServer(target ID, distances int) (*Node, []*Node) {
+	if table.localNode.id == target {
+		return table.localNode, []*Node{}
+	}
+	node, fa := table.nodeTable.queryServer(target)
+	if fa {
+		return node, []*Node{}
+	}
+	return nil, table.nodeTable.collectTableFindNode(distances)
+}
+func (table *Table) AddNatServer(n *Node) {
+	table.nodeTable.addNode(n)
+}
+func (table *Table) addNode(n *Node) {
+	table.nodeTable.addNode(n)
+}
+func (table *Table) addSeedNode(n *Node) {
+	table.nodeTable.addSeedNode(n)
+}
+func (table *Table) FindNode(findNode *FindNode) []*Node {
+	return table.nodeTable.collectTableNodes(findNode.addr.IP, findNode.Distances, findnodeResultLimit)
+}
 
-	return nil, nil, nil
-}
-func (t *Table) FindServer(target ID, distances int) (*Node, []*Node) {
-	return nil, nil
-}
-func (t *Table) AddNatServer(n *Node) {
-
-}
-
-func (t *Table) addNode(n *Node) {
-	t.nodeTable.addNode(n)
-}
-func (t *Table) addSeedNode(n *Node) {
-	t.nodeTable.addSeedNode(n)
-}
-func (t *Table) queryByFindNode(findNode *FindNode) []*Node {
-	return nil
-}
-
-func (t *Table) loadAddress() error {
+func (table *Table) loadAddress() error {
 	seeds := make([]*Node, 0)
-	addresses, err := t.coreCtx.GetDB().GetAddressModel().QueryAddresses()
+	addresses, err := table.coreCtx.GetDB().GetAddressModel().QueryAddresses()
 	if err != nil {
 		return err
 	}
@@ -76,7 +81,7 @@ func (t *Table) loadAddress() error {
 		}
 	}
 	for _, seed := range seeds {
-		t.addSeedNode(seed)
+		table.addSeedNode(seed)
 	}
 	if len(seeds) < 1 {
 		return errors.New("no node")
@@ -84,37 +89,43 @@ func (t *Table) loadAddress() error {
 	return nil
 }
 
-func (t *Table) queryForPage(pageNo, pageSize int) ([]*Node, int) {
+func (table *Table) queryForPage(pageNo, pageSize int) ([]*Node, int) {
 	return nil, 0
 }
 
-func (t *Table) self() *Node {
-	return t.localNode
+func (table *Table) self() *Node {
+	return table.localNode
 }
 
-func (t *Table) run() {
-	err := t.loadAddress()
+func (table *Table) run() {
+	table.mutex.Lock()
+	if table.ctxCancel != nil {
+		table.ctxCancel()
+		table.ctxCancel = nil
+	}
+	table.ctx, table.ctxCancel = context.WithCancel(context.Background())
+	defer table.mutex.Unlock()
+	err := table.loadAddress()
 	if err != nil {
 		log.Panic(err)
 		return
 	} else {
-		t.loop()
+		go table.loop(table.ctx)
 	}
 }
 
-func (t *Table) loop() {
+func (table *Table) loop(ctx context.Context) {
 	var (
-		revalidate     = time.NewTimer(t.nextRevalidateTime())
-		refresh        = time.NewTimer(t.nextRefreshTime())
+		revalidate     = time.NewTimer(table.nextRevalidateTime())
+		refresh        = time.NewTimer(table.nextRefreshTime())
 		revalidateDone chan struct{}
 		refreshDone    = make(chan struct{})
 	)
-	t.loadAddress()
-	go t.doRefresh(refreshDone)
+	go table.doRefresh(refreshDone)
 	for {
 		select {
 
-		case <-t.ctx.Done():
+		case <-ctx.Done():
 			{
 				break
 			}
@@ -122,122 +133,129 @@ func (t *Table) loop() {
 			{
 				if refreshDone == nil {
 					refreshDone = make(chan struct{})
-					go t.doRefresh(refreshDone)
+					go table.doRefresh(refreshDone)
 				}
 			}
 		case <-revalidate.C:
 			{
 				revalidateDone = make(chan struct{})
-				t.doRevalidate(revalidateDone)
+				table.doRevalidate(revalidateDone)
 			}
 		case <-revalidateDone:
 			{
-				revalidate.Reset(t.nextRevalidateTime())
+				revalidate.Reset(table.nextRevalidateTime())
 				revalidateDone = nil
 			}
 		case <-refreshDone:
-			refresh.Reset(t.nextRefreshTime())
+			refresh.Reset(table.nextRefreshTime())
 		}
 	}
 }
 
-func (t *Table) nextRevalidateTime() time.Duration {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-	return time.Duration(t.rand.Int63n(int64(10 * time.Second)))
+func (table *Table) nextRevalidateTime() time.Duration {
+	table.mutex.Lock()
+	defer table.mutex.Unlock()
+	return time.Duration(table.rand.Int63n(int64(10 * time.Second)))
 }
 
-func (t *Table) nextRefreshTime() time.Duration {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+func (table *Table) nextRefreshTime() time.Duration {
+	table.mutex.Lock()
+	defer table.mutex.Unlock()
 	half := 30 * time.Minute / 2
-	return half + time.Duration(t.rand.Int63n(int64(half)))
+	return half + time.Duration(table.rand.Int63n(int64(half)))
 }
 
-func (t *Table) stop() {
-	t.ctxCancel()
+func (table *Table) stop() {
+	table.mutex.Lock()
+	defer table.mutex.Unlock()
+	if table.ctxCancel != nil {
+		table.ctxCancel()
+		table.ctxCancel = nil
+	}
 }
 
-func (t *Table) loadNurseryNodes() {
-	if t.nodeTable.hasNurseryNodes() {
+func (table *Table) loadNurseryNodes() {
+	if table.nodeTable.hasNurseryNodes() {
 		deleteNodes := make([]*Node, 0)
-		for _, n := range t.nodeTable.nurseryNodes() {
+		for _, n := range table.nodeTable.nurseryNodes() {
 			if n.ID().IsBlank() {
-				node, err := t.call.register(n.addr)
+				node, err := table.call.register(n.addr)
 				if err != nil {
 					n.errorNum++
 					return
 				} else {
-					t.addNode(node)
-					deleteNodes = append(deleteNodes, n)
+					if !node.ID().IsBlank() {
+						table.addNode(node)
+						table.coreCtx.GetDB().GetAddressModel().UpdateServerNameByAddress(n.addr.String(), node.ServerName())
+						deleteNodes = append(deleteNodes, n)
+					}
 				}
 			}
 		}
-		t.nodeTable.removeNurseryNodes(deleteNodes)
+		table.nodeTable.removeNurseryNodes(deleteNodes)
 	}
 }
 
-func (t *Table) doRefresh(done chan struct{}) {
+func (table *Table) doRefresh(done chan struct{}) {
 	defer close(done)
-	t.loadNurseryNodes()
-	t.lookup()
+	table.loadNurseryNodes()
+	table.lookup()
 }
-func (t *Table) lookup() {
-	t.lookupSelf()
+func (table *Table) lookup() {
+	table.lookupSelf()
 	for i := 0; i < 3; i++ {
-		t.lookupRand()
+		table.lookupRand()
 	}
 }
-func (t *Table) lookupByTarget(target ID) {
-	nodes := t.nodeTable.queryNodesByIdAndDistance(target, findnodeResultLimit)
+func (table *Table) lookupByTarget(target ID) {
+	nodes := table.nodeTable.queryNodesByIdAndDistance(target, findnodeResultLimit)
 	for _, n := range nodes.entries {
-		nodes, err := t.call.findNode(target, n)
+		nodes, err := table.call.findNode(target, n)
 		if err != nil {
 			n.errorNum++
 			return
 		}
 		for _, n2 := range nodes {
-			t.addNode(n2)
+			table.addNode(n2)
 		}
 	}
 }
 
-func (t *Table) lookupSelf() {
-	id := t.localNode.ID()
-	t.lookupByTarget(id)
+func (table *Table) lookupSelf() {
+	id := table.localNode.ID()
+	table.lookupByTarget(id)
 }
 
-func (t *Table) lookupRand() {
+func (table *Table) lookupRand() {
 	var target ID
-	t.rand.Read(target[:])
-	t.lookupByTarget(target)
+	table.rand.Read(target[:])
+	table.lookupByTarget(target)
 }
 
-func (t *Table) validate(node *Node, index int) {
-	value, err := t.call.register(node.addr)
+func (table *Table) validate(node *Node, index int) {
+	value, err := table.call.register(node.addr)
 	if err == nil {
 		if node.id != value.id {
-			t.nodeTable.deleteNode(node)
-			t.addNode(value)
+			table.nodeTable.deleteNode(node)
+			table.addNode(value)
 			return
 		}
 		node.liveNessChecks++
 		return
 	}
 	node.errorNum++
-	t.nodeTable.replace(index, node)
+	table.nodeTable.replace(index, node)
 }
 
-func (t *Table) doRevalidate(done chan struct{}) {
+func (table *Table) doRevalidate(done chan struct{}) {
 	defer close(done)
-	t.loadNurseryNodes()
-	node, _, index := t.nodeTable.nodeToRevalidate()
+	table.loadNurseryNodes()
+	node, _, index := table.nodeTable.nodeToRevalidate()
 	if node != nil {
-		t.validate(node, index)
+		table.validate(node, index)
 	}
 
 }
-func NewTable2(coreCtx *core.Context, localNode *Node, call *call) *Table {
-	ctx, ctxCancel := context.WithCancel(context.Background())
-	return &Table{ctx: ctx, ctxCancel: ctxCancel, coreCtx: coreCtx, nodeTable: NewNodeTable(localNode), localNode: localNode, call: call}
+func NewTable(coreCtx *core.Context, localNode *Node, call *call) *Table {
+	return &Table{rand: rand.New(rand.NewSource(0)), coreCtx: coreCtx, nodeTable: NewNodeTable(localNode), localNode: localNode, call: call}
 }

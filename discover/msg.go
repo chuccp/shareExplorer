@@ -28,6 +28,11 @@ type (
 		Distances int    `json:"distances"`
 	}
 
+	FindServerResponse struct {
+		Server *ResponseNode   `json:"server"`
+		Nodes  []*ResponseNode `json:"nodes"`
+	}
+
 	NodeStatus struct {
 		Id          string `json:"id"`
 		IsServer    string `json:"isServer"`
@@ -48,7 +53,6 @@ type (
 		IsNatServer string `json:"isNatServer"`
 		Address     string `json:"address"`
 	}
-
 )
 
 func NodeToRegister(n *Node) *Register {
@@ -73,6 +77,22 @@ func wrapResponseNodeToNode(n *ResponseNode) (*Node, error) {
 		return nil, err
 	}
 	return &Node{addr: addr, id: ID(id), isClient: strings.Contains(n.IsClient, "true"), isServer: strings.Contains(n.IsServer, "true"), isNatServer: strings.Contains(n.IsNatServer, "true")}, nil
+}
+
+func wrapResponseNodeToNodes(ns []*ResponseNode) []*Node {
+	var nodes = make([]*Node, 0)
+	for _, n := range ns {
+		node, err := wrapResponseNodeToNode(n)
+		if err == nil {
+			nodes = append(nodes, node)
+		}
+	}
+	return nodes
+
+}
+
+func wrapFindServerResponse(n *Node, ns []*Node) *FindServerResponse {
+	return &FindServerResponse{Server: wrapResponseNode(n), Nodes: wrapResponseNodes(ns)}
 }
 
 func wrapResponseNodes(ns []*Node) []*ResponseNode {
