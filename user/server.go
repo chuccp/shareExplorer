@@ -214,7 +214,7 @@ func (s *Server) addRemoteAddress(req *web.Request) (any, error) {
 	var addresses []string
 	v, err := req.BodyJson(&addresses)
 	if err != nil {
-		s.context.GetLog().Error("addRemoteAddress", zap.Error(err), zap.String("body", v))
+		s.context.GetLog().Error("addRemoteAddress", zap.Error(err), zap.ByteString("body", v))
 		return nil, err
 	}
 	if len(addresses) == 0 {
@@ -312,7 +312,7 @@ func (s *Server) addPath(req *web.Request) (any, error) {
 	var path db.Path
 	v, err := req.BodyJson(&path)
 	if err != nil {
-		s.context.GetLog().Error("addPath", zap.Error(err), zap.String("body", v))
+		s.context.GetLog().Error("addPath", zap.Error(err), zap.ByteString("body", v))
 		return nil, err
 	}
 	err = s.context.GetDB().GetPathModel().Create(path.Name, path.Path)
@@ -325,7 +325,7 @@ func (s *Server) editPath(req *web.Request) (any, error) {
 	var path db.Path
 	v, err := req.BodyJson(&path)
 	if err != nil {
-		s.context.GetLog().Error("editPath", zap.Error(err), zap.String("body", v))
+		s.context.GetLog().Error("editPath", zap.Error(err), zap.ByteString("body", v))
 		return nil, err
 	}
 	err = s.context.GetDB().GetPathModel().Update(int(path.Id), path.Name, path.Path)
@@ -378,7 +378,7 @@ func (s *Server) addUser(req *web.Request) (any, error) {
 	var user db.User
 	v, err := req.BodyJson(&user)
 	if err != nil {
-		s.context.GetLog().Error("addUser", zap.Error(err), zap.String("body", v))
+		s.context.GetLog().Error("addUser", zap.Error(err), zap.ByteString("body", v))
 		return nil, err
 	}
 
@@ -407,7 +407,7 @@ func (s *Server) editUser(req *web.Request) (any, error) {
 	var user db.User
 	v, err := req.BodyJson(&user)
 	if err != nil {
-		s.context.GetLog().Error("addUser", zap.Error(err), zap.String("body", v))
+		s.context.GetLog().Error("addUser", zap.Error(err), zap.ByteString("body", v))
 		return nil, err
 	}
 	err = s.context.GetDB().GetUserModel().EditUser(user.Id, user.Username, user.Password, user.PathIds)

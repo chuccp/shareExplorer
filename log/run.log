@@ -6,3 +6,5 @@
 {"level":"error","ts":"2024-03-20 22:25:55","caller":"discover/table.go:249","msg":"validate","error":"Post \"https://127.0.0.1:2157/discover/register\": timeout: no recent network activity"}
 {"level":"error","ts":"2024-03-20 22:26:00","caller":"discover/table.go:216","msg":"lookupByTarget","error":"Post \"https://127.0.0.1:2157/discover/findNode\": timeout: no recent network activity"}
 {"level":"error","ts":"2024-03-20 22:28:09","caller":"discover/server.go:29","msg":"register","error":"unexpected end of JSON input"}
+{"level":"error","ts":"2024-03-20 22:41:02","caller":"discover/server.go:30","msg":"register","error":"unexpected end of JSON input","body":""}
+{"level":"error","ts":"2024-03-20 22:41:41","caller":"discover/table.go:249","msg":"validate","error":"json: cannot unmarshal string into Go struct field Response[*github.com/chuccp/shareExplorer/discover.ResponseNode].data of type discover.ResponseNode"}

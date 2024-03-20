@@ -48,7 +48,7 @@ func (s *Server) rename(req *web.Request) (any, error) {
 	var rename entity.Rename
 	v, err := req.BodyJson(&rename)
 	if err != nil {
-		s.context.GetLog().Error("addUser", zap.Error(err), zap.String("body", v))
+		s.context.GetLog().Error("addUser", zap.Error(err), zap.ByteString("body", v))
 		return nil, os.ErrNotExist
 	}
 	if len(rename.Path) > 0 && len(rename.RootPath) > 0 {
@@ -121,7 +121,7 @@ func (s *Server) createNewFolder(req *web.Request) (any, error) {
 	var folder NewFolder
 	v, err := req.BodyJson(&folder)
 	if err != nil {
-		s.context.GetLog().Error("addUser", zap.Error(err), zap.String("body", v))
+		s.context.GetLog().Error("addUser", zap.Error(err), zap.ByteString("body", v))
 		return nil, err
 	}
 	if len(folder.Path) > 0 && len(folder.Folder) > 0 && len(folder.RootPath) > 0 {

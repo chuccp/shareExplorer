@@ -25,8 +25,9 @@ type Server struct {
 func (s *Server) register(req *web.Request) (any, error) {
 	var register Register
 	v, err := req.BodyJson(&register)
+	s.context.GetLog().Debug("register", zap.ByteString("Request", v), zap.Error(err))
 	if err != nil {
-		s.context.GetLog().Error("register", zap.Error(err), zap.String("body", v))
+		s.context.GetLog().Error("register", zap.Error(err), zap.ByteString("body", v))
 		return nil, err
 	}
 	node, err := wrapNodeFRegister(&register, req.GetRemoteAddress())
@@ -42,7 +43,7 @@ func (s *Server) findNode(req *web.Request) (any, error) {
 	var findNode FindNode
 	v, err := req.BodyJson(&findNode)
 	if err != nil {
-		s.context.GetLog().Error("findNode", zap.Error(err), zap.String("body", v))
+		s.context.GetLog().Error("findNode", zap.Error(err), zap.ByteString("body", v))
 		return nil, err
 	}
 	addr, err := net.ResolveUDPAddr("udp", req.GetRemoteAddress())
@@ -58,7 +59,7 @@ func (s *Server) findServer(req *web.Request) (any, error) {
 	var findServer FindServer
 	v, err := req.BodyJson(&findServer)
 	if err != nil {
-		s.context.GetLog().Error("findServer", zap.Error(err), zap.String("body", v))
+		s.context.GetLog().Error("findServer", zap.Error(err), zap.ByteString("body", v))
 		return nil, err
 	}
 	id, _ := wrapIdFName(findServer.Target)
