@@ -5,7 +5,6 @@ import (
 	"github.com/chuccp/shareExplorer/util"
 	"github.com/gin-gonic/gin"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"strconv"
@@ -53,10 +52,8 @@ func (r *Request) GetTokenUsername() string {
 	if len(token) == 0 {
 		token = r.context.Request.FormValue("Token")
 	}
-	log.Println("token:", token)
 	if len(token) > 0 {
 		sub, err := r.jwt.ParseWithSub(token)
-		log.Println(sub, err)
 		if err != nil {
 			return ""
 		} else {
@@ -80,12 +77,10 @@ func (r *Request) GetRawRequest() *http.Request {
 }
 
 func (r *Request) BodyJson(v any) error {
-	log.Println(r.context.Request)
 	body, err := io.ReadAll(r.context.Request.Body)
 	if err != nil {
 		return err
 	}
-	println(string(body))
 	err = json.Unmarshal(body, v)
 	if err != nil {
 		return err

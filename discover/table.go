@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
-	"log"
+	"go.uber.org/zap"
 	"math/rand"
 	"net"
 	"sync"
@@ -64,7 +64,7 @@ func (table *Table) loadAddress() error {
 		if len(address.Address) > 0 {
 			addr, err := net.ResolveUDPAddr("udp", address.Address)
 			if err != nil {
-				log.Println(err)
+				table.coreCtx.GetLog().Error("loadAddress", zap.Error(err))
 				continue
 			} else {
 				node := &Node{addr: addr, isServer: false, isNatServer: true, isClient: false}
@@ -73,7 +73,7 @@ func (table *Table) loadAddress() error {
 					if err == nil {
 						node.id = id
 					} else {
-						log.Println(err)
+						table.coreCtx.GetLog().Error("loadAddress", zap.Error(err))
 					}
 				}
 				seeds = append(seeds, node)
@@ -107,7 +107,7 @@ func (table *Table) run() {
 	defer table.mutex.Unlock()
 	err := table.loadAddress()
 	if err != nil {
-		log.Panic(err)
+		table.coreCtx.GetLog().Panic("run", zap.Error(err))
 		return
 	} else {
 		go table.loop(table.ctx)
@@ -181,6 +181,7 @@ func (table *Table) loadNurseryNodes() {
 			if n.ID().IsBlank() {
 				node, err := table.call.register(n.addr)
 				if err != nil {
+					table.coreCtx.GetLog().Panic("loadNurseryNodes", zap.Error(err))
 					n.errorNum++
 					return
 				} else {
@@ -212,6 +213,7 @@ func (table *Table) lookupByTarget(target ID) {
 	for _, n := range nodes.entries {
 		nodes, err := table.call.findNode(target, n)
 		if err != nil {
+			table.coreCtx.GetLog().Panic("lookupByTarget", zap.Error(err))
 			n.errorNum++
 			return
 		}
@@ -237,12 +239,16 @@ func (table *Table) validate(node *Node, index int) {
 	if err == nil {
 		if node.id != value.id {
 			table.nodeTable.deleteNode(node)
+			table.coreCtx.GetDB().GetAddressModel().UpdateServerNameByAddress(node.addr.String(), node.ServerName())
 			table.addNode(value)
 			return
 		}
 		node.liveNessChecks++
 		return
+	} else {
+		table.coreCtx.GetLog().Panic("validate", zap.Error(err))
 	}
+
 	node.errorNum++
 	table.nodeTable.replace(index, node)
 }

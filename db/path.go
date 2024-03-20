@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
-	"log"
 	"time"
 )
 
@@ -27,11 +26,9 @@ func (a *PathModel) IsExist() bool {
 }
 
 func (a *PathModel) DeleteTable() error {
-
 	if !a.IsExist() {
 		return nil
 	}
-	log.Println("PathModel")
 	tx := a.db.Table(a.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Path{})
 	return tx.Error
 }

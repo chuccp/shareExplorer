@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/web"
-	"log"
 	"net"
 	"strconv"
 )
@@ -13,10 +12,11 @@ import (
 type call struct {
 	httpClient *core.HttpClient
 	localNode  *Node
+	context    *core.Context
 }
 
-func newCall(localNode *Node, httpClient *core.HttpClient) *call {
-	return &call{localNode: localNode, httpClient: httpClient}
+func newCall(localNode *Node, httpClient *core.HttpClient, context *core.Context) *call {
+	return &call{localNode: localNode, httpClient: httpClient, context: context}
 }
 
 func (call *call) register(remoteAddress *net.UDPAddr) (*Node, error) {
@@ -66,7 +66,6 @@ func (call *call) findNode(target ID, queryNode *Node) ([]*Node, error) {
 	data, _ := json.Marshal(findNode)
 	value, err := call.httpClient.PostRequest(queryNode.addr, "/discover/findNode", string(data))
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 	response, err := web.JsonToResponse[[]*Node](value)

@@ -7,7 +7,7 @@ import (
 	"github.com/chuccp/shareExplorer/util"
 	"github.com/chuccp/shareExplorer/web"
 	"github.com/gin-gonic/gin"
-	"log"
+	"go.uber.org/zap"
 	"net"
 	"path"
 	"strings"
@@ -27,6 +27,7 @@ type Context struct {
 	certManager    *cert.Manager
 	serverConfig   *ServerConfig
 	clientCert     *ClientCert
+	log            *zap.Logger
 }
 
 type HandlersChain []HandlerFunc
@@ -41,6 +42,9 @@ func (c *Context) GetConfigArray(section, name string) []string {
 }
 func (c *Context) GetDB() *db.DB {
 	return c.db
+}
+func (c *Context) GetLog() *zap.Logger {
+	return c.log
 }
 func (c *Context) GetServerConfig() *ServerConfig {
 	return c.serverConfig
@@ -132,7 +136,6 @@ func (c *Context) StaticHandle(relativePath string, filepath string) {
 					relativeFilePath = path_
 				}
 				filePath := path.Join(filepath, relativeFilePath)
-				log.Println(filePath)
 				context.File(filePath)
 				context.Abort()
 			}
@@ -168,11 +171,10 @@ func (c *Context) RemoteHandle() {
 			}
 			isStart := context.Request.FormValue("start")
 			certificate, has := c.clientCert.getCertByCode(username, code)
-			log.Println("getCertByCode username:", username, " code:", code, "  has:", has)
 			if has {
 				ds, fa := c.GetDiscoverServer()
 				if fa {
-					log.Println("FindStatus", certificate.ServerName, " isStart:", isStart)
+
 					status := ds.FindStatus(certificate.ServerName, strings.Contains(isStart, "true"))
 					if status.GetError() != nil {
 						context.AbortWithStatusJSON(200, web.ResponseError(status.GetError().Error()))
@@ -182,7 +184,7 @@ func (c *Context) RemoteHandle() {
 							if err != nil {
 								context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
 							} else {
-								log.Println("remote", status.GetAddress().String(), context.Request.URL)
+
 								context.Request.Header.Del("Referer")
 								context.Request.Header.Del("Origin")
 								reverseProxy.ServeHTTP(context.Writer, context.Request)

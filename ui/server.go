@@ -2,7 +2,6 @@ package ui
 
 import (
 	"github.com/chuccp/shareExplorer/core"
-	"log"
 )
 
 type Server struct {
@@ -11,7 +10,6 @@ type Server struct {
 
 func (s *Server) Init(context *core.Context) {
 	webPath := context.GetConfig("ui", "web.path")
-	log.Println("webPath:" + webPath)
 	context.StaticHandle("/", webPath)
 
 	///manifest.json

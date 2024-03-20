@@ -3,7 +3,6 @@ package db
 import (
 	"errors"
 	"gorm.io/gorm"
-	"log"
 	"time"
 )
 
@@ -32,7 +31,7 @@ func (u *ConfigModel) DeleteTable() error {
 	if !u.IsExist() {
 		return nil
 	}
-	log.Println("ConfigModel")
+
 	tx := u.db.Table(u.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Config{})
 	return tx.Error
 }

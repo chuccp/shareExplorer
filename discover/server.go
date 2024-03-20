@@ -4,7 +4,7 @@ import (
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
-	"log"
+	"go.uber.org/zap"
 	"net"
 )
 
@@ -26,10 +26,12 @@ func (s *Server) register(req *web.Request) (any, error) {
 	var register Register
 	err := req.BodyJson(&register)
 	if err != nil {
+		s.context.GetLog().Error("register", zap.Error(err))
 		return nil, err
 	}
 	node, err := wrapNodeFRegister(&register, req.GetRemoteAddress())
 	if err != nil {
+		s.context.GetLog().Error("register", zap.Error(err))
 		return nil, err
 	}
 	s.table.addNode(node)
@@ -40,10 +42,12 @@ func (s *Server) findNode(req *web.Request) (any, error) {
 	var findNode FindNode
 	err := req.BodyJson(&findNode)
 	if err != nil {
+		s.context.GetLog().Error("findNode", zap.Error(err))
 		return nil, err
 	}
 	addr, err := net.ResolveUDPAddr("udp", req.GetRemoteAddress())
 	if err != nil {
+		s.context.GetLog().Error("findNode", zap.Error(err))
 		return nil, err
 	}
 	findNode.addr = addr
@@ -54,6 +58,7 @@ func (s *Server) findServer(req *web.Request) (any, error) {
 	var findServer FindServer
 	err := req.BodyJson(&findServer)
 	if err != nil {
+		s.context.GetLog().Error("findServer", zap.Error(err))
 		return nil, err
 	}
 	id, _ := wrapIdFName(findServer.Target)
@@ -87,11 +92,11 @@ func (s *Server) Init(context *core.Context) {
 	servername := s.context.GetCertManager().GetServerName()
 	id, err := StringToId(servername)
 	if err != nil {
-		log.Panic(err)
+		s.context.GetLog().Panic("Init", zap.Error(err))
 		return
 	}
 	s.localNode = NewLocalNode(id, s.context.GetServerConfig())
-	s.call = newCall(s.localNode, core.NewHttpClient(context))
+	s.call = newCall(s.localNode, core.NewHttpClient(context), context)
 	s.context.SetDiscoverServer(s)
 	s.table = NewTable(s.context, s.localNode, s.call)
 	s.context.Post("/discover/register", s.register)
@@ -124,6 +129,7 @@ func (s *Server) FindStatus(servername string, isStart bool) *entity.NodeStatus 
 func (s *Server) Ping(address *net.UDPAddr) error {
 	err := s.call.ping(address)
 	if err != nil {
+		s.context.GetLog().Panic("Ping", zap.Error(err))
 		return err
 	}
 	return nil

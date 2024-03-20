@@ -1,0 +1,1 @@
+{"level":"error","ts":"2024-03-20 22:15:18","caller":"discover/server.go:29","msg":"register","error":"unexpected end of JSON input"}

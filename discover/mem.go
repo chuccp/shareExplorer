@@ -2,7 +2,6 @@ package discover
 
 import (
 	"github.com/chuccp/shareExplorer/util"
-	"log"
 	"math/rand"
 	"net"
 	"time"
@@ -313,7 +312,6 @@ func (nodeTable *NodeTable) addSeedNode(n *Node) {
 func (nodeTable *NodeTable) addNursery(n *Node) {
 	if !nodesContainsAddress(nodeTable.nursery, n.addr) {
 		n.addTime = time.Now()
-		log.Println("addNursery:", n)
 		nodeTable.nursery = append(nodeTable.nursery, n)
 	}
 }
