@@ -103,7 +103,7 @@ func (s *Server) Init(context *core.Context) {
 	s.context.Post("/discover/register", s.register)
 	s.context.Post("/discover/connect", s.connect)
 	s.context.Post("/discover/nodeStatus", s.nodeStatus)
-	s.context.GetRemote("/discover/nodeList", s.nodeList)
+	s.context.GetRemote("/discover/nodeNatServerList", s.nodeNatServerList)
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/findServer", s.findServer)
 	if !s.context.GetServerConfig().HasInit() {
@@ -111,11 +111,10 @@ func (s *Server) Init(context *core.Context) {
 	}
 	s.Start()
 }
-func (s *Server) nodeList(req *web.Request) (any, error) {
-	//nodeType := req.FormIntValue("nodeType")
+func (s *Server) nodeNatServerList(req *web.Request) (any, error) {
 	pageNo := req.FormIntValue("pageNo")
 	pageSize := req.FormIntValue("pageSize")
-	list, num := s.table.queryForPage(pageNo, pageSize)
+	list, num := s.table.queryNatServerForPage(pageNo, pageSize)
 	return web.ResponsePage(int64(num), list), nil
 }
 func (s *Server) connect(req *web.Request) (any, error) {

@@ -1,9 +1,13 @@
 package discover
 
 import (
+	"container/list"
+	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/util"
+	"go.uber.org/zap"
 	"math/rand"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -25,18 +29,63 @@ type bucket struct {
 	index        int
 	ips          DistinctNetSet
 }
+type mNode struct {
+	n   *Node
+	ele *list.Element
+}
+type nodeStore struct {
+	nodeMap  map[ID]*mNode
+	nodeList *list.List
+	mutex    sync.Mutex
+}
+
+func (ns *nodeStore) add(node *Node) {
+	ns.mutex.Lock()
+	defer ns.mutex.Unlock()
+	n, ok := ns.nodeMap[node.id]
+	if ok {
+		node.lastUpdateTime = time.Now()
+		node.addTime = n.n.addTime
+		ns.nodeMap[node.id].n = node
+	} else {
+		node.lastUpdateTime = time.Now()
+		node.addTime = time.Now()
+		ele := ns.nodeList.PushBack(node.id)
+		ns.nodeMap[node.id] = &mNode{n: node, ele: ele}
+	}
+}
+func (ns *nodeStore) remove(id ID) {
+	ns.mutex.Lock()
+	defer ns.mutex.Unlock()
+	delete(ns.nodeMap, id)
+	n, ok := ns.nodeMap[id]
+	if ok {
+		ns.nodeList.Remove(n.ele)
+		delete(ns.nodeMap, id)
+	}
+}
+func (ns *nodeStore) get(id ID) (*Node, bool) {
+	ns.mutex.Lock()
+	defer ns.mutex.Unlock()
+	v, ok := ns.nodeMap[id]
+	return v.n, ok
+}
+func newNodeStore() *nodeStore {
+	return &nodeStore{nodeMap: make(map[ID]*mNode), nodeList: list.New()}
+}
 
 type NodeTable struct {
 	buckets    [nBuckets]*bucket
 	nursery    []*Node //bootstrap nodes
-	serverNode map[ID]*Node
+	serverNode *nodeStore
 	localNode  *Node
 	ips        DistinctNetSet //IP计数
 	rand       *rand.Rand
+	coreCtx    *core.Context
 }
 
-func NewNodeTable(localNode *Node) *NodeTable {
-	tab := &NodeTable{localNode: localNode, serverNode: make(map[ID]*Node), rand: rand.New(rand.NewSource(0))}
+func NewNodeTable(localNode *Node, coreCtx *core.Context) *NodeTable {
+	tab := &NodeTable{coreCtx: coreCtx, localNode: localNode, serverNode: newNodeStore(), rand: rand.New(rand.NewSource(0))}
 	for i := range tab.buckets {
 		tab.buckets[i] = &bucket{
 			index: i,
@@ -50,6 +99,27 @@ func (nodeTable *NodeTable) nurseryNodes() []*Node {
 }
 func (nodeTable *NodeTable) hasNurseryNodes() bool {
 	return len(nodeTable.nursery) > 0
+}
+
+func (nodeTable *NodeTable) queryNatServerForPage(pageNo, pageSize int) []*Node {
+	if pageNo < 1 {
+		pageNo = 1
+	}
+	nodes := make([]*Node, 0)
+	keep := (pageNo - 1) * pageSize
+	for _, b := range &nodeTable.buckets {
+		for _, n := range b.entries {
+			if keep == 0 {
+				nodes = append(nodes, n)
+				if len(nodes) == pageSize {
+					return nodes
+				}
+			} else {
+				keep--
+			}
+		}
+	}
+	return nodes
 }
 
 func (nodeTable *NodeTable) queryNodesByIdAndDistance(target ID, maxNum int) *nodesByDistance {
@@ -68,9 +138,11 @@ func (nodeTable *NodeTable) deleteNode(n *Node) {
 }
 
 func (nodeTable *NodeTable) nodeToRevalidate() (n *Node, bi int, index int) {
+
 	for _, bi = range nodeTable.rand.Perm(len(nodeTable.buckets)) {
 		b := nodeTable.buckets[bi]
 		if len(b.entries) > 0 {
+			nodeTable.coreCtx.GetLog().Debug("nodeToRevalidate", zap.Int("bucketIndex", bi))
 			index = len(b.entries) - 1
 			last := b.entries[index]
 			return last, bi, index
@@ -273,23 +345,11 @@ func (nodeTable *NodeTable) addNatServer(n *Node) {
 	b.replacements = deleteNode0(b.replacements, n)
 }
 func (nodeTable *NodeTable) addServer(n *Node) {
-	key := n.ID()
-	k, fa := nodeTable.serverNode[key]
-	if fa {
-		k.lastUpdateTime = time.Now()
-	} else {
-		n.lastUpdateTime = time.Now()
-		n.addTime = time.Now()
-		nodeTable.serverNode[key] = n
-	}
+	nodeTable.addNode(n)
+
 }
 func (nodeTable *NodeTable) queryServer(id ID) (*Node, bool) {
-	n, ok := nodeTable.serverNode[id]
-	if ok {
-		return n, ok
-	} else {
-		return nil, false
-	}
+	return nodeTable.serverNode.get(id)
 }
 
 func deleteNode0(list []*Node, n *Node) []*Node {

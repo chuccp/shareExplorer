@@ -58,6 +58,7 @@ func (table *Table) loadAddress() error {
 	seeds := make([]*Node, 0)
 	addresses, err := table.coreCtx.GetDB().GetAddressModel().QueryAddresses()
 	if err != nil {
+		table.coreCtx.GetLog().Error("loadAddress", zap.Error(err))
 		return err
 	}
 	for _, address := range addresses {
@@ -84,12 +85,15 @@ func (table *Table) loadAddress() error {
 		table.addSeedNode(seed)
 	}
 	if len(seeds) < 1 {
-		return errors.New("no node")
+		err = errors.New("db no node")
+		table.coreCtx.GetLog().Error("loadAddress", zap.Error(err))
+		return err
 	}
 	return nil
 }
 
-func (table *Table) queryForPage(pageNo, pageSize int) ([]*Node, int) {
+func (table *Table) queryNatServerForPage(pageNo, pageSize int) ([]*Node, int) {
+
 	return nil, 0
 }
 
@@ -107,7 +111,6 @@ func (table *Table) run() {
 	defer table.mutex.Unlock()
 	err := table.loadAddress()
 	if err != nil {
-		table.coreCtx.GetLog().Error("run", zap.Error(err))
 		return
 	} else {
 		go table.loop(table.ctx)
@@ -263,5 +266,5 @@ func (table *Table) doRevalidate(done chan struct{}) {
 
 }
 func NewTable(coreCtx *core.Context, localNode *Node, call *call) *Table {
-	return &Table{rand: rand.New(rand.NewSource(0)), coreCtx: coreCtx, nodeTable: NewNodeTable(localNode), localNode: localNode, call: call}
+	return &Table{rand: rand.New(rand.NewSource(0)), coreCtx: coreCtx, nodeTable: NewNodeTable(localNode, coreCtx), localNode: localNode, call: call}
 }
