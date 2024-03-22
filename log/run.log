@@ -20,3 +20,5 @@
 {"level":"error","ts":"2024-03-22 11:20:36","caller":"discover/table.go:252","msg":"validate","error":"Post \"https://127.0.0.1:2157/discover/register\": timeout: no recent network activity"}
 {"level":"error","ts":"2024-03-22 11:20:41","caller":"discover/table.go:219","msg":"lookupByTarget","error":"Post \"https://127.0.0.1:2157/discover/findNode\": timeout: no recent network activity"}
 {"level":"error","ts":"2024-03-22 11:39:29","caller":"discover/table.go:253","msg":"validate","error":"Post \"https://127.0.0.1:2157/discover/register\": timeout: no recent network activity"}
+{"level":"error","ts":"2024-03-22 12:01:13","caller":"discover/server.go:30","msg":"register","error":"unexpected end of JSON input","body":""}
+{"level":"error","ts":"2024-03-22 13:51:41","caller":"discover/server.go:30","msg":"register","error":"unexpected end of JSON input","body":""}
