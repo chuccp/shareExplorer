@@ -101,25 +101,30 @@ func (nodeTable *NodeTable) hasNurseryNodes() bool {
 	return len(nodeTable.nursery) > 0
 }
 
-func (nodeTable *NodeTable) queryNatServerForPage(pageNo, pageSize int) []*Node {
+func (nodeTable *NodeTable) queryNatServerForPage(pageNo, pageSize int) ([]*Node, int) {
 	if pageNo < 1 {
 		pageNo = 1
 	}
 	nodes := make([]*Node, 0)
 	keep := (pageNo - 1) * pageSize
+
+	total := 0
+	for _, b := range &nodeTable.buckets {
+		total = len(b.entries) + total
+	}
 	for _, b := range &nodeTable.buckets {
 		for _, n := range b.entries {
 			if keep == 0 {
 				nodes = append(nodes, n)
 				if len(nodes) == pageSize {
-					return nodes
+					return nodes, total
 				}
 			} else {
 				keep--
 			}
 		}
 	}
-	return nodes
+	return nodes, total
 }
 
 func (nodeTable *NodeTable) queryNodesByIdAndDistance(target ID, maxNum int) *nodesByDistance {

@@ -115,7 +115,7 @@ func (s *Server) nodeNatServerList(req *web.Request) (any, error) {
 	pageNo := req.FormIntValue("pageNo")
 	pageSize := req.FormIntValue("pageSize")
 	list, num := s.table.queryNatServerForPage(pageNo, pageSize)
-	return web.ResponsePage(int64(num), list), nil
+	return web.ResponsePage(int64(num), NodeToExNodes(list)), nil
 }
 func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil

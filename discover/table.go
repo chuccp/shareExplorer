@@ -93,8 +93,7 @@ func (table *Table) loadAddress() error {
 }
 
 func (table *Table) queryNatServerForPage(pageNo, pageSize int) ([]*Node, int) {
-
-	return nil, 0
+	return table.nodeTable.queryNatServerForPage(pageNo, pageSize)
 }
 
 func (table *Table) self() *Node {

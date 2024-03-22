@@ -2,6 +2,7 @@ package discover
 
 import (
 	"encoding/hex"
+	"github.com/chuccp/shareExplorer/util"
 	"net"
 	"strconv"
 	"strings"
@@ -53,11 +54,28 @@ type (
 		IsNatServer string `json:"isNatServer"`
 		Address     string `json:"address"`
 	}
+
+	ExNode struct {
+		Id           string `json:"id"`
+		Address      string `json:"address"`
+		LastLiveTime string `json:"lastLiveTime"`
+	}
 )
 
 func NodeToRegister(n *Node) *Register {
 	var register = &Register{FormId: n.ServerName(), IsServer: strconv.FormatBool(n.isServer), IsNatServer: strconv.FormatBool(n.isNatServer), IsClient: strconv.FormatBool(n.isClient)}
 	return register
+}
+func NodeToExNode(n *Node) *ExNode {
+	var register = &ExNode{Id: n.ServerName(), Address: n.addr.String(), LastLiveTime: util.FormatTime(&n.lastUpdateTime)}
+	return register
+}
+func NodeToExNodes(ns []*Node) []*ExNode {
+	var nodes = make([]*ExNode, len(ns))
+	for i, n := range ns {
+		nodes[i] = NodeToExNode(n)
+	}
+	return nodes
 }
 func wrapResponseNode(n *Node) *ResponseNode {
 	address := ""
