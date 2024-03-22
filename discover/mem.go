@@ -229,11 +229,36 @@ func (nodeTable *NodeTable) collectBucketsByIndex(index, minBucketIndex, maxBuck
 	}
 	return false
 }
-
+func (nodeTable *NodeTable) bumpInBucket(last *Node) bool {
+	b := nodeTable.bucket(last.ID())
+	for i := range b.entries {
+		if b.entries[i].ID() == last.ID() {
+			if !last.IP().Equal(b.entries[i].IP()) {
+				// Endpoint has changed, ensure that the new IP fits into table limits.
+				nodeTable.removeIP(b, b.entries[i].IP())
+				if !nodeTable.addIP(b, last.IP()) {
+					// It doesn't, put the previous one back.
+					nodeTable.addIP(b, b.entries[i].IP())
+					return false
+				}
+			}
+			// Move it to the front.
+			copy(b.entries[1:], b.entries[:i])
+			b.entries[0] = last
+			return true
+		}
+	}
+	return false
+}
 func (nodeTable *NodeTable) replace(index int, last *Node) {
 	b := nodeTable.bucket(last.ID())
+	if len(b.entries) == 0 || b.entries[len(b.entries)-1].ID() != last.ID() {
+		return
+	}
 	if len(b.replacements) == 0 {
+		nodeTable.coreCtx.GetLog().Debug("replace", zap.Int("replacements", len(b.replacements)), zap.Int("b.entries", len(b.entries)))
 		b.entries = deleteNode0(b.entries, last)
+		nodeTable.coreCtx.GetLog().Debug("replace", zap.Int("replacements", len(b.replacements)), zap.Int("b.entries", len(b.entries)))
 		return
 	}
 	r := b.replacements[nodeTable.rand.Intn(len(b.replacements))]
@@ -345,7 +370,7 @@ func (nodeTable *NodeTable) addNatServer(n *Node) {
 	b.replacements = deleteNode0(b.replacements, n)
 }
 func (nodeTable *NodeTable) addServer(n *Node) {
-	nodeTable.addNode(n)
+	nodeTable.serverNode.add(n)
 
 }
 func (nodeTable *NodeTable) queryServer(id ID) (*Node, bool) {

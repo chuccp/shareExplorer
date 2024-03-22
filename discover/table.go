@@ -247,6 +247,7 @@ func (table *Table) validate(node *Node, index int) {
 			return
 		}
 		node.liveNessChecks++
+		table.nodeTable.bumpInBucket(node)
 		return
 	} else {
 		table.coreCtx.GetLog().Error("validate", zap.Error(err))

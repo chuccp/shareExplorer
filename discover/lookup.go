@@ -4,28 +4,6 @@ import (
 	"sort"
 )
 
-//type queryFunc func(*node) ([]*node, error)
-//
-//type lookup struct {
-//	tab       *Table
-//	context   *core.Context
-//	result    nodesByDistance
-//	target    ID
-//	queryFunc queryFunc
-//}
-//
-//func newLookup(tab *Table, target ID, context *core.Context, queryFunc queryFunc) *lookup {
-//	return &lookup{tab: tab, target: target, context: context, queryFunc: queryFunc}
-//}
-//func (l *lookup) run() *lookup {
-//
-//	nodesByDistance := l.tab.findNodeByID(l.target, bucketSize, false)
-//	for _, entry := range nodesByDistance.entries {
-//		go l.queryFunc(entry)
-//	}
-//	return l
-//}
-
 type nodesByDistance struct {
 	entries []*Node
 	target  ID
