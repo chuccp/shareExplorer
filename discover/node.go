@@ -105,11 +105,6 @@ func (n *Node) ID() ID {
 func (n *Node) SetID(id ID) {
 	n.id = id
 }
-
-func NewNursery(addr *net.UDPAddr) *Node {
-	return &Node{addr: addr}
-}
-
 func NewLocalNode(id ID, config *core.ServerConfig) *Node {
 	return &Node{id: id, isServer: config.IsServer(), isClient: config.IsClient(), isNatServer: config.IsNatServer()}
 }

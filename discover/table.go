@@ -93,6 +93,7 @@ func (table *Table) loadAddress() error {
 }
 
 func (table *Table) queryNatServerForPage(pageNo, pageSize int) ([]*Node, int) {
+
 	return table.nodeTable.queryNatServerForPage(pageNo, pageSize)
 }
 
@@ -189,6 +190,7 @@ func (table *Table) loadNurseryNodes() {
 				} else {
 					if !node.ID().IsBlank() {
 						table.addNode(node)
+						n.SetID(node.ID())
 						table.coreCtx.GetDB().GetAddressModel().UpdateServerNameByAddress(n.addr.String(), node.ServerName())
 						deleteNodes = append(deleteNodes, n)
 					}

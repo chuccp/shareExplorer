@@ -11,6 +11,7 @@ type Address struct {
 	Address      string    `gorm:"unique;column:address"`
 	FailNum      string    `gorm:"column:fail_num"`
 	ServerName   string    `gorm:"unique;column:serverName"`
+	Seed         int       `gorm:"column:seed"`
 	LastFailTime time.Time `gorm:"column:last_fail_time"`
 	CreateTime   time.Time `gorm:"column:create_time"`
 	UpdateTime   time.Time `gorm:"column:update_time"`
@@ -43,6 +44,14 @@ func (a *AddressModel) DeleteTable() error {
 func (a *AddressModel) QueryAddresses() ([]*Address, error) {
 	var addr []*Address
 	tx := a.db.Table(a.tableName).Find(&addr)
+	return addr, tx.Error
+}
+
+func (a *AddressModel) QuerySeedAddresses() ([]*Address, error) {
+	var addr []*Address
+	tx := a.db.Table(a.tableName).Where(&Address{
+		Seed: 1,
+	}).Find(&addr)
 	return addr, tx.Error
 }
 
