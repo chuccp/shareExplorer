@@ -1,17 +1,20 @@
 package file
 
 import (
+	"context"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/io"
 	"github.com/chuccp/shareExplorer/web"
 	"go.uber.org/zap"
+	"log"
 	"os"
 	"path"
 )
 
 type Server struct {
-	context *core.Context
+	context     *core.Context
+	webdavStore *webDavStore
 }
 
 func (s *Server) index(req *web.Request) (any, error) {
@@ -161,8 +164,20 @@ func (s *Server) paths(req *web.Request) (any, error) {
 	return nil, os.ErrNotExist
 }
 
+func (s *Server) dav(req *web.Request) (any, error) {
+	ctx := req.GetRawRequest().Context()
+	log.Println("dav")
+	ci := &contextInfo{Username: "111111"}
+	nCtx := context.WithValue(ctx, contextInfoKey, ci)
+	request := req.GetRawRequest().WithContext(nCtx)
+	s.webdavStore.getWebdav(ci.Username).ServeHTTP(req.GetResponseWriter(), request)
+	return nil, nil
+}
+
 func (s *Server) Init(context *core.Context) {
 	s.context = context
+	s.webdavStore = newWebDavStore(context, "/dav")
+	context.AnyRemote("/dav/", s.dav)
 	context.GetRemote("/file/root", s.root)
 	context.GetRemote("/file/paths", s.paths)
 	context.GetRemote("/file/index", s.index)

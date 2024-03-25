@@ -75,6 +75,9 @@ func (r *Request) GetPage() *Page {
 func (r *Request) GetRawRequest() *http.Request {
 	return r.context.Request
 }
+func (r *Request) GetResponseWriter() http.ResponseWriter {
+	return r.context.Writer
+}
 
 func (r *Request) BodyJson(v any) ([]byte, error) {
 	body, err := io.ReadAll(r.context.Request.Body)
@@ -90,4 +93,17 @@ func (r *Request) BodyJson(v any) ([]byte, error) {
 
 func (r *Request) FormFile(name string) (*multipart.FileHeader, error) {
 	return r.context.FormFile(name)
+}
+
+func (r *Request) BasicAuth() (username, password string, ok bool) {
+	return r.context.Request.BasicAuth()
+}
+func (r *Request) Header(key, value string) {
+	r.context.Header(key, value)
+}
+func (r *Request) Status(code int) {
+	r.context.Status(code)
+}
+func (r *Request) String(code int, format string, values ...any) {
+	r.context.String(code, format, values...)
 }

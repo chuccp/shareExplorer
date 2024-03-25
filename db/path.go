@@ -61,6 +61,16 @@ func (a *PathModel) Create(name string, path string) error {
 		UpdateTime: time.Now()})
 	return tx.Error
 }
+
+func (a *PathModel) Query(name string) (*Path, error) {
+	var path Path
+	tx := a.db.Table(a.tableName).Where(" `name` = ? ", name).First(&path)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	return &path, nil
+}
+
 func (a *PathModel) Update(id int, name string, path string) error {
 
 	if !a.IsExist() {
@@ -81,7 +91,6 @@ func (a *PathModel) Delete(id uint) error {
 }
 
 func (a *PathModel) QueryPage(pageNo int, pageSize int) ([]*Path, int64, error) {
-
 	paths := make([]*Path, 0)
 	if !a.IsExist() {
 		return paths, 0, nil
@@ -96,6 +105,18 @@ func (a *PathModel) QueryPage(pageNo int, pageSize int) ([]*Path, int64, error) 
 		}
 	}
 	return nil, 0, tx.Error
+}
+func (a *PathModel) QueryAll() ([]*Path, error) {
+	paths := make([]*Path, 0)
+	if !a.IsExist() {
+		return paths, nil
+	}
+	var paths01 []*Path
+	tx := a.db.Table(a.tableName).Find(&paths01)
+	if tx.Error == nil {
+		return paths01, nil
+	}
+	return nil, tx.Error
 }
 func (a *PathModel) QueryById(id uint) (*Path, error) {
 	if !a.IsExist() {

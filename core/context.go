@@ -88,6 +88,29 @@ func (c *Context) Get(relativePath string, handlers ...HandlerFunc) {
 	c.engine.GET(relativePath, c.toGinHandlerFunc(handlers)...)
 }
 
+func (c *Context) Any(relativePath string, handlers ...HandlerFunc) {
+	_, ok := c.paths[relativePath]
+	if ok {
+		return
+	}
+	c.paths[relativePath] = true
+	c.engine.Any(relativePath, c.toGinHandlerFunc(handlers)...)
+	httpMethods := []string{"PROPFIND", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "PROPPATCH"}
+	for _, method := range httpMethods {
+		c.engine.Handle(method, relativePath, c.toGinHandlerFunc(handlers)...)
+	}
+
+}
+
+func (c *Context) AnyRemote(relativePath string, handlers ...HandlerFunc) {
+	_, ok := c.paths[relativePath]
+	if ok {
+		return
+	}
+	c.Any(relativePath, handlers...)
+	c.remotePaths[relativePath] = true
+	c.paths[relativePath] = true
+}
 func (c *Context) GetRemote(relativePath string, handlers ...HandlerFunc) {
 	_, ok := c.paths[relativePath]
 	if ok {
@@ -110,6 +133,17 @@ func (c *Context) PostRemote(relativePath string, handlers ...HandlerFunc) {
 
 func (c *Context) HasPaths(queryPath string) bool {
 	_, ok := c.paths[queryPath]
+	if ok {
+		return ok
+	}
+
+	for k, _ := range c.paths {
+		h := strings.HasPrefix(queryPath, k)
+		if h {
+			return h
+		}
+	}
+
 	return ok
 }
 func (c *Context) IsRemotePaths(queryPath string) bool {
@@ -121,7 +155,8 @@ func (c *Context) IsRemotePaths(queryPath string) bool {
 func (c *Context) StaticHandle(relativePath string, filepath string) {
 	c.engine.Use(func(context *gin.Context) {
 		path_ := context.Request.URL.Path
-		if c.HasPaths(path_) {
+		c.log.Debug("StaticHandle", zap.String("Method", context.Request.Method), zap.String("path", path_), zap.Bool("HasPaths", c.HasPaths(path_)))
+		if c.HasPaths(path_) || context.Request.Method != "GET" {
 			context.Next()
 		} else {
 			if strings.Contains(path_, "/manifest.json") {
@@ -209,13 +244,15 @@ func (c *Context) toGinHandlerFunc(handlers []HandlerFunc) []gin.HandlerFunc {
 			if err != nil {
 				context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
 			} else {
-				switch t := value.(type) {
-				case string:
-					context.Writer.Write([]byte(t))
-				case *web.File:
-					context.FileAttachment(t.GetPath(), t.GetFilename())
-				default:
-					context.AbortWithStatusJSON(200, t)
+				if value != nil {
+					switch t := value.(type) {
+					case string:
+						context.Writer.Write([]byte(t))
+					case *web.File:
+						context.FileAttachment(t.GetPath(), t.GetFilename())
+					default:
+						context.AbortWithStatusJSON(200, t)
+					}
 				}
 			}
 

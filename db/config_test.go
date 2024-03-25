@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"github.com/chuccp/shareExplorer/util"
 	"log"
 	"testing"
 )
@@ -25,12 +26,14 @@ func TestDB(t *testing.T) {
 
 }
 func TestCreate(t *testing.T) {
-	db, err := sql.Open("sqlite", "share_explorer.db")
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	query, err := db.Exec("")
-	println(query, err)
+	//db, err := sql.Open("sqlite", "share_explorer.db")
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+	//query, err := db.Exec("")
+	//println(query, err)
+
+	t.Log(util.SplitPath("/aaa/aaa"))
 
 }
