@@ -44,8 +44,8 @@ func (s *webDavStore) getWebdav(username string) *webdav.Handler {
 	s.webdavMap[username] = wb
 	return wb
 }
-
-type webdavPool struct {
+func (s *webDavStore) getWebdavFileSystem(username string) webdav.FileSystem {
+	return s.getWebdav(username).FileSystem
 }
 
 type DavFileSystem struct {

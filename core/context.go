@@ -216,7 +216,6 @@ func (c *Context) RemoteHandle() {
 			if has {
 				ds, fa := c.GetDiscoverServer()
 				if fa {
-
 					status := ds.FindStatus(certificate.ServerName, strings.Contains(isStart, "true"))
 					if status.GetError() != nil {
 						context.AbortWithStatusJSON(200, web.ResponseError(status.GetError().Error()))
@@ -226,7 +225,6 @@ func (c *Context) RemoteHandle() {
 							if err != nil {
 								context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
 							} else {
-
 								context.Request.Header.Del("Referer")
 								context.Request.Header.Del("Origin")
 								reverseProxy.ServeHTTP(context.Writer, context.Request)

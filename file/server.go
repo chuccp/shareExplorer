@@ -163,6 +163,9 @@ func (s *Server) paths(req *web.Request) (any, error) {
 }
 
 func (s *Server) dav(req *web.Request) (any, error) {
+
+	req.GetTokenUsername()
+
 	s.webdavStore.getWebdav("11111").ServeHTTP(req.GetResponseWriter(), req.GetRawRequest())
 	return nil, nil
 }
