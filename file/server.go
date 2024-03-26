@@ -1,13 +1,11 @@
 package file
 
 import (
-	"context"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/io"
 	"github.com/chuccp/shareExplorer/web"
 	"go.uber.org/zap"
-	"log"
 	"os"
 	"path"
 )
@@ -165,12 +163,7 @@ func (s *Server) paths(req *web.Request) (any, error) {
 }
 
 func (s *Server) dav(req *web.Request) (any, error) {
-	ctx := req.GetRawRequest().Context()
-	log.Println("dav")
-	ci := &contextInfo{Username: "111111"}
-	nCtx := context.WithValue(ctx, contextInfoKey, ci)
-	request := req.GetRawRequest().WithContext(nCtx)
-	s.webdavStore.getWebdav(ci.Username).ServeHTTP(req.GetResponseWriter(), request)
+	s.webdavStore.getWebdav("11111").ServeHTTP(req.GetResponseWriter(), req.GetRawRequest())
 	return nil, nil
 }
 

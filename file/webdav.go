@@ -14,9 +14,9 @@ import (
 
 var contextInfoKey = "_contextInfo_"
 
-type contextInfo struct {
-	Username string
-}
+//type contextInfo struct {
+//	Username string
+//}
 
 type webDavStore struct {
 	webdavMap map[string]*webdav.Handler
@@ -37,7 +37,7 @@ func (s *webDavStore) getWebdav(username string) *webdav.Handler {
 		return v
 	}
 	wb := &webdav.Handler{
-		FileSystem: NewDavFileSystem(s.context, username, s.prefix),
+		FileSystem: NewDavFileSystem(s.context, s.prefix),
 		LockSystem: webdav.NewMemLS(),
 		Prefix:     s.prefix,
 	}
@@ -49,9 +49,9 @@ type webdavPool struct {
 }
 
 type DavFileSystem struct {
-	username string
-	context  *core.Context
-	prefix   string
+	//username string
+	context *core.Context
+	prefix  string
 }
 
 type webPath struct {
@@ -125,13 +125,13 @@ func newWebPath(path_ string) *webPath {
 	return &webPath{rawPath: path_, paths: ps}
 }
 
-func NewDavFileSystem(context *core.Context, username string, prefix string) *DavFileSystem {
-	return &DavFileSystem{username: username, context: context, prefix: prefix}
+func NewDavFileSystem(context *core.Context, prefix string) *DavFileSystem {
+	return &DavFileSystem{context: context, prefix: prefix}
 }
 
-func getValue(ctx context.Context) *contextInfo {
-	return ctx.Value(contextInfoKey).(*contextInfo)
-}
+//	func getValue(ctx context.Context) *contextInfo {
+//		return ctx.Value(contextInfoKey).(*contextInfo)
+//	}
 func (d *DavFileSystem) getDir(ctx context.Context, name string) (webdav.Dir, *webPath, error) {
 	webPath := newWebPath(name)
 	if webPath.isRoot() {
