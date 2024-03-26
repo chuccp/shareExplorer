@@ -4,9 +4,9 @@ import (
 	"context"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/util"
+	"go.uber.org/zap"
 	"golang.org/x/net/webdav"
 	"io/fs"
-	"log"
 	"os"
 	"path"
 	"sync"
@@ -87,7 +87,6 @@ func (file *davFile) Readdir(count int) ([]fs.FileInfo, error) {
 	}
 	files := make([]fs.FileInfo, 0)
 	for _, path := range paths {
-		log.Println(path.Path)
 		open, err := os.Open(path.Path)
 		if err != nil {
 			continue
@@ -100,7 +99,6 @@ func (file *davFile) Readdir(count int) ([]fs.FileInfo, error) {
 			}
 		}
 	}
-	log.Println(len(files))
 	return files, nil
 }
 
@@ -122,7 +120,7 @@ func (wp *webPath) name() string {
 	return wp.paths[0]
 }
 func newWebPath(path_ string) *webPath {
-	log.Println("path", path_)
+
 	ps := util.SplitPath(path_)
 	return &webPath{rawPath: path_, paths: ps}
 }
@@ -149,7 +147,7 @@ func (d *DavFileSystem) getDir(ctx context.Context, name string) (webdav.Dir, *w
 }
 
 func (d *DavFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
-	log.Println("Mkdir", name)
+	d.context.GetLog().Debug("Mkdir", zap.String("name", name))
 	dir, webPath, err := d.getDir(ctx, name)
 	if err != nil {
 		return err
@@ -157,7 +155,7 @@ func (d *DavFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode
 	return dir.Mkdir(ctx, webPath.Path(), perm)
 }
 func (d *DavFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	log.Println("OpenFile", name)
+	d.context.GetLog().Debug("OpenFile", zap.String("name", name))
 	dir, webPath, err := d.getDir(ctx, name)
 	if err != nil {
 		return nil, err
@@ -173,7 +171,7 @@ func (d *DavFileSystem) OpenFile(ctx context.Context, name string, flag int, per
 	return dir.OpenFile(ctx, webPath.Path(), flag, perm)
 }
 func (d *DavFileSystem) RemoveAll(ctx context.Context, name string) error {
-	log.Println("RemoveAll", name)
+	d.context.GetLog().Debug("RemoveAll", zap.String("name", name))
 	dir, webPath, err := d.getDir(ctx, name)
 	if err != nil {
 		return err
@@ -181,7 +179,7 @@ func (d *DavFileSystem) RemoveAll(ctx context.Context, name string) error {
 	return dir.RemoveAll(ctx, webPath.Path())
 }
 func (d *DavFileSystem) Rename(ctx context.Context, oldName, newName string) error {
-	log.Println("Rename", oldName)
+	d.context.GetLog().Debug("Rename", zap.String("oldName", oldName), zap.String("newName", newName))
 	dir, webPath, err := d.getDir(ctx, oldName)
 	if err != nil {
 		return err
@@ -190,7 +188,7 @@ func (d *DavFileSystem) Rename(ctx context.Context, oldName, newName string) err
 	return dir.Rename(ctx, webPath.Path(), newWebPath.Path())
 }
 func (d *DavFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
-	log.Println("Stat", name)
+	d.context.GetLog().Debug("Stat", zap.String("name", name))
 	dir, webPath, err := d.getDir(ctx, name)
 	if err != nil {
 		return nil, err

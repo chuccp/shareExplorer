@@ -3,6 +3,7 @@ package util
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"regexp"
 	"strings"
 )
 
@@ -26,4 +27,16 @@ func SplitPath(path string) []string {
 		ps = append(ps, i2)
 	}
 	return ps
+}
+
+func IsMatchPath(path, math string) bool {
+
+	math = ReplaceAllRegex(math, "\\*[a-zA-Z]+", ".+")
+	re := regexp.MustCompile(math)
+	return re.MatchString(path)
+
+}
+func ReplaceAllRegex(path, regex, math string) string {
+	re := regexp.MustCompile(regex)
+	return re.ReplaceAllString(path, math)
 }

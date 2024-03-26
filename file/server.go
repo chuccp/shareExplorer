@@ -177,7 +177,7 @@ func (s *Server) dav(req *web.Request) (any, error) {
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.webdavStore = newWebDavStore(context, "/dav")
-	context.AnyRemote("/dav/", s.dav)
+	context.AnyRemote("/dav/*name", s.dav)
 	context.GetRemote("/file/root", s.root)
 	context.GetRemote("/file/paths", s.paths)
 	context.GetRemote("/file/index", s.index)

@@ -99,7 +99,6 @@ func (c *Context) Any(relativePath string, handlers ...HandlerFunc) {
 	for _, method := range httpMethods {
 		c.engine.Handle(method, relativePath, c.toGinHandlerFunc(handlers)...)
 	}
-
 }
 
 func (c *Context) AnyRemote(relativePath string, handlers ...HandlerFunc) {
@@ -108,6 +107,7 @@ func (c *Context) AnyRemote(relativePath string, handlers ...HandlerFunc) {
 		return
 	}
 	c.Any(relativePath, handlers...)
+
 	c.remotePaths[relativePath] = true
 	c.paths[relativePath] = true
 }
@@ -136,18 +136,25 @@ func (c *Context) HasPaths(queryPath string) bool {
 	if ok {
 		return ok
 	}
-
 	for k, _ := range c.paths {
-		h := strings.HasPrefix(queryPath, k)
+		h := util.IsMatchPath(queryPath, k)
 		if h {
 			return h
 		}
 	}
-
 	return ok
 }
 func (c *Context) IsRemotePaths(queryPath string) bool {
 	_, ok := c.remotePaths[queryPath]
+	if ok {
+		return ok
+	}
+	for k, _ := range c.remotePaths {
+		h := util.IsMatchPath(queryPath, k)
+		if h {
+			return h
+		}
+	}
 	return ok
 }
 

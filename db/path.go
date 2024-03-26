@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
+	"sync"
 	"time"
 )
 
@@ -14,9 +15,13 @@ type Path struct {
 	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
 	UpdateTime time.Time `gorm:"column:update_time" json:"updateTime"`
 }
+
+var pathMap = make(map[string]*Path)
+
 type PathModel struct {
 	db        *gorm.DB
 	tableName string
+	lock      sync.RWMutex
 }
 
 func (a *PathModel) IsExist() bool {
@@ -64,10 +69,19 @@ func (a *PathModel) Create(name string, path string) error {
 
 func (a *PathModel) Query(name string) (*Path, error) {
 	var path Path
+	a.lock.RLock()
+	p, ok := pathMap[name]
+	a.lock.RUnlock()
+	if ok {
+		return p, nil
+	}
 	tx := a.db.Table(a.tableName).Where(" `name` = ? ", name).First(&path)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
+	a.lock.Lock()
+	pathMap[name] = &path
+	a.lock.Unlock()
 	return &path, nil
 }
 
@@ -76,8 +90,15 @@ func (a *PathModel) Update(id int, name string, path string) error {
 	if !a.IsExist() {
 		a.createTable()
 	}
+
 	tx := a.db.Table(a.tableName).Where(&Path{Id: uint(id)}).Updates(&Path{Name: name, Path: path, UpdateTime: time.Now()})
-	return tx.Error
+	if tx.Error != nil {
+		return tx.Error
+	}
+	a.lock.Lock()
+	pathMap = make(map[string]*Path)
+	a.lock.Unlock()
+	return nil
 }
 func (a *PathModel) Delete(id uint) error {
 	if !a.IsExist() {
@@ -87,6 +108,9 @@ func (a *PathModel) Delete(id uint) error {
 	if tx.Error != nil {
 		return tx.Error
 	}
+	a.lock.Lock()
+	pathMap = make(map[string]*Path)
+	a.lock.Unlock()
 	return nil
 }
 
