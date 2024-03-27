@@ -10,7 +10,6 @@ import (
 	"github.com/chuccp/shareExplorer/web"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"log"
 	"net"
 )
 
@@ -53,7 +52,7 @@ func (s *Server) signIn(req *web.Request) (any, error) {
 	//	return web.ResponseError("登录失败"), nil
 	//}
 
-	return nil, nil
+	return web.ResponseOK(""), nil
 }
 
 func (s *Server) addAdmin(req *web.Request) (any, error) {
@@ -446,16 +445,10 @@ func (s *Server) queryOneUser(req *web.Request) (any, error) {
 	return nil, errors.New("参数有错")
 }
 
-func (s *Server) login(req *web.Request) (any, error) {
-
-	log.Println("========================")
-	return web.ResponseError("登录失败"), nil
-}
-
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	context.Get("/user/info", s.info)
-	context.Get("/user/reset", s.reset)
+	context.GetAuth("/user/reset", s.reset)
 	context.Post("/user/addAdmin", s.addAdmin)
 	context.Post("/user/addClient", s.addClient)
 	context.Post("/user/clientSignIn", s.clientSignIn)
@@ -463,18 +456,17 @@ func (s *Server) Init(context *core.Context) {
 	context.Get("/user/ping", s.ping)
 	context.Get("/user/downloadCert", s.downloadCert)
 	context.Post("/user/uploadUserCert", s.uploadUserCert)
-	context.GetRemote("/user/downloadUserCert", s.downloadUserCert)
-	context.GetRemote("/user/queryUser", s.queryUser)
-	context.PostRemote("/user/addUser", s.addUser)
-	context.GetRemote("/user/deleteUser", s.deleteUser)
-	context.PostRemote("/user/editUser", s.editUser)
-	context.GetRemote("/user/queryOneUser", s.queryOneUser)
-	context.PostRemote("/user/queryOnePath", s.queryOnePath)
-	context.PostRemote("/user/addPath", s.addPath)
-	context.PostRemote("/user/editPath", s.editPath)
-	context.PostRemote("/user/deletePath", s.deletePath)
-	context.GetRemote("/user/queryPath", s.queryPath)
-	context.GetRemote("/user/queryAllPath", s.queryAllPath)
-	context.PostRemote("/user/signIn", s.signIn)
-	context.GetAuth("/user/login", s.login)
+	context.GetRemoteAuth("/user/downloadUserCert", s.downloadUserCert)
+	context.GetRemoteAuth("/user/queryUser", s.queryUser)
+	context.PostRemoteAuth("/user/addUser", s.addUser)
+	context.GetRemoteAuth("/user/deleteUser", s.deleteUser)
+	context.PostRemoteAuth("/user/editUser", s.editUser)
+	context.GetRemoteAuth("/user/queryOneUser", s.queryOneUser)
+	context.PostRemoteAuth("/user/queryOnePath", s.queryOnePath)
+	context.PostRemoteAuth("/user/addPath", s.addPath)
+	context.PostRemoteAuth("/user/editPath", s.editPath)
+	context.PostRemoteAuth("/user/deletePath", s.deletePath)
+	context.GetRemoteAuth("/user/queryPath", s.queryPath)
+	context.GetRemoteAuth("/user/queryAllPath", s.queryAllPath)
+	context.PostRemoteAuth("/user/signIn", s.signIn)
 }
