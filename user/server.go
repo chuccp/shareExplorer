@@ -2,8 +2,6 @@ package user
 
 import (
 	"errors"
-	"fmt"
-	auth "github.com/abbot/go-http-auth"
 	"github.com/chuccp/kuic/cert"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/db"
@@ -14,7 +12,6 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"net"
-	"net/http"
 )
 
 type admin struct {
@@ -451,21 +448,10 @@ func (s *Server) queryOneUser(req *web.Request) (any, error) {
 
 func (s *Server) login(req *web.Request) (any, error) {
 
-	//req.GetRawRequest().
-
+	log.Println("========================")
 	return web.ResponseError("登录失败"), nil
 }
-func Secret(user, realm string) string {
-	log.Printf("realm", realm)
-	if user == "john" {
-		v := util.MD5([]byte(fmt.Sprintf("%s:%s:%s", user, realm, "hello")))
-		return v
-	}
-	return ""
-}
-func handle(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
-	fmt.Fprintf(w, "<html><body><h1>Hello, %s!</h1></body></html>", r.Username)
-}
+
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	context.Get("/user/info", s.info)
@@ -490,6 +476,5 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemote("/user/queryPath", s.queryPath)
 	context.GetRemote("/user/queryAllPath", s.queryAllPath)
 	context.PostRemote("/user/signIn", s.signIn)
-	basicAuth := web.NewDigestAuthenticator("example.com", Secret)
-	context.Any("/user/login", basicAuth.Wrap(handle))
+	context.GetAuth("/user/login", s.login)
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/chuccp/kuic/cert"
 	khttp "github.com/chuccp/kuic/http"
 	db2 "github.com/chuccp/shareExplorer/db"
+	"github.com/chuccp/shareExplorer/web"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"strconv"
@@ -46,6 +47,7 @@ func CreateShareExplorer(register IRegister) (*ShareExplorer, error) {
 		return nil, err
 	}
 	context := &Context{log: logger, clientCert: clientCert, serverConfig: serverConfig, engine: engine, register: register, server: server, db: db, paths: make(map[string]any), remotePaths: make(map[string]any), certManager: certManager}
+	context.digestAuth = web.NewDigestAuthenticator("share_explorer", context.Secret)
 	return &ShareExplorer{clientCert: clientCert, register: register, engine: engine, context: context, server: server, certManager: certManager, serverConfig: serverConfig}, nil
 }
 

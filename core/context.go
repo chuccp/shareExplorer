@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"github.com/chuccp/kuic/cert"
 	khttp "github.com/chuccp/kuic/http"
 	"github.com/chuccp/shareExplorer/db"
@@ -23,11 +24,10 @@ type Context struct {
 	remotePaths    map[string]any
 	certManager    *cert.Manager
 	serverConfig   *ServerConfig
+	digestAuth     *web.DigestAuth
 	clientCert     *ClientCert
 	log            *zap.Logger
 }
-
-type HandlersChain []web.HandlerFunc
 
 func (c *Context) GetConfig(section, name string) string {
 	return c.register.GetConfig().GetString(section, name)
@@ -52,10 +52,13 @@ func (c *Context) GetCertManager() *cert.Manager {
 func (c *Context) GetClientCert() *ClientCert {
 	return c.clientCert
 }
+func (c *Context) GetDigestAuth() *web.DigestAuth {
+	return c.digestAuth
+}
+func (c *Context) JustCheck(relativePath string, handler web.HandlerFunc) web.HandlerFunc {
 
-//	func (c *Context) GetJwt() *util.Jwt {
-//		return c.jwt
-//	}
+	return c.digestAuth.JustCheck(relativePath, handler)
+}
 func (c *Context) SetDiscoverServer(discoverServer DiscoverServer) {
 	c.discoverServer = discoverServer
 }
@@ -68,6 +71,13 @@ func (c *Context) GetConfigInt(section, name string) (int, error) {
 func (c *Context) GetHttpClient(address *net.UDPAddr) (*khttp.Client, error) {
 	return c.server.GetHttpClient(address)
 }
+func (c *Context) justChecks(relativePath string, handlers ...web.HandlerFunc) []web.HandlerFunc {
+	var hs = make([]web.HandlerFunc, len(handlers))
+	for i, handler := range handlers {
+		hs[i] = c.JustCheck(relativePath, handler)
+	}
+	return hs
+}
 
 func (c *Context) Post(relativePath string, handlers ...web.HandlerFunc) {
 	_, ok := c.paths[relativePath]
@@ -76,6 +86,9 @@ func (c *Context) Post(relativePath string, handlers ...web.HandlerFunc) {
 	}
 	c.paths[relativePath] = true
 	c.engine.POST(relativePath, web.ToGinHandlerFuncs(handlers)...)
+}
+func (c *Context) PostAuth(relativePath string, handlers ...web.HandlerFunc) {
+	c.Post(relativePath, c.justChecks(relativePath, handlers...)...)
 }
 func (c *Context) Get(relativePath string, handlers ...web.HandlerFunc) {
 	_, ok := c.paths[relativePath]
@@ -86,6 +99,9 @@ func (c *Context) Get(relativePath string, handlers ...web.HandlerFunc) {
 	c.engine.GET(relativePath, web.ToGinHandlerFuncs(handlers)...)
 }
 
+func (c *Context) GetAuth(relativePath string, handlers ...web.HandlerFunc) {
+	c.Get(relativePath, c.justChecks(relativePath, handlers...)...)
+}
 func (c *Context) Any(relativePath string, handlers ...web.HandlerFunc) {
 	_, ok := c.paths[relativePath]
 	if ok {
@@ -98,33 +114,38 @@ func (c *Context) Any(relativePath string, handlers ...web.HandlerFunc) {
 		c.engine.Handle(method, relativePath, web.ToGinHandlerFuncs(handlers)...)
 	}
 }
-
+func (c *Context) AnyAuth(relativePath string, handlers ...web.HandlerFunc) {
+	c.Any(relativePath, c.justChecks(relativePath, handlers...)...)
+}
 func (c *Context) AnyRemote(relativePath string, handlers ...web.HandlerFunc) {
-	_, ok := c.paths[relativePath]
-	if ok {
-		return
-	}
 	c.Any(relativePath, handlers...)
-
+	c.remotePaths[relativePath] = true
+	c.paths[relativePath] = true
+}
+func (c *Context) AnyRemoteAuth(relativePath string, handlers ...web.HandlerFunc) {
+	c.AnyAuth(relativePath, handlers...)
 	c.remotePaths[relativePath] = true
 	c.paths[relativePath] = true
 }
 func (c *Context) GetRemote(relativePath string, handlers ...web.HandlerFunc) {
-	_, ok := c.paths[relativePath]
-	if ok {
-		return
-	}
 	c.Get(relativePath, handlers...)
+	c.remotePaths[relativePath] = true
+	c.paths[relativePath] = true
+}
+func (c *Context) GetRemoteAuth(relativePath string, handlers ...web.HandlerFunc) {
+	c.GetAuth(relativePath, handlers...)
 	c.remotePaths[relativePath] = true
 	c.paths[relativePath] = true
 }
 
 func (c *Context) PostRemote(relativePath string, handlers ...web.HandlerFunc) {
-	_, ok := c.paths[relativePath]
-	if ok {
-		return
-	}
 	c.Post(relativePath, handlers...)
+	c.remotePaths[relativePath] = true
+	c.paths[relativePath] = true
+}
+
+func (c *Context) PostRemoteAuth(relativePath string, handlers ...web.HandlerFunc) {
+	c.PostAuth(relativePath, handlers...)
 	c.remotePaths[relativePath] = true
 	c.paths[relativePath] = true
 }
@@ -190,6 +211,15 @@ func (c *Context) isRemote(context *gin.Context) bool {
 	}
 	return false
 }
+
+func (c *Context) Secret(user, realm string) string {
+	if user == "111111" {
+		v := util.MD5([]byte(fmt.Sprintf("%s:%s:%s", user, realm, "111111")))
+		return v
+	}
+	return ""
+}
+
 func (c *Context) GetReverseProxy(remoteAddress *net.UDPAddr, cert *cert.Certificate) (*khttp.ReverseProxy, error) {
 	if cert == nil {
 		return c.server.GetReverseProxy(remoteAddress)
