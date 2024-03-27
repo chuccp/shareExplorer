@@ -2,7 +2,6 @@ package web
 
 import (
 	"encoding/json"
-	"github.com/chuccp/shareExplorer/util"
 	"github.com/gin-gonic/gin"
 	"io"
 	"mime/multipart"
@@ -11,13 +10,15 @@ import (
 	"strings"
 )
 
+type HandlerFunc func(req *Request) (any, error)
+
 type Request struct {
 	context *gin.Context
-	jwt     *util.Jwt
+	//jwt     *util.Jwt
 }
 
-func NewRequest(context *gin.Context, jwt *util.Jwt) *Request {
-	return &Request{context: context, jwt: jwt}
+func NewRequest(context *gin.Context) *Request {
+	return &Request{context: context}
 }
 
 func (r *Request) FormValue(key string) string {
@@ -47,24 +48,26 @@ func (r *Request) GetRemoteAddress() string {
 	}
 	return address
 }
-func (r *Request) GetTokenUsername() string {
-	token := r.context.GetHeader("Token")
-	if len(token) == 0 {
-		token = r.context.Request.FormValue("Token")
-	}
-	if len(token) > 0 {
-		sub, err := r.jwt.ParseWithSub(token)
-		if err != nil {
-			return ""
-		} else {
-			return sub
-		}
-	}
-	return ""
-}
-func (r *Request) SignedUsername(username string) (string, error) {
-	return r.jwt.SignedSub(username)
-}
+
+//func (r *Request) GetTokenUsername() string {
+//	token := r.context.GetHeader("Token")
+//	if len(token) == 0 {
+//		token = r.context.Request.FormValue("Token")
+//	}
+//	if len(token) > 0 {
+//		sub, err := r.jwt.ParseWithSub(token)
+//		if err != nil {
+//			return ""
+//		} else {
+//			return sub
+//		}
+//	}
+//	return ""
+//}
+
+//func (r *Request) SignedUsername(username string) (string, error) {
+//	return r.jwt.SignedSub(username)
+//}
 
 func (r *Request) GetPage() *Page {
 	var page Page
@@ -106,4 +109,32 @@ func (r *Request) Status(code int) {
 }
 func (r *Request) String(code int, format string, values ...any) {
 	r.context.String(code, format, values...)
+}
+
+func ToGinHandlerFuncs(handlers []HandlerFunc) []gin.HandlerFunc {
+	var handlerFunc = make([]gin.HandlerFunc, len(handlers))
+	for i, handler := range handlers {
+		handlerFunc[i] = ToGinHandlerFunc(handler)
+	}
+	return handlerFunc
+}
+func ToGinHandlerFunc(handler HandlerFunc) gin.HandlerFunc {
+	handlerFunc := func(context *gin.Context) {
+		value, err := handler(NewRequest(context))
+		if err != nil {
+			context.AbortWithStatusJSON(200, ResponseError(err.Error()))
+		} else {
+			if value != nil {
+				switch t := value.(type) {
+				case string:
+					context.Writer.Write([]byte(t))
+				case *File:
+					context.FileAttachment(t.GetPath(), t.GetFilename())
+				default:
+					context.AbortWithStatusJSON(200, t)
+				}
+			}
+		}
+	}
+	return handlerFunc
 }

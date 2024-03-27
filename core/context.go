@@ -13,15 +13,12 @@ import (
 	"strings"
 )
 
-type HandlerFunc func(req *web.Request) (any, error)
-
 type Context struct {
 	engine         *gin.Engine
 	register       IRegister
 	server         *khttp.Server
 	discoverServer DiscoverServer
 	db             *db.DB
-	jwt            *util.Jwt
 	paths          map[string]any
 	remotePaths    map[string]any
 	certManager    *cert.Manager
@@ -30,7 +27,7 @@ type Context struct {
 	log            *zap.Logger
 }
 
-type HandlersChain []HandlerFunc
+type HandlersChain []web.HandlerFunc
 
 func (c *Context) GetConfig(section, name string) string {
 	return c.register.GetConfig().GetString(section, name)
@@ -55,9 +52,10 @@ func (c *Context) GetCertManager() *cert.Manager {
 func (c *Context) GetClientCert() *ClientCert {
 	return c.clientCert
 }
-func (c *Context) GetJwt() *util.Jwt {
-	return c.jwt
-}
+
+//	func (c *Context) GetJwt() *util.Jwt {
+//		return c.jwt
+//	}
 func (c *Context) SetDiscoverServer(discoverServer DiscoverServer) {
 	c.discoverServer = discoverServer
 }
@@ -71,37 +69,37 @@ func (c *Context) GetHttpClient(address *net.UDPAddr) (*khttp.Client, error) {
 	return c.server.GetHttpClient(address)
 }
 
-func (c *Context) Post(relativePath string, handlers ...HandlerFunc) {
+func (c *Context) Post(relativePath string, handlers ...web.HandlerFunc) {
 	_, ok := c.paths[relativePath]
 	if ok {
 		return
 	}
 	c.paths[relativePath] = true
-	c.engine.POST(relativePath, c.toGinHandlerFunc(handlers)...)
+	c.engine.POST(relativePath, web.ToGinHandlerFuncs(handlers)...)
 }
-func (c *Context) Get(relativePath string, handlers ...HandlerFunc) {
+func (c *Context) Get(relativePath string, handlers ...web.HandlerFunc) {
 	_, ok := c.paths[relativePath]
 	if ok {
 		return
 	}
 	c.paths[relativePath] = true
-	c.engine.GET(relativePath, c.toGinHandlerFunc(handlers)...)
+	c.engine.GET(relativePath, web.ToGinHandlerFuncs(handlers)...)
 }
 
-func (c *Context) Any(relativePath string, handlers ...HandlerFunc) {
+func (c *Context) Any(relativePath string, handlers ...web.HandlerFunc) {
 	_, ok := c.paths[relativePath]
 	if ok {
 		return
 	}
 	c.paths[relativePath] = true
-	c.engine.Any(relativePath, c.toGinHandlerFunc(handlers)...)
+	c.engine.Any(relativePath, web.ToGinHandlerFuncs(handlers)...)
 	httpMethods := []string{"PROPFIND", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "PROPPATCH"}
 	for _, method := range httpMethods {
-		c.engine.Handle(method, relativePath, c.toGinHandlerFunc(handlers)...)
+		c.engine.Handle(method, relativePath, web.ToGinHandlerFuncs(handlers)...)
 	}
 }
 
-func (c *Context) AnyRemote(relativePath string, handlers ...HandlerFunc) {
+func (c *Context) AnyRemote(relativePath string, handlers ...web.HandlerFunc) {
 	_, ok := c.paths[relativePath]
 	if ok {
 		return
@@ -111,7 +109,7 @@ func (c *Context) AnyRemote(relativePath string, handlers ...HandlerFunc) {
 	c.remotePaths[relativePath] = true
 	c.paths[relativePath] = true
 }
-func (c *Context) GetRemote(relativePath string, handlers ...HandlerFunc) {
+func (c *Context) GetRemote(relativePath string, handlers ...web.HandlerFunc) {
 	_, ok := c.paths[relativePath]
 	if ok {
 		return
@@ -121,7 +119,7 @@ func (c *Context) GetRemote(relativePath string, handlers ...HandlerFunc) {
 	c.paths[relativePath] = true
 }
 
-func (c *Context) PostRemote(relativePath string, handlers ...HandlerFunc) {
+func (c *Context) PostRemote(relativePath string, handlers ...web.HandlerFunc) {
 	_, ok := c.paths[relativePath]
 	if ok {
 		return
@@ -240,28 +238,4 @@ func (c *Context) RemoteHandle() {
 			context.Abort()
 		}
 	})
-}
-func (c *Context) toGinHandlerFunc(handlers []HandlerFunc) []gin.HandlerFunc {
-	var handlerFunc = make([]gin.HandlerFunc, len(handlers))
-	for i, handler := range handlers {
-		handlerFunc[i] = func(context *gin.Context) {
-			value, err := handler(web.NewRequest(context, c.jwt))
-			if err != nil {
-				context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
-			} else {
-				if value != nil {
-					switch t := value.(type) {
-					case string:
-						context.Writer.Write([]byte(t))
-					case *web.File:
-						context.FileAttachment(t.GetPath(), t.GetFilename())
-					default:
-						context.AbortWithStatusJSON(200, t)
-					}
-				}
-			}
-
-		}
-	}
-	return handlerFunc
 }

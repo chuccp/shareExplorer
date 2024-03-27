@@ -2,6 +2,8 @@ package user
 
 import (
 	"errors"
+	"fmt"
+	auth "github.com/abbot/go-http-auth"
 	"github.com/chuccp/kuic/cert"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/db"
@@ -10,7 +12,9 @@ import (
 	"github.com/chuccp/shareExplorer/web"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"log"
 	"net"
+	"net/http"
 )
 
 type admin struct {
@@ -30,105 +34,108 @@ func (s *Server) GetName() string {
 	return "user"
 }
 func (s *Server) signIn(req *web.Request) (any, error) {
-	var admin admin
-	req.BodyJson(&admin)
-	if len(admin.Username) == 0 {
-		return web.ResponseError("用户名不能为空"), nil
-	}
-	if len(admin.Password) == 0 {
-		return web.ResponseError("密码不能为空"), nil
-	}
-	u, err := s.context.GetDB().GetUserModel().QueryUser(admin.Username, admin.Password)
-	if err != nil {
-		return nil, err
-	}
-	if len(u.Username) > 0 {
-		sub, err := req.SignedUsername(u.Username)
-		if err != nil {
-			return nil, err
-		}
-		return web.ResponseOK(sub), nil
-	} else {
-		return web.ResponseError("登录失败"), nil
-	}
+	//var admin admin
+	//req.BodyJson(&admin)
+	//if len(admin.Username) == 0 {
+	//	return web.ResponseError("用户名不能为空"), nil
+	//}
+	//if len(admin.Password) == 0 {
+	//	return web.ResponseError("密码不能为空"), nil
+	//}
+	//u, err := s.context.GetDB().GetUserModel().QueryUser(admin.Username, admin.Password)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//if len(u.Username) > 0 {
+	//	sub, err := req.SignedUsername(u.Username)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	return web.ResponseOK(sub), nil
+	//} else {
+	//	return web.ResponseError("登录失败"), nil
+	//}
 
+	return nil, nil
 }
+
 func (s *Server) addAdmin(req *web.Request) (any, error) {
-	var admin admin
-	req.BodyJson(&admin)
-	if len(admin.Username) == 0 {
-		return web.ResponseError("用户名不能为空"), nil
-	}
-	if len(admin.Password) == 0 {
-		return web.ResponseError("密码不能为空"), nil
-	}
-	if len(admin.RePassword) == 0 {
-		return web.ResponseError("确认密码不能为空"), nil
-	}
-	if admin.RePassword != admin.Password {
-		return web.ResponseError("两次密码输入不同"), nil
-	}
-	if admin.IsNatServer || admin.IsServer {
-		if admin.Addresses == nil || len(admin.Addresses) == 0 {
-			return web.ResponseError("远程节点不能为空"), nil
-		}
-	}
-
-	cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(admin.Username)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
-		err := s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin", cert)
-		if err != nil {
-			return err
-		}
-		IsServer := "false"
-		if admin.IsServer {
-			IsServer = "true"
-		}
-		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", IsServer)
-		if err != nil {
-			return err
-		}
-		isNatServer := "false"
-		if admin.IsNatServer {
-			isNatServer = "true"
-		}
-		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isNatServer", isNatServer)
-		if err != nil {
-			return err
-		}
-
-		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isClient", "false")
-		if err != nil {
-			return err
-		}
-
-		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
-		err = addressModel.AddAddress(admin.Addresses)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return web.ResponseError(err.Error()), err
-	}
-	sub, err := req.SignedUsername(admin.Username)
-	if err != nil {
-		return nil, err
-	}
-	err = s.context.GetServerConfig().Init()
-	if err != nil {
-		return nil, err
-	}
-	discoverServer, fa := s.context.GetDiscoverServer()
-	if fa {
-		discoverServer.Start()
-	}
-	return web.ResponseOK(sub), nil
+	//var admin admin
+	//req.BodyJson(&admin)
+	//if len(admin.Username) == 0 {
+	//	return web.ResponseError("用户名不能为空"), nil
+	//}
+	//if len(admin.Password) == 0 {
+	//	return web.ResponseError("密码不能为空"), nil
+	//}
+	//if len(admin.RePassword) == 0 {
+	//	return web.ResponseError("确认密码不能为空"), nil
+	//}
+	//if admin.RePassword != admin.Password {
+	//	return web.ResponseError("两次密码输入不同"), nil
+	//}
+	//if admin.IsNatServer || admin.IsServer {
+	//	if admin.Addresses == nil || len(admin.Addresses) == 0 {
+	//		return web.ResponseError("远程节点不能为空"), nil
+	//	}
+	//}
+	//
+	//cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(admin.Username)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//err = s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
+	//	err := s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin", cert)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	IsServer := "false"
+	//	if admin.IsServer {
+	//		IsServer = "true"
+	//	}
+	//	err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", IsServer)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	isNatServer := "false"
+	//	if admin.IsNatServer {
+	//		isNatServer = "true"
+	//	}
+	//	err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isNatServer", isNatServer)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isClient", "false")
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
+	//	err = addressModel.AddAddress(admin.Addresses)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	return nil
+	//})
+	//if err != nil {
+	//	return web.ResponseError(err.Error()), err
+	//}
+	//sub, err := req.SignedUsername(admin.Username)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//err = s.context.GetServerConfig().Init()
+	//if err != nil {
+	//	return nil, err
+	//}
+	//discoverServer, fa := s.context.GetDiscoverServer()
+	//if fa {
+	//	discoverServer.Start()
+	//}
+	//return web.ResponseOK(sub), nil
+	return nil, nil
 }
 
 func (s *Server) addClient(req *web.Request) (any, error) {
@@ -180,12 +187,12 @@ func (s *Server) info(req *web.Request) (any, error) {
 	if system.HasInit {
 		system.IsServer = ServerConfig.IsServer()
 		if system.IsServer {
-			username := req.GetTokenUsername()
-			if len(username) > 0 {
-				system.HasSignIn = true
-			} else {
-				system.HasSignIn = false
-			}
+			//username := req.GetTokenUsername()
+			//if len(username) > 0 {
+			//	system.HasSignIn = true
+			//} else {
+			//	system.HasSignIn = false
+			//}
 		}
 	} else {
 		system.RemoteAddress = s.context.GetConfigArray("traversal", "remote.address")
@@ -249,12 +256,13 @@ func (s *Server) clientSignIn(req *web.Request) (any, error) {
 }
 
 func (s *Server) downloadCert(req *web.Request) (any, error) {
-	username := req.GetTokenUsername()
-	cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(username)
-	if err != nil {
-		return nil, err
-	}
-	return web.ResponseFile(cert), nil
+	//username := req.GetTokenUsername()
+	//cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(username)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return web.ResponseFile(cert), nil
+	return nil, nil
 }
 func (s *Server) downloadUserCert(req *web.Request) (any, error) {
 	username := req.FormValue("username")
@@ -371,6 +379,9 @@ func (s *Server) queryUser(req *web.Request) (any, error) {
 func (s *Server) queryOnePath(req *web.Request) (any, error) {
 	id := req.FormIntValue("id")
 	path, err := s.context.GetDB().GetPathModel().QueryById(uint(id))
+	if err != nil {
+		s.context.GetLog().Error("queryOnePath", zap.Error(err))
+	}
 	return web.ResponseOK(path), err
 }
 
@@ -398,6 +409,7 @@ func (s *Server) deleteUser(req *web.Request) (any, error) {
 	username := req.FormValue("username")
 	err := s.context.GetDB().GetUserModel().DeleteUser(username)
 	if err != nil {
+		s.context.GetLog().Error("deleteUser", zap.Error(err))
 		return nil, err
 	}
 	return web.ResponseOK("ok"), nil
@@ -407,7 +419,7 @@ func (s *Server) editUser(req *web.Request) (any, error) {
 	var user db.User
 	v, err := req.BodyJson(&user)
 	if err != nil {
-		s.context.GetLog().Error("addUser", zap.Error(err), zap.ByteString("body", v))
+		s.context.GetLog().Error("editUser", zap.Error(err), zap.ByteString("body", v))
 		return nil, err
 	}
 	err = s.context.GetDB().GetUserModel().EditUser(user.Id, user.Username, user.Password, user.PathIds)
@@ -437,33 +449,47 @@ func (s *Server) queryOneUser(req *web.Request) (any, error) {
 	return nil, errors.New("参数有错")
 }
 
+func (s *Server) login(req *web.Request) (any, error) {
+
+	//req.GetRawRequest().
+
+	return web.ResponseError("登录失败"), nil
+}
+func Secret(user, realm string) string {
+	log.Printf("realm", realm)
+	if user == "john" {
+		v := util.MD5([]byte(fmt.Sprintf("%s:%s:%s", user, realm, "hello")))
+		return v
+	}
+	return ""
+}
+func handle(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
+	fmt.Fprintf(w, "<html><body><h1>Hello, %s!</h1></body></html>", r.Username)
+}
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	context.Get("/user/info", s.info)
 	context.Get("/user/reset", s.reset)
 	context.Post("/user/addAdmin", s.addAdmin)
 	context.Post("/user/addClient", s.addClient)
-
 	context.Post("/user/clientSignIn", s.clientSignIn)
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/ping", s.ping)
 	context.Get("/user/downloadCert", s.downloadCert)
-	context.GetRemote("/user/downloadUserCert", s.downloadUserCert)
 	context.Post("/user/uploadUserCert", s.uploadUserCert)
-
+	context.GetRemote("/user/downloadUserCert", s.downloadUserCert)
 	context.GetRemote("/user/queryUser", s.queryUser)
 	context.PostRemote("/user/addUser", s.addUser)
 	context.GetRemote("/user/deleteUser", s.deleteUser)
 	context.PostRemote("/user/editUser", s.editUser)
 	context.GetRemote("/user/queryOneUser", s.queryOneUser)
-
 	context.PostRemote("/user/queryOnePath", s.queryOnePath)
 	context.PostRemote("/user/addPath", s.addPath)
-
 	context.PostRemote("/user/editPath", s.editPath)
 	context.PostRemote("/user/deletePath", s.deletePath)
-
 	context.GetRemote("/user/queryPath", s.queryPath)
 	context.GetRemote("/user/queryAllPath", s.queryAllPath)
 	context.PostRemote("/user/signIn", s.signIn)
+	basicAuth := web.NewDigestAuthenticator("example.com", Secret)
+	context.Any("/user/login", basicAuth.Wrap(handle))
 }
