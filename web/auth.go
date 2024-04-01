@@ -22,34 +22,44 @@ type DigestAuth struct {
 	*auth.DigestAuth
 }
 
-func (digestAuth *DigestAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) HandlerFunc {
-	handle := digestAuth.DigestAuth.Wrap(wrapped)
-	return func(req *Request) (any, error) {
-		handle.ServeHTTP(req.GetResponseWriter(), req.GetRawRequest())
-		return nil, nil
+//func (digestAuth *DigestAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) HandlerFunc {
+//	handle := digestAuth.DigestAuth.Wrap(wrapped)
+//	return func(req *Request) (any, error) {
+//		handle.ServeHTTP(req.GetResponseWriter(), req.GetRawRequest())
+//		return nil, nil
+//	}
+//}
+
+func (digestAuth *DigestAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if username, authinfo := digestAuth.CheckAuth(r); username == "" {
+			digestAuth.RequireAuth(w, r)
+			authenticate := w.Header().Get(digestAuth.Headers.V().Authenticate)
+			w.Write([]byte(digestAuth.Headers.V().Authenticate + ":" + authenticate + "\n"))
+		} else {
+			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
+			if authinfo != nil {
+				w.Header().Set(digestAuth.Headers.V().AuthInfo, *authinfo)
+			}
+			wrapped(w, ar)
+		}
 	}
 }
-
 func (digestAuth *DigestAuth) JustCheck(relativePath string, wrapped HandlerFunc) HandlerFunc {
-	var v any
-	var err error
-	handlerFunc := digestAuth.DigestAuth.JustCheck(func(writer http.ResponseWriter, request *http.Request) {
-		gin.SetMode(gin.ReleaseMode)
-		engine := gin.New()
-		engine.Any(relativePath, func(context *gin.Context) {
-			v, err = wrapped(NewRequest(context))
-		})
-		engine.ServeHTTP(writer, request)
-	})
 	return func(req *Request) (any, error) {
-		handlerFunc(req.GetResponseWriter(), req.GetRawRequest())
+		var v any
+		var err error
+		handle := digestAuth.Wrap(func(writer http.ResponseWriter, request *auth.AuthenticatedRequest) {
+			gin.SetMode(gin.ReleaseMode)
+			engine := gin.New()
+			engine.Any(relativePath, func(context *gin.Context) {
+				v, err = wrapped(NewRequest(context))
+			})
+			engine.ServeHTTP(writer, &request.Request)
+		})
+		handle(req.GetResponseWriter(), req.GetRawRequest())
 		return v, err
 	}
-}
-
-func NewBasicAuthenticator(realm string, secrets auth.SecretProvider) *BasicAuth {
-	basicAuth := auth.NewBasicAuthenticator(realm, secrets)
-	return &BasicAuth{BasicAuth: basicAuth}
 }
 func NewDigestAuthenticator(realm string, secrets auth.SecretProvider) *DigestAuth {
 	digestAuth := auth.NewDigestAuthenticator(realm, secrets)
