@@ -24,11 +24,11 @@ func (s *Server) files(req *web.Request) (any, error) {
 	RootPath := req.FormValue("RootPath")
 	if len(Path) > 0 && len(RootPath) > 0 {
 		fileManage := io.CreateFileManage(RootPath)
-		child, err := fileManage.Children(Path)
+		children, err := fileManage.Children(Path)
 		if err != nil {
 			return nil, err
 		} else {
-			return child, err
+			return web.ResponseOK(children), err
 		}
 	}
 	return nil, os.ErrNotExist

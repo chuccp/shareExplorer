@@ -10,6 +10,7 @@ import (
 	"github.com/chuccp/shareExplorer/web"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
+	"log"
 	"net"
 )
 
@@ -30,6 +31,7 @@ func (s *Server) GetName() string {
 	return "user"
 }
 func (s *Server) signIn(req *web.Request) (any, error) {
+	log.Println("=======================")
 	//var admin admin
 	//req.BodyJson(&admin)
 	//if len(admin.Username) == 0 {
@@ -52,7 +54,7 @@ func (s *Server) signIn(req *web.Request) (any, error) {
 	//	return web.ResponseError("登录失败"), nil
 	//}
 
-	return web.ResponseOK(""), nil
+	return web.ResponseOK("ok"), nil
 }
 
 func (s *Server) addAdmin(req *web.Request) (any, error) {
@@ -469,4 +471,5 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemoteAuth("/user/queryPath", s.queryPath)
 	context.GetRemoteAuth("/user/queryAllPath", s.queryAllPath)
 	context.PostRemoteAuth("/user/signIn", s.signIn)
+	//context.GetRemoteAuth("/user/signIn", s.signIn)
 }
