@@ -234,7 +234,7 @@ func (c *Context) isRemote(context *gin.Context) bool {
 }
 
 func getUsernameAndCode(user string) (string, string) {
-	vs := strings.Split(user, "@")
+	vs := strings.SplitN(user, "@", 2)
 	if len(vs) > 1 {
 		return vs[0], vs[1]
 	}

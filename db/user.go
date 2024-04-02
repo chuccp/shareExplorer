@@ -24,14 +24,16 @@ type UserModel struct {
 	tableName string
 }
 
+var userMap = NewMap[*User]()
+
 func (u *UserModel) DeleteTable() error {
 	if !u.IsExist() {
 		return nil
 	}
-	tx := u.db.Table(u.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&User{})
-	return tx.Error
+	return u.deleteTable()
 }
 func (u *UserModel) deleteTable() error {
+	userMap.Clean()
 	tx := u.db.Table(u.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&User{})
 	return tx.Error
 }
@@ -80,6 +82,7 @@ func (u *UserModel) DeleteUser(username string) error {
 	if v.Role == "admin" {
 		return errors.New("管理员账号不能删除")
 	}
+	userMap.Clean()
 	tx = u.db.Table(u.tableName).Where("`username` = ? and role!=?", username, "admin").Delete(&User{})
 	if tx.Error != nil {
 		return tx.Error
@@ -87,6 +90,7 @@ func (u *UserModel) DeleteUser(username string) error {
 	return tx.Error
 }
 func (u *UserModel) EditUser(id uint, username string, password string, pathIds string) error {
+	userMap.Clean()
 	tx := u.db.Table(u.tableName).Where(&User{
 		Id: id,
 	}).Updates(&User{
@@ -168,10 +172,17 @@ func (u *UserModel) QueryUser(username string, password string) (*User, error) {
 	return nil, tx.Error
 }
 func (u *UserModel) QueryOneUser(username string, code string) (*User, error) {
+	key := username + "@" + code
+	v, ok := userMap.Get(key)
+	if ok {
+		return v, nil
+	}
+
 	var users []*User
 	tx := u.db.Table(u.tableName).Find(&users, "username=? and code=? limit 1", username, code)
 	if tx.Error == nil {
 		if len(users) > 0 {
+			userMap.Save(key, users[0])
 			return users[0], nil
 		}
 		return nil, nil
