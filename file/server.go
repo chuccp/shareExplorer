@@ -183,7 +183,7 @@ func (s *Server) root(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pathInfo, nil
+	return web.ResponseOK(pathInfo), nil
 }
 func (s *Server) paths(req *web.Request) (any, error) {
 	Path := req.FormValue("Path")
@@ -192,7 +192,7 @@ func (s *Server) paths(req *web.Request) (any, error) {
 		if err != nil {
 			return nil, err
 		} else {
-			return pathInfo, err
+			return web.ResponseOK(pathInfo), err
 		}
 	}
 	return nil, os.ErrNotExist
