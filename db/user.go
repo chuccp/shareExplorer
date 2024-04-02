@@ -168,16 +168,13 @@ func (u *UserModel) QueryUser(username string, password string) (*User, error) {
 	return nil, tx.Error
 }
 func (u *UserModel) QueryOneUser(username string, code string) (*User, error) {
-	if !u.IsExist() {
-		err := u.createTable()
-		if err != nil {
-			return nil, err
-		}
-	}
-	var user User
-	tx := u.db.Table(u.tableName).Find(&user, "username=? and code=? limit 1", username, code)
+	var users []*User
+	tx := u.db.Table(u.tableName).Find(&users, "username=? and code=? limit 1", username, code)
 	if tx.Error == nil {
-		return &user, nil
+		if len(users) > 0 {
+			return users[0], nil
+		}
+		return nil, nil
 	}
 	return nil, tx.Error
 }

@@ -233,9 +233,21 @@ func (c *Context) isRemote(context *gin.Context) bool {
 	return false
 }
 
+func getUsernameAndCode(user string) (string, string) {
+	vs := strings.Split(user, "@")
+	if len(vs) > 1 {
+		return vs[0], vs[1]
+	}
+	return user, user
+}
+
 func (c *Context) Secret(user, realm string) string {
-	if user == "111111" {
-		v := util.MD5([]byte(fmt.Sprintf("%s:%s:%s", user, realm, "111111")))
+	oneUser, err := c.db.GetUserModel().QueryOneUser(getUsernameAndCode(user))
+	if err != nil {
+		return ""
+	}
+	if oneUser != nil {
+		v := util.MD5([]byte(fmt.Sprintf("%s:%s:%s", user, realm, oneUser.Password)))
 		return v
 	}
 	return ""
