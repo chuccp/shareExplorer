@@ -6,7 +6,6 @@ import (
 	"github.com/chuccp/shareExplorer/io"
 	"github.com/chuccp/shareExplorer/web"
 	"go.uber.org/zap"
-	"log"
 	"os"
 	"path"
 )
@@ -24,11 +23,11 @@ func (s *Server) files(req *web.Request) (any, error) {
 	Path := req.FormValue("Path")
 	RootPath := req.FormValue("RootPath")
 	if len(Path) > 0 && len(RootPath) > 0 {
-		query, err := s.context.GetDB().GetPathModel().Query(RootPath)
+		rootPath, err := s.getRealRootPath(RootPath)
 		if err != nil {
 			return nil, err
 		}
-		fileManage := io.CreateFileManage(query.Path)
+		fileManage := io.CreateFileManage(rootPath)
 		children, err := fileManage.Children(Path)
 		if err != nil {
 			return nil, err
@@ -39,11 +38,23 @@ func (s *Server) files(req *web.Request) (any, error) {
 	return nil, os.ErrNotExist
 }
 
+func (s *Server) getRealRootPath(rootPath string) (string, error) {
+	query, err := s.context.GetDB().GetPathModel().Query(rootPath)
+	if err != nil {
+		return "", err
+	}
+	return query.Path, nil
+}
+
 func (s *Server) download(req *web.Request) (any, error) {
 	Path := req.FormValue("path")
 	RootPath := req.FormValue("rootPath")
 	if len(Path) > 0 && len(RootPath) > 0 {
-		file := path.Join(RootPath, Path)
+		rootPath, err := s.getRealRootPath(RootPath)
+		if err != nil {
+			return nil, err
+		}
+		file := path.Join(rootPath, Path)
 		return web.ResponseFile(file), nil
 	}
 	return nil, os.ErrNotExist
@@ -58,10 +69,14 @@ func (s *Server) rename(req *web.Request) (any, error) {
 		return nil, os.ErrNotExist
 	}
 	if len(rename.Path) > 0 && len(rename.RootPath) > 0 {
-		fileDir := path.Join(rename.RootPath, rename.Path)
+		rootPath, err := s.getRealRootPath(rename.RootPath)
+		if err != nil {
+			return nil, err
+		}
+		fileDir := path.Join(rootPath, rename.Path)
 		oldName := path.Join(fileDir, rename.OldName)
 		newFile := path.Join(fileDir, rename.NewName)
-		err := os.Rename(oldName, newFile)
+		err = os.Rename(oldName, newFile)
 		if err != nil {
 			return nil, err
 		}
@@ -73,9 +88,13 @@ func (s *Server) delete(req *web.Request) (any, error) {
 	Path := req.FormValue("path")
 	RootPath := req.FormValue("rootPath")
 	if len(Path) > 0 && len(RootPath) > 0 {
-		file := path.Join(RootPath, Path)
+		rootPath, err := s.getRealRootPath(RootPath)
+		if err != nil {
+
+		}
+		file := path.Join(rootPath, Path)
 		println(file)
-		err := os.Remove(file)
+		err = os.Remove(file)
 		if err != nil {
 			return nil, err
 		}
@@ -93,10 +112,14 @@ func (s *Server) upload(req *web.Request) (any, error) {
 	size := req.FormInt64Value("size")
 	total := req.FormInt64Value("total")
 	if len(path) > 0 && len(rootPath) > 0 && len(name) > 0 && size > 0 && total > 0 && count > 0 {
+		rootPath, err := s.getRealRootPath(rootPath)
+		if err != nil {
+			return nil, err
+		}
 		fileManage := io.CreateFileManage(rootPath)
 		absolute := fileManage.Absolute(path, name)
 		tempUpload := web.NewTempUpload(reader, absolute, seq, count, size, total)
-		err := tempUpload.SaveUploaded()
+		err = tempUpload.SaveUploaded()
 		if err != nil {
 			return nil, err
 		}
@@ -108,9 +131,13 @@ func (s *Server) cancelUpload(req *web.Request) (any, error) {
 	path := req.FormValue("path")
 	rootPath := req.FormValue("rootPath")
 	name := req.FormValue("name")
+	rootPath, err := s.getRealRootPath(rootPath)
+	if err != nil {
+		return nil, err
+	}
 	fileManage := io.CreateFileManage(rootPath)
 	absolute := fileManage.Absolute(path, name)
-	err := web.CancelTempUpload(absolute)
+	err = web.CancelTempUpload(absolute)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +158,12 @@ func (s *Server) createNewFolder(req *web.Request) (any, error) {
 		return nil, err
 	}
 	if len(folder.Path) > 0 && len(folder.Folder) > 0 && len(folder.RootPath) > 0 {
-		fileManage := io.CreateFileManage(folder.RootPath)
-		err := fileManage.CreateNewFolder(folder.Path, folder.Folder)
+		rootPath, err := s.getRealRootPath(folder.RootPath)
+		if err != nil {
+			return nil, err
+		}
+		fileManage := io.CreateFileManage(rootPath)
+		err = fileManage.CreateNewFolder(folder.Path, folder.Folder)
 		if err != nil {
 			return nil, err
 		} else {
@@ -168,15 +199,11 @@ func (s *Server) paths(req *web.Request) (any, error) {
 }
 
 func (s *Server) dav(req *web.Request) (any, error) {
-
-	//req.GetTokenUsername()
-
-	s.webdavStore.getWebdav("11111").ServeHTTP(req.GetResponseWriter(), req.GetRawRequest())
+	s.webdavStore.getWebdav(req.GetAuthUsername()).ServeHTTP(req.GetResponseWriter(), req.GetRawRequest())
 	return nil, nil
 }
 
 func (s *Server) queryAllPath(req *web.Request) (any, error) {
-	log.Println(req.GetAuthUsername())
 	list, num, err := s.context.GetDB().GetPathModel().QueryPage(1, 100)
 	if err != nil {
 		return nil, err

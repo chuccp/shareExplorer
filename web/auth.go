@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/base64"
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -32,6 +33,7 @@ type DigestAuth struct {
 
 func (digestAuth *DigestAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		digestAuth.filter(r)
 		if username, authinfo := digestAuth.DigestAuth.CheckAuth(r); username == "" {
 			digestAuth.RequireAuth(w, r)
 			authenticate := w.Header().Get(digestAuth.Headers.V().Authenticate)
@@ -45,9 +47,19 @@ func (digestAuth *DigestAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.H
 		}
 	}
 }
-
+func (digestAuth *DigestAuth) filter(r *http.Request) {
+	k := r.Header.Get(digestAuth.Headers.V().Authorization)
+	if len(k) == 0 {
+		auth := r.FormValue("auth")
+		decodeString, err := base64.StdEncoding.DecodeString(auth)
+		if err == nil {
+			r.Header.Set(digestAuth.Headers.V().Authorization, string(decodeString))
+		}
+	}
+}
 func (digestAuth *DigestAuth) checkAuth(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		digestAuth.filter(r)
 		username, _ := digestAuth.DigestAuth.CheckAuth(r)
 		ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
 		wrapped(w, ar)
