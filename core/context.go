@@ -56,9 +56,12 @@ func (c *Context) GetDigestAuth() *web.DigestAuth {
 	return c.digestAuth
 }
 func (c *Context) JustCheck(relativePath string, handler web.HandlerFunc) web.HandlerFunc {
-
 	return c.digestAuth.JustCheck(relativePath, handler)
 }
+func (c *Context) CheckAuth(relativePath string, handler web.HandlerFunc) web.HandlerFunc {
+	return c.digestAuth.CheckAuth(relativePath, handler)
+}
+
 func (c *Context) SetDiscoverServer(discoverServer DiscoverServer) {
 	c.discoverServer = discoverServer
 }
@@ -75,6 +78,14 @@ func (c *Context) justChecks(relativePath string, handlers ...web.HandlerFunc) [
 	var hs = make([]web.HandlerFunc, len(handlers))
 	for i, handler := range handlers {
 		hs[i] = c.JustCheck(relativePath, handler)
+	}
+	return hs
+}
+
+func (c *Context) checkAuths(relativePath string, handlers ...web.HandlerFunc) []web.HandlerFunc {
+	var hs = make([]web.HandlerFunc, len(handlers))
+	for i, handler := range handlers {
+		hs[i] = c.CheckAuth(relativePath, handler)
 	}
 	return hs
 }
@@ -102,6 +113,11 @@ func (c *Context) Get(relativePath string, handlers ...web.HandlerFunc) {
 func (c *Context) GetAuth(relativePath string, handlers ...web.HandlerFunc) {
 	c.Get(relativePath, c.justChecks(relativePath, handlers...)...)
 }
+
+func (c *Context) GetCheckAuth(relativePath string, handlers ...web.HandlerFunc) {
+	c.Get(relativePath, c.checkAuths(relativePath, handlers...)...)
+}
+
 func (c *Context) Any(relativePath string, handlers ...web.HandlerFunc) {
 	_, ok := c.paths[relativePath]
 	if ok {
@@ -134,6 +150,11 @@ func (c *Context) GetRemote(relativePath string, handlers ...web.HandlerFunc) {
 }
 func (c *Context) GetRemoteAuth(relativePath string, handlers ...web.HandlerFunc) {
 	c.GetAuth(relativePath, handlers...)
+	c.remotePaths[relativePath] = true
+	c.paths[relativePath] = true
+}
+func (c *Context) GetRemoteCheckAuth(relativePath string, handlers ...web.HandlerFunc) {
+	c.GetCheckAuth(relativePath, handlers...)
 	c.remotePaths[relativePath] = true
 	c.paths[relativePath] = true
 }

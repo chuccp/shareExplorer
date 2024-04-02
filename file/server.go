@@ -6,6 +6,7 @@ import (
 	"github.com/chuccp/shareExplorer/io"
 	"github.com/chuccp/shareExplorer/web"
 	"go.uber.org/zap"
+	"log"
 	"os"
 	"path"
 )
@@ -23,7 +24,11 @@ func (s *Server) files(req *web.Request) (any, error) {
 	Path := req.FormValue("Path")
 	RootPath := req.FormValue("RootPath")
 	if len(Path) > 0 && len(RootPath) > 0 {
-		fileManage := io.CreateFileManage(RootPath)
+		query, err := s.context.GetDB().GetPathModel().Query(RootPath)
+		if err != nil {
+			return nil, err
+		}
+		fileManage := io.CreateFileManage(query.Path)
 		children, err := fileManage.Children(Path)
 		if err != nil {
 			return nil, err
@@ -170,10 +175,24 @@ func (s *Server) dav(req *web.Request) (any, error) {
 	return nil, nil
 }
 
+func (s *Server) queryAllPath(req *web.Request) (any, error) {
+	log.Println(req.GetAuthUsername())
+	list, num, err := s.context.GetDB().GetPathModel().QueryPage(1, 100)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range list {
+		p.Path = p.Name
+	}
+	pageAble := &web.PageAble{Total: num, List: list}
+	return web.ResponseOK(pageAble), nil
+}
+
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.webdavStore = newWebDavStore(context, "/dav")
 	context.AnyRemoteAuth("/dav/*name", s.dav)
+	context.GetRemoteAuth("/file/queryAllPath", s.queryAllPath)
 	context.GetRemoteAuth("/file/root", s.root)
 	context.GetRemoteAuth("/file/paths", s.paths)
 	context.GetRemoteAuth("/file/index", s.index)

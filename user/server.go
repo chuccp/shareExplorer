@@ -185,12 +185,12 @@ func (s *Server) info(req *web.Request) (any, error) {
 	if system.HasInit {
 		system.IsServer = ServerConfig.IsServer()
 		if system.IsServer {
-			//username := req.GetTokenUsername()
-			//if len(username) > 0 {
-			//	system.HasSignIn = true
-			//} else {
-			//	system.HasSignIn = false
-			//}
+			username := req.GetAuthUsername()
+			if len(username) > 0 {
+				system.HasSignIn = true
+			} else {
+				system.HasSignIn = false
+			}
 		}
 	} else {
 		system.RemoteAddress = s.context.GetConfigArray("traversal", "remote.address")
@@ -449,7 +449,7 @@ func (s *Server) queryOneUser(req *web.Request) (any, error) {
 
 func (s *Server) Init(context *core.Context) {
 	s.context = context
-	context.Get("/user/info", s.info)
+	context.GetRemoteCheckAuth("/user/info", s.info)
 	context.GetAuth("/user/reset", s.reset)
 	context.Post("/user/addAdmin", s.addAdmin)
 	context.Post("/user/addClient", s.addClient)

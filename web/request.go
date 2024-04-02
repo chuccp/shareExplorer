@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	auth "github.com/abbot/go-http-auth"
 	"github.com/gin-gonic/gin"
 	"io"
 	"mime/multipart"
@@ -13,14 +14,22 @@ import (
 type HandlerFunc func(req *Request) (any, error)
 
 type Request struct {
-	context *gin.Context
-	//jwt     *util.Jwt
+	context     *gin.Context
+	authRequest *auth.AuthenticatedRequest
 }
 
-func NewRequest(context *gin.Context) *Request {
-	return &Request{context: context}
+func NewRequest(context *gin.Context, authRequest *auth.AuthenticatedRequest) *Request {
+	return &Request{context: context, authRequest: authRequest}
 }
-
+func (r *Request) GetAuthRequest() *auth.AuthenticatedRequest {
+	return r.authRequest
+}
+func (r *Request) GetAuthUsername() string {
+	if r.authRequest != nil {
+		return r.authRequest.Username
+	}
+	return ""
+}
 func (r *Request) FormValue(key string) string {
 	return r.context.Request.FormValue(key)
 }
@@ -48,27 +57,6 @@ func (r *Request) GetRemoteAddress() string {
 	}
 	return address
 }
-
-//func (r *Request) GetTokenUsername() string {
-//	token := r.context.GetHeader("Token")
-//	if len(token) == 0 {
-//		token = r.context.Request.FormValue("Token")
-//	}
-//	if len(token) > 0 {
-//		sub, err := r.jwt.ParseWithSub(token)
-//		if err != nil {
-//			return ""
-//		} else {
-//			return sub
-//		}
-//	}
-//	return ""
-//}
-
-//func (r *Request) SignedUsername(username string) (string, error) {
-//	return r.jwt.SignedSub(username)
-//}
-
 func (r *Request) GetPage() *Page {
 	var page Page
 	page.PageNo = r.FormIntValue("pageNo")
@@ -120,7 +108,7 @@ func ToGinHandlerFuncs(handlers []HandlerFunc) []gin.HandlerFunc {
 }
 func ToGinHandlerFunc(handler HandlerFunc) gin.HandlerFunc {
 	handlerFunc := func(context *gin.Context) {
-		value, err := handler(NewRequest(context))
+		value, err := handler(NewRequest(context, nil))
 		if err != nil {
 			context.AbortWithStatusJSON(200, ResponseError(err.Error()))
 		} else {
