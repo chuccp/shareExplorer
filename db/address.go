@@ -25,18 +25,18 @@ func (a *AddressModel) NewModel(db *gorm.DB) *AddressModel {
 	return &AddressModel{db: db, tableName: a.tableName}
 }
 
-func (a *AddressModel) IsExist() bool {
+func (a *AddressModel) isExist() bool {
 	return a.db.Migrator().HasTable(a.tableName)
 }
-func (a *AddressModel) createTable() error {
+func (a *AddressModel) CreateTable() error {
+	if a.isExist() {
+		return nil
+	}
 	err := a.db.Table(a.tableName).AutoMigrate(&Address{})
 	return err
 }
 
 func (a *AddressModel) DeleteTable() error {
-	if !a.IsExist() {
-		return nil
-	}
 	tx := a.db.Table(a.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Address{})
 	return tx.Error
 }
@@ -66,12 +66,6 @@ func (a *AddressModel) UpdateServerNameByAddress(address, serverName string) err
 }
 
 func (a *AddressModel) AddAddress(addresses []string) error {
-	if !a.IsExist() {
-		err := a.createTable()
-		if err != nil {
-			return err
-		}
-	}
 	var addr []*Address
 	tx := a.db.Table(a.tableName).Where(" address IN ?", addresses).Find(&addr)
 	if tx.Error != nil {

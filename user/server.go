@@ -417,8 +417,8 @@ func (s *Server) queryOneUser(req *web.Request) (any, error) {
 
 func (s *Server) Init(context *core.Context) {
 	s.context = context
-	context.GetRemoteCheckAuth("/user/info", s.info)
-	context.GetAuth("/user/reset", s.reset)
+	context.GetCheckAuth("/user/info", s.info)
+	context.GetRemoteAuth("/user/reset", s.reset)
 	context.Post("/user/addAdmin", s.addAdmin)
 	context.Post("/user/addClient", s.addClient)
 	context.Post("/user/clientSignIn", s.clientSignIn)

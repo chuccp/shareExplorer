@@ -158,7 +158,6 @@ func (c *Context) GetRemoteCheckAuth(relativePath string, handlers ...web.Handle
 	c.remotePaths[relativePath] = true
 	c.paths[relativePath] = true
 }
-
 func (c *Context) PostRemote(relativePath string, handlers ...web.HandlerFunc) {
 	c.Post(relativePath, handlers...)
 	c.remotePaths[relativePath] = true

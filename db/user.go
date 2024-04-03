@@ -2,7 +2,6 @@ package db
 
 import (
 	"errors"
-	"github.com/chuccp/shareExplorer/web"
 	"gorm.io/gorm"
 	"time"
 )
@@ -27,9 +26,6 @@ type UserModel struct {
 var userMap = NewMap[*User]()
 
 func (u *UserModel) DeleteTable() error {
-	if !u.IsExist() {
-		return nil
-	}
 	return u.deleteTable()
 }
 func (u *UserModel) deleteTable() error {
@@ -37,7 +33,7 @@ func (u *UserModel) deleteTable() error {
 	tx := u.db.Table(u.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&User{})
 	return tx.Error
 }
-func (u *UserModel) IsExist() bool {
+func (u *UserModel) isExist() bool {
 	return u.db.Migrator().HasTable(u.tableName)
 }
 
@@ -47,7 +43,10 @@ func (u *UserModel) HasData() bool {
 	return num > 0
 }
 
-func (u *UserModel) createTable() error {
+func (u *UserModel) CreateTable() error {
+	if u.isExist() {
+		return nil
+	}
 	err := u.db.Table(u.tableName).AutoMigrate(&User{})
 	return err
 }
@@ -55,12 +54,6 @@ func (u *UserModel) NewModel(db *gorm.DB) *UserModel {
 	return &UserModel{db: db, tableName: u.tableName}
 }
 func (u *UserModel) AddUser(username string, password string, role string, path string) error {
-	if !u.IsExist() {
-		err := u.createTable()
-		if err != nil {
-			return err
-		}
-	}
 	tx := u.db.Table(u.tableName).Create(&User{
 		Username:   username,
 		Password:   password,
@@ -103,12 +96,6 @@ func (u *UserModel) EditUser(id uint, username string, password string, pathIds 
 }
 
 func (u *UserModel) AddGuestUser(username string, password string, pathIds string, path string) error {
-	if !u.IsExist() {
-		err := u.createTable()
-		if err != nil {
-			return err
-		}
-	}
 	tx := u.db.Table(u.tableName).Create(&User{
 		Username:   username,
 		Password:   password,
@@ -122,12 +109,6 @@ func (u *UserModel) AddGuestUser(username string, password string, pathIds strin
 	return tx.Error
 }
 func (u *UserModel) AddClientUser(username string, code string, certPath string) error {
-	if !u.IsExist() {
-		err := u.createTable()
-		if err != nil {
-			return err
-		}
-	}
 
 	var count2 int64
 	tx := u.db.Table(u.tableName).Where("code=?  limit 1", code).Count(&count2)
@@ -158,12 +139,7 @@ func (u *UserModel) AddClientUser(username string, code string, certPath string)
 	return tx.Error
 }
 func (u *UserModel) QueryUser(username string, password string) (*User, error) {
-	if !u.IsExist() {
-		err := u.createTable()
-		if err != nil {
-			return nil, err
-		}
-	}
+
 	var user User
 	tx := u.db.Table(u.tableName).Find(&user, "username=? and password=? limit 1", username, password)
 	if tx.Error == nil {
@@ -190,12 +166,7 @@ func (u *UserModel) QueryOneUser(username string, code string) (*User, error) {
 	return nil, tx.Error
 }
 func (u *UserModel) QueryAllUser() ([]*User, error) {
-	if !u.IsExist() {
-		err := u.createTable()
-		if err != nil {
-			return nil, err
-		}
-	}
+
 	var users01 []*User
 	tx := u.db.Table(u.tableName).Find(&users01)
 	if tx.Error == nil {
@@ -205,10 +176,6 @@ func (u *UserModel) QueryAllUser() ([]*User, error) {
 }
 func (u *UserModel) QueryPage(pageNo int, pageSize int) ([]*User, int64, error) {
 
-	users := make([]*User, 0)
-	if !u.IsExist() {
-		return users, 0, nil
-	}
 	var users01 []*User
 	tx := u.db.Table(u.tableName).Order("`id` desc").Offset((pageNo - 1) * pageSize).Limit(pageSize).Find(&users01)
 	if tx.Error == nil {
@@ -221,9 +188,6 @@ func (u *UserModel) QueryPage(pageNo int, pageSize int) ([]*User, int64, error) 
 	return nil, 0, tx.Error
 }
 func (u *UserModel) QueryById(id uint) (*User, error) {
-	if !u.IsExist() {
-		return nil, web.NotFound
-	}
 	var users01 User
 	tx := u.db.Table(u.tableName).Where(&User{Id: id}).First(&users01)
 	if tx.Error == nil {

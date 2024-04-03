@@ -19,19 +19,20 @@ type ConfigModel struct {
 	tableName string
 }
 
-func (u *ConfigModel) IsExist() bool {
+func (u *ConfigModel) isExist() bool {
 	return u.db.Migrator().HasTable(u.tableName)
 }
-func (u *ConfigModel) createTable() error {
+func (u *ConfigModel) CreateTable() error {
+
+	if u.isExist() {
+		return nil
+	}
+
 	err := u.db.Table(u.tableName).AutoMigrate(&Config{})
 	return err
 }
 
 func (u *ConfigModel) DeleteTable() error {
-	if !u.IsExist() {
-		return nil
-	}
-
 	tx := u.db.Table(u.tableName).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&Config{})
 	return tx.Error
 }
@@ -49,9 +50,7 @@ func (u *ConfigModel) GetValue(key string) (string, bool) {
 }
 
 func (u *ConfigModel) GetValues(keys ...string) ([]*Config, error) {
-	if !u.IsExist() {
-		u.createTable()
-	}
+
 	var configs []*Config
 	tx := u.db.Table(u.tableName).Where("`key` in ?", keys).Find(&configs)
 	if errors.Is(tx.Error, gorm.ErrRecordNotFound) {
@@ -64,9 +63,7 @@ func (u *ConfigModel) NewModel(db *gorm.DB) *ConfigModel {
 	return &ConfigModel{db: db, tableName: u.tableName}
 }
 func (u *ConfigModel) Create(key string, value string) error {
-	if !u.IsExist() {
-		u.createTable()
-	}
+
 	rows, err := u.db.Table(u.tableName).Where(" `key` = ?", key).Rows()
 	if err != nil {
 		return err

@@ -21,7 +21,7 @@ type PathModel struct {
 	tableName string
 }
 
-func (a *PathModel) IsExist() bool {
+func (a *PathModel) isExist() bool {
 	return a.db.Migrator().HasTable(a.tableName)
 }
 
@@ -35,15 +35,16 @@ func (a *PathModel) NewModel(db *gorm.DB) *PathModel {
 	return &PathModel{db: db, tableName: a.tableName}
 }
 
-func (a *PathModel) createTable() error {
+func (a *PathModel) CreateTable() error {
+	if a.isExist() {
+		return nil
+	}
 	err := a.db.Table(a.tableName).AutoMigrate(&Path{})
 	return err
 }
+
 func (a *PathModel) Create(name string, path string) error {
 
-	if !a.IsExist() {
-		a.createTable()
-	}
 	var num int64
 	tx := a.db.Table(a.tableName).Where(" `name` = ? or `path`=?", name, path).Count(&num)
 	if tx.Error != nil {

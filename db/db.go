@@ -53,10 +53,23 @@ func (d *DB) Reset() error {
 }
 
 func CreateDb(dbName string) (*DB, error) {
-
 	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{Logger: logger.Default.LogMode(logger.Info)})
 	if err != nil {
 		return nil, err
 	}
-	return &DB{db: db, dbName: dbName}, nil
+	dbTable := &DB{db: db, dbName: dbName}
+	err = dbTable.GetPathModel().CreateTable()
+	if err != nil {
+		return nil, err
+	}
+	err = dbTable.GetUserModel().CreateTable()
+	if err != nil {
+		return nil, err
+	}
+	err = dbTable.GetAddressModel().CreateTable()
+	if err != nil {
+		return nil, err
+	}
+	err = dbTable.GetConfigModel().CreateTable()
+	return dbTable, err
 }
