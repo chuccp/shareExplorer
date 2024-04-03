@@ -22,6 +22,13 @@ type admin struct {
 	Addresses   []string `json:"addresses"`
 }
 
+type client struct {
+	Username   string   `json:"username"`
+	Password   string   `json:"password"`
+	RePassword string   `json:"rePassword"`
+	Addresses  []string `json:"addresses"`
+}
+
 type Server struct {
 	context *core.Context
 }
@@ -106,13 +113,30 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 }
 
 func (s *Server) addClient(req *web.Request) (any, error) {
-	var admin admin
-	req.BodyJson(&admin)
-	if admin.Addresses == nil || len(admin.Addresses) == 0 {
-		return web.ResponseError("远程节点不能为空"), nil
+	var client client
+	req.BodyJson(&client)
+	if len(client.Username) == 0 {
+		return web.ResponseError("用户名不能为空"), nil
 	}
-	err := s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
-		err := s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", "false")
+	if len(client.Password) == 0 {
+		return web.ResponseError("密码不能为空"), nil
+	}
+	if len(client.RePassword) == 0 {
+		return web.ResponseError("确认密码不能为空"), nil
+	}
+	if client.RePassword != client.Password {
+		return web.ResponseError("两次密码输入不同"), nil
+	}
+	cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(client.Username)
+	if err != nil {
+		return nil, err
+	}
+	err = s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
+		err := s.context.GetDB().GetUserModel().NewModel(tx).AddUser(client.Username, client.Password, "admin", cert)
+		if err != nil {
+			return err
+		}
+		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", "false")
 		if err != nil {
 			return err
 		}
@@ -124,16 +148,15 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 		if err != nil {
 			return err
 		}
-
 		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
-		err = addressModel.AddAddress(admin.Addresses)
+		err = addressModel.AddAddress(client.Addresses)
 		if err != nil {
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return web.ResponseError(err.Error()), err
 	}
 	err = s.context.GetServerConfig().Init()
 	if err != nil {
@@ -202,6 +225,7 @@ func (s *Server) addRemoteAddress(req *web.Request) (any, error) {
 }
 func (s *Server) ping(req *web.Request) (any, error) {
 	address := req.FormValue("address")
+	s.context.GetLog().Debug("ping", zap.String("address", address))
 	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		return nil, err
