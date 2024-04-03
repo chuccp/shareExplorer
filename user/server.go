@@ -10,7 +10,6 @@ import (
 	"github.com/chuccp/shareExplorer/web"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
-	"log"
 	"net"
 )
 
@@ -31,109 +30,79 @@ func (s *Server) GetName() string {
 	return "user"
 }
 func (s *Server) signIn(req *web.Request) (any, error) {
-	log.Println("=======================")
-	//var admin admin
-	//req.BodyJson(&admin)
-	//if len(admin.Username) == 0 {
-	//	return web.ResponseError("用户名不能为空"), nil
-	//}
-	//if len(admin.Password) == 0 {
-	//	return web.ResponseError("密码不能为空"), nil
-	//}
-	//u, err := s.context.GetDB().GetUserModel().QueryUser(admin.Username, admin.Password)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//if len(u.Username) > 0 {
-	//	sub, err := req.SignedUsername(u.Username)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	return web.ResponseOK(sub), nil
-	//} else {
-	//	return web.ResponseError("登录失败"), nil
-	//}
-
 	return web.ResponseOK("ok"), nil
 }
 
 func (s *Server) addAdmin(req *web.Request) (any, error) {
-	//var admin admin
-	//req.BodyJson(&admin)
-	//if len(admin.Username) == 0 {
-	//	return web.ResponseError("用户名不能为空"), nil
-	//}
-	//if len(admin.Password) == 0 {
-	//	return web.ResponseError("密码不能为空"), nil
-	//}
-	//if len(admin.RePassword) == 0 {
-	//	return web.ResponseError("确认密码不能为空"), nil
-	//}
-	//if admin.RePassword != admin.Password {
-	//	return web.ResponseError("两次密码输入不同"), nil
-	//}
-	//if admin.IsNatServer || admin.IsServer {
-	//	if admin.Addresses == nil || len(admin.Addresses) == 0 {
-	//		return web.ResponseError("远程节点不能为空"), nil
-	//	}
-	//}
-	//
-	//cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(admin.Username)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//err = s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
-	//	err := s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin", cert)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	IsServer := "false"
-	//	if admin.IsServer {
-	//		IsServer = "true"
-	//	}
-	//	err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", IsServer)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	isNatServer := "false"
-	//	if admin.IsNatServer {
-	//		isNatServer = "true"
-	//	}
-	//	err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isNatServer", isNatServer)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isClient", "false")
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
-	//	err = addressModel.AddAddress(admin.Addresses)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	return nil
-	//})
-	//if err != nil {
-	//	return web.ResponseError(err.Error()), err
-	//}
-	//sub, err := req.SignedUsername(admin.Username)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//err = s.context.GetServerConfig().Init()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//discoverServer, fa := s.context.GetDiscoverServer()
-	//if fa {
-	//	discoverServer.Start()
-	//}
-	//return web.ResponseOK(sub), nil
-	return nil, nil
+	var admin admin
+	req.BodyJson(&admin)
+	if len(admin.Username) == 0 {
+		return web.ResponseError("用户名不能为空"), nil
+	}
+	if len(admin.Password) == 0 {
+		return web.ResponseError("密码不能为空"), nil
+	}
+	if len(admin.RePassword) == 0 {
+		return web.ResponseError("确认密码不能为空"), nil
+	}
+	if admin.RePassword != admin.Password {
+		return web.ResponseError("两次密码输入不同"), nil
+	}
+	if admin.IsNatServer || admin.IsServer {
+		if admin.Addresses == nil || len(admin.Addresses) == 0 {
+			return web.ResponseError("远程节点不能为空"), nil
+		}
+	}
+	cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(admin.Username)
+	if err != nil {
+		return nil, err
+	}
+	err = s.context.GetDB().GetRawDB().Transaction(func(tx *gorm.DB) error {
+		err := s.context.GetDB().GetUserModel().NewModel(tx).AddUser(admin.Username, admin.Password, "admin", cert)
+		if err != nil {
+			return err
+		}
+		IsServer := "false"
+		if admin.IsServer {
+			IsServer = "true"
+		}
+		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isServer", IsServer)
+		if err != nil {
+			return err
+		}
+		isNatServer := "false"
+		if admin.IsNatServer {
+			isNatServer = "true"
+		}
+		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isNatServer", isNatServer)
+		if err != nil {
+			return err
+		}
+
+		err = s.context.GetDB().GetConfigModel().NewModel(tx).Create("isClient", "false")
+		if err != nil {
+			return err
+		}
+
+		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
+		err = addressModel.AddAddress(admin.Addresses)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return web.ResponseError(err.Error()), err
+	}
+	err = s.context.GetServerConfig().Init()
+	if err != nil {
+		return nil, err
+	}
+	discoverServer, fa := s.context.GetDiscoverServer()
+	if fa {
+		discoverServer.Start()
+	}
+	return web.ResponseOK("ok"), nil
 }
 
 func (s *Server) addClient(req *web.Request) (any, error) {
@@ -174,7 +143,6 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 	if fa {
 		discoverServer.Start()
 	}
-
 	return web.ResponseOK("ok"), nil
 }
 
@@ -254,13 +222,13 @@ func (s *Server) clientSignIn(req *web.Request) (any, error) {
 }
 
 func (s *Server) downloadCert(req *web.Request) (any, error) {
-	//username := req.GetTokenUsername()
-	//cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(username)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//return web.ResponseFile(cert), nil
-	return nil, nil
+	username := req.GetAuthUsername()
+	cert, _, err := s.context.GetCertManager().CreateOrReadClientKuicCertFile(username)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseFile(cert), nil
+
 }
 func (s *Server) downloadUserCert(req *web.Request) (any, error) {
 	username := req.FormValue("username")
@@ -456,7 +424,7 @@ func (s *Server) Init(context *core.Context) {
 	context.Post("/user/clientSignIn", s.clientSignIn)
 	context.Post("/user/addRemoteAddress", s.addRemoteAddress)
 	context.Get("/user/ping", s.ping)
-	context.Get("/user/downloadCert", s.downloadCert)
+	context.GetRemoteAuth("/user/downloadCert", s.downloadCert)
 	context.Post("/user/uploadUserCert", s.uploadUserCert)
 	context.GetRemoteAuth("/user/downloadUserCert", s.downloadUserCert)
 	context.GetRemoteAuth("/user/queryUser", s.queryUser)
@@ -471,5 +439,4 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemoteAuth("/user/queryPath", s.queryPath)
 	context.GetRemoteAuth("/user/queryAllPath", s.queryAllPath)
 	context.PostRemoteAuth("/user/signIn", s.signIn)
-	//context.GetRemoteAuth("/user/signIn", s.signIn)
 }
