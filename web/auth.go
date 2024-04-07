@@ -33,8 +33,7 @@ type DigestAuth struct {
 
 func (digestAuth *DigestAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		digestAuth.filter(r)
-		if username, authinfo := digestAuth.DigestAuth.CheckAuth(r); username == "" {
+		if username, authinfo := digestAuth._checkAuth(r); username == "" {
 			digestAuth.RequireAuth(w, r)
 			authenticate := w.Header().Get(digestAuth.Headers.V().Authenticate)
 			w.Write([]byte(digestAuth.Headers.V().Authenticate + ":" + authenticate + "\n"))
@@ -57,10 +56,21 @@ func (digestAuth *DigestAuth) filter(r *http.Request) {
 		}
 	}
 }
+
+func (digestAuth *DigestAuth) _checkAuth(r *http.Request) (username string, authinfo *string) {
+	digestAuth.filter(r)
+	return digestAuth.DigestAuth.CheckAuth(r)
+}
+
+func (digestAuth *DigestAuth) ReadAuth(r *http.Request) (username string) {
+	digestAuth.filter(r)
+	auth1 := auth.DigestAuthParams(r.Header.Get(digestAuth.Headers.V().Authorization))
+	return auth1["username"]
+}
+
 func (digestAuth *DigestAuth) checkAuth(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		digestAuth.filter(r)
-		username, _ := digestAuth.DigestAuth.CheckAuth(r)
+		username, _ := digestAuth._checkAuth(r)
 		ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
 		wrapped(w, ar)
 	}

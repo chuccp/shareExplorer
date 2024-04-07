@@ -148,6 +148,9 @@ func (u *UserModel) QueryUser(username string, password string) (*User, error) {
 	return nil, tx.Error
 }
 func (u *UserModel) QueryOneUser(username string, code string) (*User, error) {
+	if code == "" {
+		code = username
+	}
 	key := username + "@" + code
 	v, ok := userMap.Get(key)
 	if ok {

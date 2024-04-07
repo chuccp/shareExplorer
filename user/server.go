@@ -175,13 +175,13 @@ func (s *Server) info(req *web.Request) (any, error) {
 	system.HasInit = ServerConfig.HasInit()
 	if system.HasInit {
 		system.IsServer = ServerConfig.IsServer()
-		if system.IsServer {
-			username := req.GetAuthUsername()
-			if len(username) > 0 {
-				system.HasSignIn = true
-			} else {
-				system.HasSignIn = false
-			}
+		system.IsClient = ServerConfig.IsClient()
+		system.IsNatServer = ServerConfig.IsNatServer()
+		username := req.GetAuthUsername()
+		if len(username) > 0 {
+			system.HasSignIn = true
+		} else {
+			system.HasSignIn = false
 		}
 	} else {
 		system.RemoteAddress = s.context.GetConfigArray("traversal", "remote.address")
@@ -395,6 +395,48 @@ func (s *Server) addUser(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), err
 }
 
+func (s *Server) addClientUser(req *web.Request) (any, error) {
+	code := req.FormValue("code")
+	if len(code) == 0 {
+		return nil, errors.New("code can't blank")
+	}
+	file, err := req.FormFile("cert")
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := web.ReadAllUploadedFile(file)
+	if err != nil {
+		return nil, err
+	}
+	filename := util.MD5(data)
+	certPath := "client/" + filename + ".kuic.cert"
+	err = web.SaveData(data, certPath)
+	if err != nil {
+		return nil, err
+	}
+	c, err := cert.ParseClientKuicCertBytes(data)
+	if err != nil {
+		return nil, err
+	}
+	var client entity.Client
+	client.Username = c.UserName
+	client.ServerName = c.ServerName
+	err = s.context.GetDB().GetUserModel().AddClientUser(client.Username, code, certPath)
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	clientCert := s.context.GetClientCert()
+	err = clientCert.LoadUser(client.Username, code)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK(&client), nil
+}
+
 func (s *Server) deleteUser(req *web.Request) (any, error) {
 	username := req.FormValue("username")
 	err := s.context.GetDB().GetUserModel().DeleteUser(username)
@@ -453,6 +495,9 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemoteAuth("/user/downloadUserCert", s.downloadUserCert)
 	context.GetRemoteAuth("/user/queryUser", s.queryUser)
 	context.PostRemoteAuth("/user/addUser", s.addUser)
+
+	context.PostRemoteAuth("/user/addClientUser", s.addClientUser)
+
 	context.GetRemoteAuth("/user/deleteUser", s.deleteUser)
 	context.PostRemoteAuth("/user/editUser", s.editUser)
 	context.GetRemoteAuth("/user/queryOneUser", s.queryOneUser)
