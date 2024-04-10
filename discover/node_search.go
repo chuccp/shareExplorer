@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/entity"
+	"go.uber.org/zap"
 	"log"
 	"sync"
 	"time"
@@ -14,10 +15,21 @@ type nodeSearchManage struct {
 	table        *Table
 	nodeSearches []*nodeSearch
 	coreCtx      *core.Context
+	lock         *sync.RWMutex
 }
 
-func NewNodeSearchManage(table *Table) *nodeSearchManage {
-	return &nodeSearchManage{table: table, nodeSearches: make([]*nodeSearch, 0)}
+func NewNodeSearchManage(coreCtx *core.Context, table *Table) *nodeSearchManage {
+	return &nodeSearchManage{coreCtx: coreCtx, table: table, nodeSearches: make([]*nodeSearch, 0), lock: new(sync.RWMutex)}
+}
+func (nsm *nodeSearchManage) getOrCreateNodeSearch(searchId ID) *nodeSearch {
+	for _, search := range nsm.nodeSearches {
+		if searchId == search.searchNode.id {
+			return search
+		}
+	}
+	nodeSearch := newNodeSearch(nsm.coreCtx, nsm.table, searchId)
+	nsm.nodeSearches = append(nsm.nodeSearches, nodeSearch)
+	return nodeSearch
 }
 
 func (nsm *nodeSearchManage) FindNodeStatus(searchId ID, isStart bool) *entity.NodeStatus {
@@ -32,12 +44,19 @@ func (nsm *nodeSearchManage) FindNodeStatus(searchId ID, isStart bool) *entity.N
 			return search.tempNodeStatus
 		}
 	}
-	nodeSearch := newNodeSearch(nsm.table, searchId)
+	nodeSearch := newNodeSearch(nsm.coreCtx, nsm.table, searchId)
 	nsm.nodeSearches = append(nsm.nodeSearches, nodeSearch)
 	go nodeSearch.run()
 	go nodeSearch.tempRun()
 	return nodeSearch.nodeStatus
 }
+func (nsm *nodeSearchManage) FindWaitNodeStatus(searchId ID) *entity.NodeStatus {
+	nsm.coreCtx.GetLog().Debug("FindWaitNodeStatus", zap.String("searchId==0", searchId.String()))
+	nodeSearch := nsm.getOrCreateNodeSearch(searchId)
+	nsm.coreCtx.GetLog().Debug("FindWaitNodeStatus", zap.String("searchId==1", searchId.String()))
+	return nodeSearch.wait()
+}
+
 func (nsm *nodeSearchManage) stopAll() {
 	for _, search := range nsm.nodeSearches {
 		search.stop()
@@ -107,11 +126,12 @@ type queryServer struct {
 	queryTable queryTable
 	searchId   ID
 	once       sync.Once
+	coreCtx    *core.Context
 }
 
-func NewQueryServer(queryTable queryTable, searchId ID, parentCtx context.Context) *queryServer {
+func NewQueryServer(coreCtx *core.Context, queryTable queryTable, searchId ID, parentCtx context.Context) *queryServer {
 	ctx, ctxCancel := context.WithCancel(parentCtx)
-	return &queryServer{queryTable: queryTable, searchId: searchId, ctx: ctx, ctxCancel: ctxCancel}
+	return &queryServer{coreCtx: coreCtx, queryTable: queryTable, searchId: searchId, ctx: ctx, ctxCancel: ctxCancel}
 }
 func (qv *queryServer) ping(node *Node) error {
 	return qv.queryTable.Ping(node)
@@ -125,9 +145,11 @@ func (qv *queryServer) findServer(preId ID, fromId ID, searchId ID, queryNode *N
 	return qv.queryTable.FindRemoteServer(searchId, queryNode, queryDistance)
 }
 
-func (qv *queryServer) StartFind() (*Node, error) {
+func (qv *queryServer) startFind() (*Node, error) {
 	var findValueNodeQueue = NewFindServerNodeQueue(qv.queryTable)
+	qv.coreCtx.GetLog().Debug("startFind", zap.String("searchId", qv.searchId.String()))
 	_, queryNode := qv.queryTable.FindServer(qv.searchId, 0)
+	qv.coreCtx.GetLog().Debug("FindServer", zap.Int("queryNode num:", len(queryNode)))
 	for _, n := range queryNode {
 		if n.id == qv.searchId {
 			err := qv.ping(n)
@@ -183,21 +205,42 @@ type nodeSearch struct {
 	tempNodeStatus *entity.NodeStatus
 	ctxCancel      context.CancelFunc
 	ctx            context.Context
-	tempQueryNode  *queryServer
-	once           sync.Once
+
+	ctxCancel01 context.CancelFunc
+	ctx01       context.Context
+
+	tempQueryNode *queryServer
+	once          sync.Once
+	lock          *sync.RWMutex
+
+	coreCtx *core.Context
 }
 
-func newNodeSearch(queryTable queryTable, searchId ID) *nodeSearch {
+func newNodeSearch(coreCtx *core.Context, queryTable queryTable, searchId ID) *nodeSearch {
 	ctx, ctxCancel := context.WithCancel(context.Background())
-	return &nodeSearch{queryTable: queryTable, searchNode: &Node{id: searchId}, tempNodeStatus: entity.NewNodeStatus(), nodeStatus: entity.NewNodeStatus(), ctx: ctx, ctxCancel: ctxCancel}
+	return &nodeSearch{coreCtx: coreCtx, lock: new(sync.RWMutex), queryTable: queryTable, searchNode: &Node{id: searchId}, tempNodeStatus: entity.NewNodeStatus(), nodeStatus: entity.NewNodeStatus(), ctx: ctx, ctxCancel: ctxCancel}
 }
+
 func (nodeSearch *nodeSearch) run() {
 	go nodeSearch.loop()
 }
 
+func (nodeSearch *nodeSearch) wait() *entity.NodeStatus {
+	nodeSearch.lock.Lock()
+	if nodeSearch.nodeStatus.IsOK() {
+		err := nodeSearch.ping(nodeSearch.searchNode)
+		if err == nil {
+			nodeSearch.lock.Unlock()
+			return nodeSearch.nodeStatus
+		}
+	}
+	nodeSearch.lock.Unlock()
+	return nodeSearch.queryNode(true)
+}
+
 func (nodeSearch *nodeSearch) tempRun() {
 	nodeSearch.tempClose()
-	queryNode := NewQueryServer(nodeSearch.queryTable, nodeSearch.searchNode.id, nodeSearch.ctx)
+	queryNode := NewQueryServer(nodeSearch.coreCtx, nodeSearch.queryTable, nodeSearch.searchNode.id, nodeSearch.ctx)
 	nodeSearch.queryNode0(queryNode)
 }
 func (nodeSearch *nodeSearch) tempClose() {
@@ -218,7 +261,7 @@ func (nodeSearch *nodeSearch) loop() {
 		pingDone      chan struct{}
 		queryNodeDone = make(chan struct{})
 	)
-	go nodeSearch.queryNode(queryNodeDone)
+	go nodeSearch.scanNode(queryNodeDone)
 	for {
 		select {
 
@@ -227,7 +270,7 @@ func (nodeSearch *nodeSearch) loop() {
 
 				if queryNodeDone == nil {
 					queryNodeDone = make(chan struct{})
-					go nodeSearch.queryNode(queryNodeDone)
+					go nodeSearch.scanNode(queryNodeDone)
 				}
 
 			}
@@ -263,13 +306,36 @@ func (nodeSearch *nodeSearch) refresh(done chan<- struct{}) {
 	defer close(done)
 }
 
-func (nodeSearch *nodeSearch) queryNode(done chan<- struct{}) {
+func (nodeSearch *nodeSearch) scanNode(done chan<- struct{}) {
 	defer close(done)
-	queryNode := NewQueryServer(nodeSearch.queryTable, nodeSearch.searchNode.id, nodeSearch.ctx)
-	nodeSearch.queryNode0(queryNode)
+	nodeSearch.queryNode(false)
 }
-func (nodeSearch *nodeSearch) queryNode0(qn *queryServer) {
-	node, err := qn.StartFind()
+
+func (nodeSearch *nodeSearch) queryNode(isWait bool) *entity.NodeStatus {
+	nodeSearch.lock.Lock()
+	nodeSearch.coreCtx.GetLog().Debug("queryNode", zap.Bool("IsSearching", nodeSearch.nodeStatus.IsSearching()), zap.Bool("isWait", isWait))
+	if nodeSearch.nodeStatus.IsSearching() {
+		if isWait {
+			ctx02, ctxCancel02 := context.WithCancel(nodeSearch.ctx01)
+			nodeSearch.lock.Unlock()
+			<-ctx02.Done()
+			ctxCancel02()
+		} else {
+			nodeSearch.lock.Unlock()
+		}
+	} else {
+		nodeSearch.nodeStatus.StartSearch()
+		nodeSearch.ctx01, nodeSearch.ctxCancel01 = context.WithCancel(nodeSearch.ctx)
+		nodeSearch.lock.Unlock()
+		queryNode := NewQueryServer(nodeSearch.coreCtx, nodeSearch.queryTable, nodeSearch.searchNode.id, nodeSearch.ctx)
+		nodeSearch.queryNode0(queryNode)
+		nodeSearch.ctxCancel01()
+	}
+	return nodeSearch.nodeStatus
+}
+
+func (nodeSearch *nodeSearch) queryNode0(qn *queryServer) *entity.NodeStatus {
+	node, err := qn.startFind()
 	if err == nil {
 		nodeSearch.searchNode = node
 		nodeSearch.nodeStatus.SearchComplete(node.addr)
@@ -278,13 +344,15 @@ func (nodeSearch *nodeSearch) queryNode0(qn *queryServer) {
 		nodeSearch.nodeStatus.SearchFail(err)
 		nodeSearch.tempNodeStatus.SearchFail(err)
 	}
+	return nodeSearch.nodeStatus
 }
 
-func (nodeSearch *nodeSearch) ping(node *Node) {
+func (nodeSearch *nodeSearch) ping(node *Node) error {
 	err := nodeSearch.queryTable.Ping(node)
 	if err != nil {
 		nodeSearch.nodeStatus.SearchFail(err)
 	}
+	return err
 }
 func (nodeSearch *nodeSearch) FindRemoteServer(target ID, node *Node, distances int) (n *Node, queryNode []*Node, err error) {
 	return nodeSearch.queryTable.FindRemoteServer(target, node, distances)

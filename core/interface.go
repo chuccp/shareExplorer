@@ -21,4 +21,5 @@ type DiscoverServer interface {
 	Ping(address *net.UDPAddr) error
 	Stop()
 	FindStatus(servername string, isStart bool) *entity.NodeStatus
+	FindStatusWait(servername string) (*entity.NodeStatus, error)
 }

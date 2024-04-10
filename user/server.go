@@ -291,7 +291,7 @@ func (s *Server) uploadUserCert(req *web.Request) (any, error) {
 	var client entity.Client
 	client.Username = c.UserName
 	client.ServerName = c.ServerName
-	err = s.context.GetDB().GetUserModel().AddClientUser(client.Username, code, certPath)
+	err = s.context.GetDB().GetUserModel().AddClientUser(client.Username, code, certPath, c.ServerName)
 	if err != nil {
 		return nil, err
 	}
@@ -360,9 +360,18 @@ func (s *Server) queryAllPath(req *web.Request) (any, error) {
 	return web.ResponseOK(pageAble), nil
 }
 func (s *Server) queryUser(req *web.Request) (any, error) {
-	list, num, err := s.context.GetDB().GetUserModel().QueryPage(1, 100)
+	page := req.GetPage()
+	list, num, err := s.context.GetDB().GetUserModel().QueryPage(page.PageNo, page.PageSize)
 	if err != nil {
 		return nil, err
+	}
+	for _, user := range list {
+		user.Password = ""
+		_, c, err := cert.ParseClientKuicCertFile(user.CertPath)
+		if err != nil {
+			continue
+		}
+		user.ServerName = c.ServerName
 	}
 	return web.ResponsePage(num, list), nil
 }
@@ -422,7 +431,7 @@ func (s *Server) addClientUser(req *web.Request) (any, error) {
 	var client entity.Client
 	client.Username = c.UserName
 	client.ServerName = c.ServerName
-	err = s.context.GetDB().GetUserModel().AddClientUser(client.Username, code, certPath)
+	err = s.context.GetDB().GetUserModel().AddClientUser(client.Username, code, certPath, c.ServerName)
 	if err != nil {
 		return nil, err
 	}
@@ -495,9 +504,7 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemoteAuth("/user/downloadUserCert", s.downloadUserCert)
 	context.GetRemoteAuth("/user/queryUser", s.queryUser)
 	context.PostRemoteAuth("/user/addUser", s.addUser)
-
 	context.PostRemoteAuth("/user/addClientUser", s.addClientUser)
-
 	context.GetRemoteAuth("/user/deleteUser", s.deleteUser)
 	context.PostRemoteAuth("/user/editUser", s.editUser)
 	context.GetRemoteAuth("/user/queryOneUser", s.queryOneUser)

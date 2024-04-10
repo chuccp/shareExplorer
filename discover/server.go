@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"github.com/chuccp/kuic/cert"
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/web"
@@ -88,6 +89,37 @@ func (s *Server) nodeStatus(req *web.Request) (any, error) {
 	}
 	return web.ResponseOK(&nodeStatus), nil
 }
+
+func (s *Server) findUserServer(req *web.Request) (any, error) {
+
+	username := req.FormValue("username")
+	code := req.FormValue("code")
+
+	s.context.GetLog().Debug("findUserServer", zap.String("code", code), zap.String("username", username))
+
+	discoverServer, fa := s.context.GetDiscoverServer()
+	if fa {
+		user, err := s.context.GetDB().GetUserModel().QueryOneUser(username, code)
+		if err != nil {
+			return nil, err
+		}
+		_, ce, err := cert.ParseClientKuicCertFile(user.CertPath)
+		if err != nil {
+			return nil, err
+		}
+		if err != nil {
+			return nil, err
+		}
+		status, err := discoverServer.FindStatusWait(ce.ServerName)
+		if err != nil {
+			return err, nil
+		}
+		return web.ResponseOK(status), nil
+	}
+
+	return web.ResponseOK("ok"), nil
+}
+
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	servername := s.context.GetCertManager().GetServerName()
@@ -106,6 +138,7 @@ func (s *Server) Init(context *core.Context) {
 	s.context.GetRemote("/discover/nodeNatServerList", s.nodeNatServerList)
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/findServer", s.findServer)
+	s.context.Post("/discover/findUserServer", s.findUserServer)
 	if !s.context.GetServerConfig().HasInit() {
 		return
 	}
@@ -125,7 +158,14 @@ func (s *Server) FindStatus(servername string, isStart bool) *entity.NodeStatus 
 	id, _ := wrapIdFName(servername)
 	return s.nodeSearchManage.FindNodeStatus(id, isStart)
 }
-
+func (s *Server) FindStatusWait(servername string) (*entity.NodeStatus, error) {
+	s.context.GetLog().Debug("FindStatusWait", zap.String("servername", servername))
+	id, err := StringToId(servername)
+	if err != nil {
+		return nil, err
+	}
+	return s.nodeSearchManage.FindWaitNodeStatus(id), nil
+}
 func (s *Server) Ping(address *net.UDPAddr) error {
 	err := s.call.ping(address)
 	if err != nil {
@@ -140,7 +180,7 @@ func (s *Server) ReStart() {
 }
 func (s *Server) Start() {
 	go s.table.run()
-	s.nodeSearchManage = NewNodeSearchManage(s.table)
+	s.nodeSearchManage = NewNodeSearchManage(s.context, s.table)
 	s.nodeSearchManage.run()
 }
 func (s *Server) Stop() {

@@ -36,6 +36,7 @@ func (table *Table) FindServer(target ID, distances int) (*Node, []*Node) {
 		return table.localNode, []*Node{}
 	}
 	node, fa := table.nodeTable.queryServer(target)
+	table.coreCtx.GetLog().Debug("queryServer", zap.Any("node", node), zap.Bool("fa", fa))
 	if fa {
 		return node, []*Node{}
 	}

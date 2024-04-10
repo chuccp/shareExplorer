@@ -68,7 +68,10 @@ func (ns *nodeStore) get(id ID) (*Node, bool) {
 	ns.mutex.Lock()
 	defer ns.mutex.Unlock()
 	v, ok := ns.nodeMap[id]
-	return v.n, ok
+	if ok {
+		return v.n, ok
+	}
+	return nil, ok
 }
 func newNodeStore() *nodeStore {
 	return &nodeStore{nodeMap: make(map[ID]*mNode), nodeList: list.New()}
@@ -199,8 +202,11 @@ func (recordBuckets *RecordBuckets) push(node *Node) bool {
 
 func (nodeTable *NodeTable) collectTableFindNode(distances int) (queryNode []*Node) {
 	var recordBuckets = &RecordBuckets{maxElems: findValueResultLimit}
+	nodeTable.coreCtx.GetLog().Debug("collectBucketsFindNode", zap.Int("s", 0))
 	nodeTable.collectBucketsFindNode(0, nodeTable.bucketIndexAtDistance(distances), recordBuckets)
+	nodeTable.coreCtx.GetLog().Debug("collectBucketsFindNode", zap.Int("s", 1))
 	nodeTable.collectBucketsFindNode(nodeTable.bucketIndexAtDistance(distances), nBuckets, recordBuckets)
+	nodeTable.coreCtx.GetLog().Debug("collectBucketsFindNode", zap.Int("s", 2))
 	return recordBuckets.entries
 }
 
@@ -208,7 +214,7 @@ func (nodeTable *NodeTable) collectBucketsFindNode(minBucketIndex, maxBucketInde
 	index := 0
 	for {
 		fa := nodeTable.collectBucketsByIndex(index, minBucketIndex, maxBucketIndex, recordBuckets)
-
+		nodeTable.coreCtx.GetLog().Debug("collectBucketsByIndex", zap.Bool("fa", fa), zap.Int("index", index), zap.Int("minBucketIndex", minBucketIndex), zap.Int("maxBucketIndex", maxBucketIndex))
 		if fa {
 			break
 		}
@@ -232,7 +238,7 @@ func (nodeTable *NodeTable) collectBucketsByIndex(index, minBucketIndex, maxBuck
 			}
 		}
 	}
-	return false
+	return isEnd
 }
 func (nodeTable *NodeTable) bumpInBucket(last *Node) bool {
 	b := nodeTable.bucket(last.ID())

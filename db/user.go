@@ -10,6 +10,7 @@ type User struct {
 	Id         uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
 	Username   string    `gorm:"column:username" json:"username"`
 	Password   string    `gorm:"column:password" json:"password"`
+	ServerName string    `gorm:"column:serverName" json:"serverName"`
 	Role       string    `gorm:"column:role" json:"role"`
 	PathIds    string    `gorm:"column:path_ids" json:"pathIds"`
 	CertPath   string    `gorm:"unique;column:cert_path" json:"certPath"`
@@ -58,7 +59,7 @@ func (u *UserModel) AddUser(username string, password string, role string, path 
 		Username:   username,
 		Password:   password,
 		Role:       role,
-		Code:       username,
+		Code:       "",
 		CertPath:   path,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
@@ -108,7 +109,7 @@ func (u *UserModel) AddGuestUser(username string, password string, pathIds strin
 	})
 	return tx.Error
 }
-func (u *UserModel) AddClientUser(username string, code string, certPath string) error {
+func (u *UserModel) AddClientUser(username, code, certPath, ServerName string) error {
 
 	var count2 int64
 	tx := u.db.Table(u.tableName).Where("code=?  limit 1", code).Count(&count2)
@@ -133,6 +134,7 @@ func (u *UserModel) AddClientUser(username string, code string, certPath string)
 		CertPath:   certPath,
 		PathIds:    "",
 		Code:       code,
+		ServerName: ServerName,
 		CreateTime: time.Now(),
 		UpdateTime: time.Now(),
 	})
@@ -148,10 +150,10 @@ func (u *UserModel) QueryUser(username string, password string) (*User, error) {
 	return nil, tx.Error
 }
 func (u *UserModel) QueryOneUser(username string, code string) (*User, error) {
-	if code == "" {
-		code = username
+	key := username
+	if code != "" {
+		key = username + "@" + code
 	}
-	key := username + "@" + code
 	v, ok := userMap.Get(key)
 	if ok {
 		return v, nil
