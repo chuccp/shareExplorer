@@ -177,6 +177,10 @@ func (s *Server) info(req *web.Request) (any, error) {
 		system.IsServer = ServerConfig.IsServer()
 		system.IsClient = ServerConfig.IsClient()
 		system.IsNatServer = ServerConfig.IsNatServer()
+		ds, ok := s.context.GetDiscoverServer()
+		if ok {
+			system.ServerName = ds.Servername()
+		}
 		username := req.GetAuthUsername()
 		if len(username) > 0 {
 			system.HasSignIn = true

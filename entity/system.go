@@ -6,5 +6,6 @@ type System struct {
 	IsServer      bool     `json:"isServer"`
 	IsNatServer   bool     `json:"isNatServer"`
 	IsClient      bool     `json:"isClient"`
+	ServerName    string   `json:"serverName"`
 	RemoteAddress []string `json:"remoteAddress"`
 }

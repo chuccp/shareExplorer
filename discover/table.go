@@ -37,10 +37,7 @@ func (table *Table) FindServer(target ID, distances int) (*Node, []*Node) {
 	}
 	node, fa := table.nodeTable.queryServer(target)
 	table.coreCtx.GetLog().Debug("queryServer", zap.Any("node", node), zap.Bool("fa", fa))
-	if fa {
-		return node, []*Node{}
-	}
-	return nil, table.nodeTable.collectTableFindNode(distances)
+	return node, table.nodeTable.collectTableFindNode(distances)
 }
 func (table *Table) AddNatServer(n *Node) {
 	table.nodeTable.addNode(n)

@@ -5,6 +5,7 @@ import (
 	"github.com/chuccp/shareExplorer/core"
 	"github.com/chuccp/shareExplorer/util"
 	"go.uber.org/zap"
+	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -68,6 +69,7 @@ func (ns *nodeStore) get(id ID) (*Node, bool) {
 	ns.mutex.Lock()
 	defer ns.mutex.Unlock()
 	v, ok := ns.nodeMap[id]
+	log.Println(v, ok)
 	if ok {
 		return v.n, ok
 	}

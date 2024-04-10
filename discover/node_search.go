@@ -148,7 +148,13 @@ func (qv *queryServer) findServer(preId ID, fromId ID, searchId ID, queryNode *N
 func (qv *queryServer) startFind() (*Node, error) {
 	var findValueNodeQueue = NewFindServerNodeQueue(qv.queryTable)
 	qv.coreCtx.GetLog().Debug("startFind", zap.String("searchId", qv.searchId.String()))
-	_, queryNode := qv.queryTable.FindServer(qv.searchId, 0)
+	node, queryNode := qv.queryTable.FindServer(qv.searchId, 0)
+	if node != nil {
+		err := qv.ping(node)
+		if err == nil {
+			return node, nil
+		}
+	}
 	qv.coreCtx.GetLog().Debug("FindServer", zap.Int("queryNode num:", len(queryNode)))
 	for _, n := range queryNode {
 		if n.id == qv.searchId {
@@ -318,7 +324,9 @@ func (nodeSearch *nodeSearch) queryNode(isWait bool) *entity.NodeStatus {
 		if isWait {
 			ctx02, ctxCancel02 := context.WithCancel(nodeSearch.ctx01)
 			nodeSearch.lock.Unlock()
-			<-ctx02.Done()
+			select {
+			case <-ctx02.Done():
+			}
 			ctxCancel02()
 		} else {
 			nodeSearch.lock.Unlock()

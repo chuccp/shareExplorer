@@ -21,6 +21,7 @@ type Server struct {
 	nodeSearchManage *nodeSearchManage
 	call             *call
 	localNode        *Node
+	servername       string
 }
 
 func (s *Server) register(req *web.Request) (any, error) {
@@ -119,11 +120,13 @@ func (s *Server) findUserServer(req *web.Request) (any, error) {
 
 	return web.ResponseOK("ok"), nil
 }
-
+func (s *Server) Servername() string {
+	return s.servername
+}
 func (s *Server) Init(context *core.Context) {
 	s.context = context
-	servername := s.context.GetCertManager().GetServerName()
-	id, err := StringToId(servername)
+	s.servername = s.context.GetCertManager().GetServerName()
+	id, err := StringToId(s.servername)
 	if err != nil {
 		s.context.GetLog().Error("Init", zap.Error(err))
 		return
