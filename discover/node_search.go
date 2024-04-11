@@ -56,6 +56,21 @@ func (nsm *nodeSearchManage) FindWaitNodeStatus(searchId ID) *entity.NodeStatus 
 	nsm.coreCtx.GetLog().Debug("FindWaitNodeStatus", zap.String("searchId==1", searchId.String()))
 	return nodeSearch.wait()
 }
+func (nsm *nodeSearchManage) QueryStatus(servernames ...string) []*entity.NodeStatus {
+	nodes := make([]*entity.NodeStatus, len(servernames))
+	for index, servername := range servernames {
+		id, err := StringToId(servername)
+		if err != nil {
+			continue
+		}
+		for _, search := range nsm.nodeSearches {
+			if id == search.searchNode.id {
+				nodes[index] = search.nodeStatus
+			}
+		}
+	}
+	return nodes
+}
 
 func (nsm *nodeSearchManage) stopAll() {
 	for _, search := range nsm.nodeSearches {
@@ -234,11 +249,9 @@ func (nodeSearch *nodeSearch) run() {
 func (nodeSearch *nodeSearch) wait() *entity.NodeStatus {
 	nodeSearch.lock.Lock()
 	if nodeSearch.nodeStatus.IsOK() {
-		err := nodeSearch.ping(nodeSearch.searchNode)
-		if err == nil {
-			nodeSearch.lock.Unlock()
-			return nodeSearch.nodeStatus
-		}
+		nodeStatus := nodeSearch.nodeStatus
+		nodeSearch.lock.Unlock()
+		return nodeStatus
 	}
 	nodeSearch.lock.Unlock()
 	return nodeSearch.queryNode(true)

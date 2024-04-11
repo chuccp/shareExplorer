@@ -275,9 +275,8 @@ func (c *Context) RemoteHandle() {
 					if has {
 						ds, fa := c.GetDiscoverServer()
 						if fa {
-							isStart := context.Request.FormValue("start")
-							status := ds.FindStatus(certificate.ServerName, strings.Contains(isStart, "true"))
-							if status.GetError() != nil {
+							status, err := ds.FindStatusWait(certificate.ServerName)
+							if err != nil {
 								context.AbortWithStatusJSON(200, web.ResponseError(status.GetError().Error()))
 							} else {
 								if status.IsComplete() {

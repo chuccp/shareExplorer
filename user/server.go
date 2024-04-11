@@ -266,6 +266,16 @@ func (s *Server) downloadUserCert(req *web.Request) (any, error) {
 	}
 	return web.ResponseFile(cert), nil
 }
+func (s *Server) downloadClientCert(req *web.Request) (any, error) {
+	username := req.FormValue("username")
+	code := req.FormValue("code")
+	user, err := s.context.GetDB().GetUserModel().QueryOneUser(username, code)
+	if err != nil {
+		return nil, err
+	}
+	path := user.CertPath
+	return web.ResponseFileAndName(path, username+"_"+code+".kuic.cert"), nil
+}
 
 func (s *Server) uploadUserCert(req *web.Request) (any, error) {
 
@@ -369,6 +379,8 @@ func (s *Server) queryUser(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	ds, fa := s.context.GetDiscoverServer()
+
 	for _, user := range list {
 		user.Password = ""
 		_, c, err := cert.ParseClientKuicCertFile(user.CertPath)
@@ -376,6 +388,14 @@ func (s *Server) queryUser(req *web.Request) (any, error) {
 			continue
 		}
 		user.ServerName = c.ServerName
+		if fa {
+			ns := ds.QueryStatus(c.ServerName)
+			if len(ns) > 0 {
+				if ns[0] != nil {
+					user.RemoteAddress = ns[0].GetRemoteAddress()
+				}
+			}
+		}
 	}
 	return web.ResponsePage(num, list), nil
 }
@@ -506,6 +526,7 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemoteAuth("/user/downloadCert", s.downloadCert)
 	context.Post("/user/uploadUserCert", s.uploadUserCert)
 	context.GetRemoteAuth("/user/downloadUserCert", s.downloadUserCert)
+	context.GetRemoteAuth("/user/downloadClientCert", s.downloadClientCert)
 	context.GetRemoteAuth("/user/queryUser", s.queryUser)
 	context.PostRemoteAuth("/user/addUser", s.addUser)
 	context.PostRemoteAuth("/user/addClientUser", s.addClientUser)

@@ -57,6 +57,12 @@ func (s *NodeStatus) GetCode() int {
 func (s *NodeStatus) GetAddress() *net.UDPAddr {
 	return s.address
 }
+func (s *NodeStatus) GetRemoteAddress() string {
+	if s.address != nil {
+		return s.address.String()
+	}
+	return ""
+}
 func (s *NodeStatus) SearchComplete(address *net.UDPAddr) {
 	s.address = address
 	s.Status = SearchComplete

@@ -169,6 +169,11 @@ func (s *Server) FindStatusWait(servername string) (*entity.NodeStatus, error) {
 	}
 	return s.nodeSearchManage.FindWaitNodeStatus(id), nil
 }
+
+func (s *Server) QueryStatus(servername ...string) []*entity.NodeStatus {
+	return s.nodeSearchManage.QueryStatus(servername...)
+}
+
 func (s *Server) Ping(address *net.UDPAddr) error {
 	err := s.call.ping(address)
 	if err != nil {

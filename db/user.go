@@ -7,16 +7,17 @@ import (
 )
 
 type User struct {
-	Id         uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
-	Username   string    `gorm:"column:username" json:"username"`
-	Password   string    `gorm:"column:password" json:"password"`
-	ServerName string    `gorm:"column:serverName" json:"serverName"`
-	Role       string    `gorm:"column:role" json:"role"`
-	PathIds    string    `gorm:"column:path_ids" json:"pathIds"`
-	CertPath   string    `gorm:"unique;column:cert_path" json:"certPath"`
-	Code       string    `gorm:"unique;column:code" json:"code"`
-	CreateTime time.Time `gorm:"column:create_time" json:"createTime"`
-	UpdateTime time.Time `gorm:"column:update_time" json:"updateTime"`
+	Id            uint      `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	Username      string    `gorm:"column:username" json:"username"`
+	Password      string    `gorm:"column:password" json:"password"`
+	ServerName    string    `gorm:"column:serverName" json:"serverName"`
+	RemoteAddress string    `json:"remoteAddress"`
+	Role          string    `gorm:"column:role" json:"role"`
+	PathIds       string    `gorm:"column:path_ids" json:"pathIds"`
+	CertPath      string    `gorm:"unique;column:cert_path" json:"certPath"`
+	Code          string    `gorm:"unique;column:code" json:"code"`
+	CreateTime    time.Time `gorm:"column:create_time" json:"createTime"`
+	UpdateTime    time.Time `gorm:"column:update_time" json:"updateTime"`
 }
 
 type UserModel struct {
