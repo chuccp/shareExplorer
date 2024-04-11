@@ -4,19 +4,24 @@ import (
 	"errors"
 	"github.com/chuccp/kuic/cert"
 	"github.com/chuccp/shareExplorer/db"
+	"go.uber.org/zap"
 )
 
 type ClientCert struct {
-	codeClientCerts []*codeClientCert
+	codeClientCerts []*CodeClientCert
 	userModel       *db.UserModel
+	context         *Context
 }
-type codeClientCert struct {
+type CodeClientCert struct {
 	clientCertificate *cert.Certificate
 	code              string
 }
 
-func NewClientCert(userModel *db.UserModel) *ClientCert {
-	return &ClientCert{codeClientCerts: make([]*codeClientCert, 0), userModel: userModel}
+func (c *CodeClientCert) GetServerName() string {
+	return c.clientCertificate.ServerName
+}
+func NewClientCert(context *Context, userModel *db.UserModel) *ClientCert {
+	return &ClientCert{context: context, codeClientCerts: make([]*CodeClientCert, 0), userModel: userModel}
 }
 func (c *ClientCert) init() error {
 	err := c.loadAllUser()
@@ -31,6 +36,7 @@ func (c *ClientCert) loadAllUser() error {
 		return err
 	}
 	for _, user := range users {
+		c.context.GetLog().Debug("loadAllUser", zap.String("Username", user.Username), zap.String("Code", user.Code), zap.String("CertPath", user.CertPath))
 		err := c.LoadCert(user.Username, user.Code, user.CertPath)
 		if err != nil {
 			return err
@@ -45,6 +51,9 @@ func (c *ClientCert) LoadUser(username string, code string) error {
 	}
 	path := user.CertPath
 	return c.LoadCert(username, code, path)
+}
+func (c *ClientCert) GetClientCerts() []*CodeClientCert {
+	return c.codeClientCerts
 }
 func (c *ClientCert) getCert(username string, code string) (*cert.Certificate, bool) {
 	for _, certificate := range c.codeClientCerts {
@@ -72,7 +81,7 @@ func (c *ClientCert) LoadCert(username string, code string, path string) error {
 		return err
 	}
 	if username == cc.UserName {
-		c.codeClientCerts = append(c.codeClientCerts, &codeClientCert{clientCertificate: cc, code: code})
+		c.codeClientCerts = append(c.codeClientCerts, &CodeClientCert{clientCertificate: cc, code: code})
 		return nil
 	}
 	return errors.New("用户名错误")

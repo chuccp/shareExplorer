@@ -316,6 +316,14 @@ func (s *Server) uploadUserCert(req *web.Request) (any, error) {
 	err = clientCert.LoadUser(client.Username, code)
 	if err != nil {
 		return nil, err
+	} else {
+		ds, fa := s.context.GetDiscoverServer()
+		if fa {
+			_, err := ds.FindStatusWait(client.ServerName, false)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	return web.ResponseOK(&client), nil
 }

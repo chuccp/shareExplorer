@@ -111,7 +111,7 @@ func (s *Server) findUserServer(req *web.Request) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		status, err := discoverServer.FindStatusWait(ce.ServerName)
+		status, err := discoverServer.FindStatusWait(ce.ServerName, true)
 		if err != nil {
 			return err, nil
 		}
@@ -161,13 +161,13 @@ func (s *Server) FindStatus(servername string, isStart bool) *entity.NodeStatus 
 	id, _ := wrapIdFName(servername)
 	return s.nodeSearchManage.FindNodeStatus(id, isStart)
 }
-func (s *Server) FindStatusWait(servername string) (*entity.NodeStatus, error) {
+func (s *Server) FindStatusWait(servername string, isWait bool) (*entity.NodeStatus, error) {
 	s.context.GetLog().Debug("FindStatusWait", zap.String("servername", servername))
 	id, err := StringToId(servername)
 	if err != nil {
 		return nil, err
 	}
-	return s.nodeSearchManage.FindWaitNodeStatus(id), nil
+	return s.nodeSearchManage.FindWaitNodeStatus(id, isWait), nil
 }
 
 func (s *Server) QueryStatus(servername ...string) []*entity.NodeStatus {
@@ -189,7 +189,7 @@ func (s *Server) ReStart() {
 func (s *Server) Start() {
 	go s.table.run()
 	s.nodeSearchManage = NewNodeSearchManage(s.context, s.table)
-	s.nodeSearchManage.run()
+	go s.nodeSearchManage.run()
 }
 func (s *Server) Stop() {
 	if s.table != nil {

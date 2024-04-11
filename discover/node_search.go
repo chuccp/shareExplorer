@@ -50,15 +50,15 @@ func (nsm *nodeSearchManage) FindNodeStatus(searchId ID, isStart bool) *entity.N
 	go nodeSearch.tempRun()
 	return nodeSearch.nodeStatus
 }
-func (nsm *nodeSearchManage) FindWaitNodeStatus(searchId ID) *entity.NodeStatus {
+func (nsm *nodeSearchManage) FindWaitNodeStatus(searchId ID, isWait bool) *entity.NodeStatus {
 	nsm.coreCtx.GetLog().Debug("FindWaitNodeStatus", zap.String("searchId==0", searchId.String()))
 	nodeSearch := nsm.getOrCreateNodeSearch(searchId)
 	nsm.coreCtx.GetLog().Debug("FindWaitNodeStatus", zap.String("searchId==1", searchId.String()))
-	return nodeSearch.wait()
+	return nodeSearch.wait(isWait)
 }
-func (nsm *nodeSearchManage) QueryStatus(servernames ...string) []*entity.NodeStatus {
-	nodes := make([]*entity.NodeStatus, len(servernames))
-	for index, servername := range servernames {
+func (nsm *nodeSearchManage) QueryStatus(serverNames ...string) []*entity.NodeStatus {
+	nodes := make([]*entity.NodeStatus, len(serverNames))
+	for index, servername := range serverNames {
 		id, err := StringToId(servername)
 		if err != nil {
 			continue
@@ -79,8 +79,14 @@ func (nsm *nodeSearchManage) stopAll() {
 }
 
 func (nsm *nodeSearchManage) run() {
-	for _, search := range nsm.nodeSearches {
-		search.run()
+	clientCert := nsm.coreCtx.GetClientCert()
+	for _, c := range clientCert.GetClientCerts() {
+		id, err := StringToId(c.GetServerName())
+		if err != nil {
+			continue
+		}
+		search := nsm.getOrCreateNodeSearch(id)
+		go search.queryNode(false)
 	}
 }
 
@@ -246,7 +252,7 @@ func (nodeSearch *nodeSearch) run() {
 	go nodeSearch.loop()
 }
 
-func (nodeSearch *nodeSearch) wait() *entity.NodeStatus {
+func (nodeSearch *nodeSearch) wait(isWait bool) *entity.NodeStatus {
 	nodeSearch.lock.Lock()
 	if nodeSearch.nodeStatus.IsOK() {
 		nodeStatus := nodeSearch.nodeStatus
@@ -254,7 +260,7 @@ func (nodeSearch *nodeSearch) wait() *entity.NodeStatus {
 		return nodeStatus
 	}
 	nodeSearch.lock.Unlock()
-	return nodeSearch.queryNode(true)
+	return nodeSearch.queryNode(isWait)
 }
 
 func (nodeSearch *nodeSearch) tempRun() {
