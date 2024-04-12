@@ -170,12 +170,24 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 }
 
 func (s *Server) info(req *web.Request) (any, error) {
+
+	un, code := req.ReadAuthUsernameAndCode()
+	if code != "" {
+		s.context.ReverseProxy(un, code, req.GetContext())
+		return nil, nil
+	}
+
 	ServerConfig := s.context.GetServerConfig()
 	var system entity.System
 	system.HasInit = ServerConfig.HasInit()
 	if system.HasInit {
 		system.IsServer = ServerConfig.IsServer()
 		system.IsClient = ServerConfig.IsClient()
+
+		if system.IsClient {
+
+		}
+
 		system.IsNatServer = ServerConfig.IsNatServer()
 		ds, ok := s.context.GetDiscoverServer()
 		if ok {

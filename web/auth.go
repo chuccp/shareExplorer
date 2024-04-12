@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 )
 
@@ -23,19 +24,12 @@ type DigestAuth struct {
 	*auth.DigestAuth
 }
 
-//func (digestAuth *DigestAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) HandlerFunc {
-//	handle := digestAuth.DigestAuth.Wrap(wrapped)
-//	return func(req *Request) (any, error) {
-//		handle.ServeHTTP(req.GetResponseWriter(), req.GetRawRequest())
-//		return nil, nil
-//	}
-//}
-
 func (digestAuth *DigestAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if username, authinfo := digestAuth._checkAuth(r); username == "" {
 			digestAuth.RequireAuth(w, r)
 			authenticate := w.Header().Get(digestAuth.Headers.V().Authenticate)
+			log.Println("authenticate", authenticate)
 			w.Write([]byte(digestAuth.Headers.V().Authenticate + ":" + authenticate + "\n"))
 		} else {
 			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}

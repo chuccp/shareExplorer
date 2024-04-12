@@ -232,16 +232,13 @@ func (c *Context) isRemote(context *gin.Context) bool {
 	return false
 }
 
-func getUsernameAndCode(user string) (string, string) {
-	vs := strings.SplitN(user, "@", 2)
-	if len(vs) > 1 {
-		return vs[0], vs[1]
-	}
-	return user, ""
-}
-
 func (c *Context) Secret(user, realm string) string {
-	oneUser, err := c.db.GetUserModel().QueryOneUser(getUsernameAndCode(user))
+	c.log.Debug("Secret", zap.String("username", user), zap.String("realm", realm))
+	un, code := web.GetUsernameAndCode(user)
+	if !c.serverConfig.IsClient() {
+		code = ""
+	}
+	oneUser, err := c.db.GetUserModel().QueryOneUser(un, code)
 	if err != nil {
 		return ""
 	}
@@ -259,44 +256,46 @@ func (c *Context) GetReverseProxy(remoteAddress *net.UDPAddr, cert *cert.Certifi
 	proxy, err := c.server.GetTlsReverseProxy(remoteAddress, cert)
 	return proxy, err
 }
-
+func (c *Context) ReverseProxy(username, code string, context *gin.Context) {
+	certificate, has := c.clientCert.getCertByCode(username, code)
+	if has {
+		ds, fa := c.GetDiscoverServer()
+		if fa {
+			status, err := ds.FindStatusWait(certificate.ServerName, true)
+			if err != nil {
+				context.AbortWithStatusJSON(200, web.ResponseError(status.GetError().Error()))
+			} else {
+				if status.IsComplete() {
+					reverseProxy, err := c.GetReverseProxy(status.GetAddress(), certificate)
+					if err != nil {
+						context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
+					} else {
+						context.Request.Header.Del("Referer")
+						context.Request.Header.Del("Origin")
+						reverseProxy.ServeHTTP(context.Writer, context.Request)
+					}
+				} else {
+					context.AbortWithStatusJSON(200, web.ResponseMsg(status.GetCode(), status.GetMsg()))
+				}
+			}
+		}
+	} else {
+		context.AbortWithStatusJSON(200, web.ResponseError("用户名有误或未上传证书"))
+	}
+	context.Abort()
+}
 func (c *Context) RemoteHandle() {
 	c.engine.Use(func(context *gin.Context) {
 		if c.isRemote(context) {
 			username := c.digestAuth.ReadAuth(context.Request)
 			c.log.Info("RemoteHandle", zap.String("username", username))
 			if username != "" {
-				un, code := getUsernameAndCode(username)
+				un, code := web.GetUsernameAndCode(username)
 				c.log.Info("RemoteHandle", zap.String("username", un), zap.String("code", code))
 				if code == "" {
 					context.Next()
 				} else {
-					certificate, has := c.clientCert.getCertByCode(un, code)
-					if has {
-						ds, fa := c.GetDiscoverServer()
-						if fa {
-							status, err := ds.FindStatusWait(certificate.ServerName, true)
-							if err != nil {
-								context.AbortWithStatusJSON(200, web.ResponseError(status.GetError().Error()))
-							} else {
-								if status.IsComplete() {
-									reverseProxy, err := c.GetReverseProxy(status.GetAddress(), certificate)
-									if err != nil {
-										context.AbortWithStatusJSON(200, web.ResponseError(err.Error()))
-									} else {
-										context.Request.Header.Del("Referer")
-										context.Request.Header.Del("Origin")
-										reverseProxy.ServeHTTP(context.Writer, context.Request)
-									}
-								} else {
-									context.AbortWithStatusJSON(200, web.ResponseMsg(status.GetCode(), status.GetMsg()))
-								}
-							}
-						}
-					} else {
-						context.AbortWithStatusJSON(200, web.ResponseError("用户名有误或未上传证书"))
-					}
-					context.Abort()
+					c.ReverseProxy(un, code, context)
 				}
 			}
 		}

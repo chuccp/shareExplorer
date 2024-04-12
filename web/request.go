@@ -24,12 +24,42 @@ func NewRequest(context *gin.Context, authRequest *auth.AuthenticatedRequest) *R
 func (r *Request) GetAuthRequest() *auth.AuthenticatedRequest {
 	return r.authRequest
 }
+
+func (r *Request) GetContext() *gin.Context {
+	return r.context
+}
+
 func (r *Request) GetAuthUsername() string {
 	if r.authRequest != nil {
 		return r.authRequest.Username
 	}
 	return ""
 }
+
+func (r *Request) ReadAuthUsername() string {
+	authorization := r.context.Request.Header.Get("Authorization")
+	if len(authorization) == 0 {
+		return ""
+	}
+	data := auth.DigestAuthParams(authorization)
+	if data == nil {
+		return ""
+	}
+	return data["username"]
+}
+func (r *Request) ReadAuthUsernameAndCode() (string, string) {
+	un := r.ReadAuthUsername()
+	return GetUsernameAndCode(un)
+}
+
+func GetUsernameAndCode(user string) (string, string) {
+	vs := strings.SplitN(user, "@", 2)
+	if len(vs) > 1 {
+		return vs[0], vs[1]
+	}
+	return user, ""
+}
+
 func (r *Request) FormValue(key string) string {
 	return r.context.Request.FormValue(key)
 }
