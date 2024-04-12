@@ -128,11 +128,8 @@ func newWebPath(path_ string) *webPath {
 func NewDavFileSystem(context *core.Context, prefix string) *DavFileSystem {
 	return &DavFileSystem{context: context, prefix: prefix}
 }
-
-//	func getValue(ctx context.Context) *contextInfo {
-//		return ctx.Value(contextInfoKey).(*contextInfo)
-//	}
 func (d *DavFileSystem) getDir(ctx context.Context, name string) (webdav.Dir, *webPath, error) {
+	d.context.GetLog().Debug("getDir", zap.String("name", name))
 	webPath := newWebPath(name)
 	if webPath.isRoot() {
 		dir := webdav.Dir("")

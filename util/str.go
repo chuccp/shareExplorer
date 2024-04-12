@@ -30,8 +30,7 @@ func SplitPath(path string) []string {
 }
 
 func IsMatchPath(path, math string) bool {
-
-	math = ReplaceAllRegex(math, "\\*[a-zA-Z]+", ".+")
+	math = ReplaceAllRegex(math, "\\*[a-zA-Z]+", ".*")
 	re := regexp.MustCompile(math)
 	return re.MatchString(path)
 

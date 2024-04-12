@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 )
 
@@ -29,7 +28,6 @@ func (digestAuth *DigestAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.H
 		if username, authinfo := digestAuth._checkAuth(r); username == "" {
 			digestAuth.RequireAuth(w, r)
 			authenticate := w.Header().Get(digestAuth.Headers.V().Authenticate)
-			log.Println("authenticate", authenticate)
 			w.Write([]byte(digestAuth.Headers.V().Authenticate + ":" + authenticate + "\n"))
 		} else {
 			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
@@ -79,6 +77,12 @@ func (digestAuth *DigestAuth) CheckAuth(relativePath string, wrapped HandlerFunc
 			engine.Any(relativePath, func(context *gin.Context) {
 				v, err = wrapped(NewRequest(context, request))
 			})
+			httpMethods := []string{"PROPFIND", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "PROPPATCH"}
+			for _, method := range httpMethods {
+				engine.Handle(method, relativePath, func(context *gin.Context) {
+					v, err = wrapped(NewRequest(context, request))
+				})
+			}
 			engine.ServeHTTP(writer, &request.Request)
 		})
 		handle(req.GetResponseWriter(), req.GetRawRequest())
@@ -95,6 +99,12 @@ func (digestAuth *DigestAuth) JustCheck(relativePath string, wrapped HandlerFunc
 			engine.Any(relativePath, func(context *gin.Context) {
 				v, err = wrapped(NewRequest(context, request))
 			})
+			httpMethods := []string{"PROPFIND", "MKCOL", "COPY", "MOVE", "LOCK", "UNLOCK", "PROPPATCH"}
+			for _, method := range httpMethods {
+				engine.Handle(method, relativePath, func(context *gin.Context) {
+					v, err = wrapped(NewRequest(context, request))
+				})
+			}
 			engine.ServeHTTP(writer, &request.Request)
 		})
 		handle(req.GetResponseWriter(), req.GetRawRequest())

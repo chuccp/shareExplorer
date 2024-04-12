@@ -9,6 +9,6 @@ func TestName(t *testing.T) {
 }
 func TestName222(t *testing.T) {
 
-	t.Log(IsMatchPath("/aaa/aaa", "/aaa/aaa"))
+	t.Log(IsMatchPath("/aaa/", "/aaa/*name"))
 
 }

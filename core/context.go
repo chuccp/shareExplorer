@@ -226,7 +226,8 @@ func (c *Context) StaticHandle(relativePath string, filepath string) {
 
 func (c *Context) isRemote(context *gin.Context) bool {
 	path_ := context.Request.URL.Path
-	if c.IsRemotePaths(path_) && !c.serverConfig.IsServer() && context.Request.ProtoMajor != 3 {
+	c.log.Debug("isRemote", zap.Bool("IsRemotePaths", c.IsRemotePaths(path_)), zap.Bool("IsClient", c.serverConfig.IsClient()), zap.Int("ProtoMajor", context.Request.ProtoMajor))
+	if c.IsRemotePaths(path_) && c.serverConfig.IsClient() && context.Request.ProtoMajor != 3 {
 		return true
 	}
 	return false
@@ -286,6 +287,7 @@ func (c *Context) ReverseProxy(username, code string, context *gin.Context) {
 }
 func (c *Context) RemoteHandle() {
 	c.engine.Use(func(context *gin.Context) {
+		c.log.Info("RemoteHandle", zap.String("RequestURI", context.Request.RequestURI), zap.Bool("isRemote", c.isRemote(context)))
 		if c.isRemote(context) {
 			username := c.digestAuth.ReadAuth(context.Request)
 			c.log.Info("RemoteHandle", zap.String("username", username))

@@ -199,6 +199,9 @@ func (s *Server) paths(req *web.Request) (any, error) {
 }
 
 func (s *Server) dav(req *web.Request) (any, error) {
+
+	s.context.GetLog().Debug("dav", zap.String("RequestURI", req.GetRawRequest().RequestURI))
+
 	s.webdavStore.getWebdav(req.GetAuthUsername()).ServeHTTP(req.GetResponseWriter(), req.GetRawRequest())
 	return nil, nil
 }

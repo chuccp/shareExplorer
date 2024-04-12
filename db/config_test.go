@@ -34,6 +34,6 @@ func TestCreate(t *testing.T) {
 	//query, err := db.Exec("")
 	//println(query, err)
 
-	t.Log(util.SplitPath("/aaa/aaa"))
+	t.Log(util.SplitPath("/aaa/"))
 
 }
