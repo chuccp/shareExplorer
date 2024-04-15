@@ -94,6 +94,9 @@ func (table *Table) queryNatServerForPage(pageNo, pageSize int) ([]*Node, int) {
 
 	return table.nodeTable.queryNatServerForPage(pageNo, pageSize)
 }
+func (table *Table) queryServerForPage(pageNo, pageSize int) ([]*Node, int) {
+	return table.nodeTable.queryServerForPage(pageNo, pageSize)
+}
 
 func (table *Table) self() *Node {
 	return table.localNode
@@ -119,7 +122,9 @@ func (table *Table) loop(ctx context.Context) {
 	var (
 		revalidate     = time.NewTimer(table.nextRevalidateTime())
 		refresh        = time.NewTimer(table.nextRefreshTime())
+		register       = time.NewTimer(table.nextRegisterTime())
 		revalidateDone chan struct{}
+		registerDone   chan struct{}
 		refreshDone    = make(chan struct{})
 	)
 	go table.doRefresh(refreshDone)
@@ -139,8 +144,22 @@ func (table *Table) loop(ctx context.Context) {
 			}
 		case <-revalidate.C:
 			{
-				revalidateDone = make(chan struct{})
-				table.doRevalidate(revalidateDone)
+				if revalidateDone == nil {
+					revalidateDone = make(chan struct{})
+					go table.doRevalidate(revalidateDone)
+				}
+			}
+		case <-register.C:
+			{
+				if registerDone == nil {
+					registerDone = make(chan struct{})
+					go table.doRegister(registerDone)
+				}
+			}
+		case <-registerDone:
+			{
+				register.Reset(table.nextRegisterTime())
+				registerDone = nil
 			}
 		case <-revalidateDone:
 			{
@@ -149,10 +168,23 @@ func (table *Table) loop(ctx context.Context) {
 			}
 		case <-refreshDone:
 			refresh.Reset(table.nextRefreshTime())
+			refreshDone = nil
 		}
 	}
 }
 
+func (table *Table) doRegister(done chan struct{}) {
+	defer close(done)
+	if table.self().isServer {
+
+	}
+
+}
+func (table *Table) nextRegisterTime() time.Duration {
+	table.mutex.Lock()
+	defer table.mutex.Unlock()
+	return time.Duration(table.rand.Int63n(int64(5 * time.Minute)))
+}
 func (table *Table) nextRevalidateTime() time.Duration {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()

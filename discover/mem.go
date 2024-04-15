@@ -37,17 +37,17 @@ type mNode struct {
 type nodeStore struct {
 	nodeMap  map[ID]*mNode
 	nodeList *list.List
-	mutex    sync.Mutex
+	mutex    sync.RWMutex
 }
 
 func (ns *nodeStore) add(node *Node) {
 	ns.mutex.Lock()
 	defer ns.mutex.Unlock()
-	n, ok := ns.nodeMap[node.id]
+	nele, ok := ns.nodeMap[node.id]
 	if ok {
-		node.lastUpdateTime = time.Now()
-		node.addTime = n.n.addTime
-		ns.nodeMap[node.id].n = node
+		nd := nele.n
+		nd.addr = node.addr
+		nd.lastUpdateTime = time.Now()
 	} else {
 		node.lastUpdateTime = time.Now()
 		node.addTime = time.Now()
@@ -65,6 +65,30 @@ func (ns *nodeStore) remove(id ID) {
 		delete(ns.nodeMap, id)
 	}
 }
+
+func (ns *nodeStore) queryPage(pageNo, pageSize int) ([]*Node, int) {
+	ns.mutex.RLock()
+	defer ns.mutex.RUnlock()
+	nodeList := ns.nodeList
+	start := (pageNo - 1) * pageSize
+	nodes := make([]*Node, 0)
+	for ele := nodeList.Front(); ele != nil; ele = ele.Next() {
+		if start <= 0 {
+			id := ele.Value.(ID)
+			n, ok := ns.nodeMap[id]
+			if ok {
+				nodes = append(nodes, n.n)
+			}
+			if len(nodes) >= pageSize {
+				break
+			}
+		} else {
+			start--
+		}
+	}
+	return nodes, nodeList.Len()
+}
+
 func (ns *nodeStore) get(id ID) (*Node, bool) {
 	ns.mutex.Lock()
 	defer ns.mutex.Unlock()
@@ -105,7 +129,10 @@ func (nodeTable *NodeTable) nurseryNodes() []*Node {
 func (nodeTable *NodeTable) hasNurseryNodes() bool {
 	return len(nodeTable.nursery) > 0
 }
+func (nodeTable *NodeTable) queryServerForPage(pageNo, pageSize int) ([]*Node, int) {
 
+	return nodeTable.serverNode.queryPage(pageNo, pageSize)
+}
 func (nodeTable *NodeTable) queryNatServerForPage(pageNo, pageSize int) ([]*Node, int) {
 	if pageNo < 1 {
 		pageNo = 1

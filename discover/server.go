@@ -139,6 +139,7 @@ func (s *Server) Init(context *core.Context) {
 	s.context.Post("/discover/connect", s.connect)
 	s.context.Post("/discover/nodeStatus", s.nodeStatus)
 	s.context.GetRemote("/discover/nodeNatServerList", s.nodeNatServerList)
+	s.context.GetRemote("/discover/nodeServerList", s.nodeServerList)
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/findServer", s.findServer)
 	s.context.Post("/discover/findUserServer", s.findUserServer)
@@ -153,6 +154,14 @@ func (s *Server) nodeNatServerList(req *web.Request) (any, error) {
 	list, num := s.table.queryNatServerForPage(pageNo, pageSize)
 	return web.ResponsePage(int64(num), NodeToExNodes(list)), nil
 }
+
+func (s *Server) nodeServerList(req *web.Request) (any, error) {
+	pageNo := req.FormIntValue("pageNo")
+	pageSize := req.FormIntValue("pageSize")
+	list, num := s.table.queryServerForPage(pageNo, pageSize)
+	return web.ResponsePage(int64(num), NodeToExNodes(list)), nil
+}
+
 func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
 }
