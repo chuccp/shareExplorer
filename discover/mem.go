@@ -174,18 +174,18 @@ func (nodeTable *NodeTable) deleteNode(n *Node) {
 	b.entries = deleteNode0(b.entries, n)
 }
 
-func (nodeTable *NodeTable) nodeToRevalidate() (n *Node, bi int, index int) {
+func (nodeTable *NodeTable) nodeToRevalidate() (n *Node, bi int) {
 
 	for _, bi = range nodeTable.rand.Perm(len(nodeTable.buckets)) {
 		b := nodeTable.buckets[bi]
 		if len(b.entries) > 0 {
 			nodeTable.coreCtx.GetLog().Debug("nodeToRevalidate", zap.Int("bucketIndex", bi))
-			index = len(b.entries) - 1
+			index := len(b.entries) - 1
 			last := b.entries[index]
-			return last, bi, index
+			return last, bi
 		}
 	}
-	return nil, 0, 0
+	return nil, 0
 }
 
 func (nodeTable *NodeTable) collectTableNodes(rip net.IP, distances []uint, limit int) []*Node {
@@ -236,6 +236,14 @@ func (nodeTable *NodeTable) collectTableFindNode(distances int) (queryNode []*No
 	nodeTable.coreCtx.GetLog().Debug("collectBucketsFindNode", zap.Int("s", 1))
 	nodeTable.collectBucketsFindNode(nodeTable.bucketIndexAtDistance(distances), nBuckets, recordBuckets)
 	nodeTable.coreCtx.GetLog().Debug("collectBucketsFindNode", zap.Int("s", 2))
+	return recordBuckets.entries
+}
+
+func (nodeTable *NodeTable) collectLocalTableFindNode() (queryNode []*Node) {
+	var recordBuckets = &RecordBuckets{maxElems: findValueResultLimit}
+	nodeTable.coreCtx.GetLog().Debug("collectLocalTableFindNode", zap.Int("entries_len", len(recordBuckets.entries)))
+	nodeTable.collectBucketsFindNode(0, nBuckets, recordBuckets)
+	nodeTable.coreCtx.GetLog().Debug("collectLocalTableFindNode", zap.Int("entries_len", len(recordBuckets.entries)))
 	return recordBuckets.entries
 }
 
@@ -290,20 +298,37 @@ func (nodeTable *NodeTable) bumpInBucket(last *Node) bool {
 	}
 	return false
 }
-func (nodeTable *NodeTable) replace(index int, last *Node) {
+
+func (nodeTable *NodeTable) findIndex(last *Node, entries []*Node) int {
+	for index, entry := range entries {
+		if entry.id == last.id {
+			return index
+		}
+	}
+	return -1
+}
+
+func (nodeTable *NodeTable) replace(last *Node) {
 	b := nodeTable.bucket(last.ID())
 	if len(b.entries) == 0 || b.entries[len(b.entries)-1].ID() != last.ID() {
 		return
 	}
 	if len(b.replacements) == 0 {
 		nodeTable.coreCtx.GetLog().Debug("replace", zap.Int("replacements", len(b.replacements)), zap.Int("b.entries", len(b.entries)))
-		b.entries = deleteNode0(b.entries, last)
+		if len(b.entries) > 1 {
+			index := nodeTable.findIndex(last, b.entries)
+			b.entries[index] = b.entries[len(b.entries)-1]
+			b.entries[len(b.entries)-1] = last
+		}
 		nodeTable.coreCtx.GetLog().Debug("replace", zap.Int("replacements", len(b.replacements)), zap.Int("b.entries", len(b.entries)))
 		return
 	}
 	r := b.replacements[nodeTable.rand.Intn(len(b.replacements))]
 	b.replacements = deleteNode0(b.replacements, r)
-	b.entries[index] = r
+	index := nodeTable.findIndex(last, b.entries)
+	if index >= 0 {
+		b.entries[index] = r
+	}
 }
 
 func (nodeTable *NodeTable) removeNurseryNodes(ns []*Node) {
@@ -398,11 +423,15 @@ func (nodeTable *NodeTable) addNatServer(n *Node) {
 		preNode.lastUpdateTime = time.Now()
 		return
 	}
-	if len(b.entries) >= bucketSize {
-		nodeTable.addReplacement(b, n)
+	if !nodeTable.addIP(b, n.IP()) {
 		return
 	}
-	if !nodeTable.addIP(b, n.IP()) {
+	err := nodeTable.coreCtx.GetDB().GetAddressModel().AddAddress(n.addr.String(), n.ServerName(), false)
+	if err != nil {
+		nodeTable.coreCtx.GetLog().Debug("addNatServer to db", zap.Error(err))
+	}
+	if len(b.entries) >= bucketSize {
+		nodeTable.addReplacement(b, n)
 		return
 	}
 	n.addTime = time.Now()

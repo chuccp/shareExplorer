@@ -92,7 +92,7 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 		}
 
 		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
-		err = addressModel.AddAddress(admin.Addresses)
+		err = addressModel.AddAddresses(admin.Addresses, true)
 		if err != nil {
 			return err
 		}
@@ -149,7 +149,7 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 			return err
 		}
 		addressModel := s.context.GetDB().GetAddressModel().NewModel(tx)
-		err = addressModel.AddAddress(client.Addresses)
+		err = addressModel.AddAddresses(client.Addresses, true)
 		if err != nil {
 			return err
 		}
@@ -233,7 +233,7 @@ func (s *Server) addRemoteAddress(req *web.Request) (any, error) {
 		return web.ResponseError("不能为空"), nil
 	}
 	addressModel := s.context.GetDB().GetAddressModel()
-	err = addressModel.AddAddress(addresses)
+	err = addressModel.AddAddresses(addresses, true)
 	if err != nil {
 		return nil, err
 	}

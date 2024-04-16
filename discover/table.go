@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+const (
+	revalidateTime = 10 * time.Second
+	registerTime   = 5 * time.Second
+	refreshTime    = 30 * time.Minute
+)
+
 type Table struct {
 	rand      *rand.Rand
 	mutex     sync.Mutex
@@ -175,26 +181,31 @@ func (table *Table) loop(ctx context.Context) {
 
 func (table *Table) doRegister(done chan struct{}) {
 	defer close(done)
+	table.coreCtx.GetLog().Debug("doRegister", zap.Bool("isServer", table.self().isServer))
 	if table.self().isServer {
-
+		queryNodes := table.nodeTable.collectLocalTableFindNode()
+		for _, node := range queryNodes {
+			table.coreCtx.GetLog().Debug("doRegister", zap.String("remoteAddress", node.addr.String()))
+			table.validate(node)
+		}
 	}
-
 }
 func (table *Table) nextRegisterTime() time.Duration {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()
-	return time.Duration(table.rand.Int63n(int64(5 * time.Minute)))
+	half := registerTime / 2
+	return half + time.Duration(table.rand.Int63n(int64(half)))
 }
 func (table *Table) nextRevalidateTime() time.Duration {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()
-	return time.Duration(table.rand.Int63n(int64(10 * time.Second)))
+	return time.Duration(table.rand.Int63n(int64(revalidateTime)))
 }
 
 func (table *Table) nextRefreshTime() time.Duration {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()
-	half := 30 * time.Minute / 2
+	half := refreshTime / 2
 	return half + time.Duration(table.rand.Int63n(int64(half)))
 }
 
@@ -268,7 +279,7 @@ func (table *Table) lookupRand() {
 	table.lookupByTarget(target)
 }
 
-func (table *Table) validate(node *Node, index int) {
+func (table *Table) validate(node *Node) {
 	value, err := table.call.register(node.addr)
 	if err == nil {
 		if node.id != value.id {
@@ -283,17 +294,16 @@ func (table *Table) validate(node *Node, index int) {
 	} else {
 		table.coreCtx.GetLog().Error("validate", zap.Error(err))
 	}
-
 	node.errorNum++
-	table.nodeTable.replace(index, node)
+	table.nodeTable.replace(node)
 }
 
 func (table *Table) doRevalidate(done chan struct{}) {
 	defer close(done)
 	table.loadNurseryNodes()
-	node, _, index := table.nodeTable.nodeToRevalidate()
+	node, _ := table.nodeTable.nodeToRevalidate()
 	if node != nil {
-		table.validate(node, index)
+		table.validate(node)
 	}
 
 }

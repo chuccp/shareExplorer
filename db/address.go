@@ -65,7 +65,7 @@ func (a *AddressModel) UpdateServerNameByAddress(address, serverName string) err
 	return tx.Error
 }
 
-func (a *AddressModel) AddAddress(addresses []string) error {
+func (a *AddressModel) AddAddresses(addresses []string, isSeed bool) error {
 	var addr []*Address
 	tx := a.db.Table(a.tableName).Where(" address IN ?", addresses).Find(&addr)
 	if tx.Error != nil {
@@ -76,11 +76,39 @@ func (a *AddressModel) AddAddress(addresses []string) error {
 	}
 	var adds = make([]*Address, len(addresses))
 	for index, address := range addresses {
-		adds[index] = &Address{
+		addr := &Address{
 			Address:    address,
 			CreateTime: time.Now(),
-			UpdateTime: time.Now()}
+			UpdateTime: time.Now(), Seed: 0}
+		if isSeed {
+			addr.Seed = 1
+		}
+		adds[index] = addr
 	}
 	tx = a.db.Table(a.tableName).CreateInBatches(adds, len(adds))
+	return tx.Error
+}
+func (a *AddressModel) AddAddress(address string, serverName string, isSeed bool) error {
+	var adds []*Address
+	tx := a.db.Table(a.tableName).Where(&Address{
+		Address: address,
+	}).Find(&adds)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if len(adds) > 0 {
+		return nil
+	}
+	addr := &Address{
+		Address:    address,
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
+		ServerName: serverName,
+		Seed:       0}
+
+	if isSeed {
+		addr.Seed = 1
+	}
+	tx = a.db.Table(a.tableName).Create(addr)
 	return tx.Error
 }
