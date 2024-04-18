@@ -37,7 +37,7 @@ func (s *Server) register(req *web.Request) (any, error) {
 		s.context.GetLog().Error("register", zap.Error(err))
 		return nil, err
 	}
-	s.table.addNode(node)
+	s.table.AddNode(node)
 	n := s.table.self()
 	return web.ResponseOK(wrapResponseNode(n)), nil
 }
@@ -126,15 +126,7 @@ func (s *Server) Servername() string {
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.servername = s.context.GetCertManager().GetServerName()
-	id, err := StringToId(s.servername)
-	if err != nil {
-		s.context.GetLog().Error("Init", zap.Error(err))
-		return
-	}
-	s.localNode = NewLocalNode(id, s.context.GetServerConfig())
-	s.call = newCall(s.localNode, core.NewHttpClient(context), context)
-	s.context.SetDiscoverServer(s)
-	s.table = NewTable(s.context, s.localNode, s.call)
+	s.Start()
 	s.context.Post("/discover/register", s.register)
 	s.context.Post("/discover/connect", s.connect)
 	s.context.Post("/discover/nodeStatus", s.nodeStatus)
@@ -143,10 +135,6 @@ func (s *Server) Init(context *core.Context) {
 	s.context.Post("/discover/findNode", s.findNode)
 	s.context.Post("/discover/findServer", s.findServer)
 	s.context.Post("/discover/findUserServer", s.findUserServer)
-	if !s.context.GetServerConfig().HasInit() {
-		return
-	}
-	s.Start()
 }
 func (s *Server) nodeNatServerList(req *web.Request) (any, error) {
 	pageNo := req.FormIntValue("pageNo")
@@ -193,11 +181,26 @@ func (s *Server) Ping(address *net.UDPAddr) error {
 }
 func (s *Server) ReStart() {
 	s.table.stop()
-	go s.table.run()
+	if s.nodeSearchManage != nil {
+		s.nodeSearchManage.stopAll()
+	}
+	s.Start()
 }
 func (s *Server) Start() {
-	go s.table.run()
+	id, err := StringToId(s.servername)
+	if err != nil {
+		s.context.GetLog().Error("Init", zap.Error(err))
+		return
+	}
+	s.localNode = NewLocalNode(id, s.context.GetServerConfig())
+	s.call = newCall(s.localNode, core.NewHttpClient(s.context), s.context)
+	s.context.SetDiscoverServer(s)
+	s.table = NewTable(s.context, s.localNode, s.call)
 	s.nodeSearchManage = NewNodeSearchManage(s.context, s.table)
+	if !s.context.GetServerConfig().HasInit() {
+		return
+	}
+	go s.table.run()
 	go s.nodeSearchManage.run()
 }
 func (s *Server) Stop() {

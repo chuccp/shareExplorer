@@ -101,13 +101,16 @@ func (s *Server) addAdmin(req *web.Request) (any, error) {
 	if err != nil {
 		return web.ResponseError(err.Error()), err
 	}
-	err = s.context.GetServerConfig().Init()
+	configs, err := s.context.GetServerConfig().Init()
 	if err != nil {
 		return nil, err
 	}
+	for _, config := range configs {
+		s.context.GetLog().Debug("addAdmin", zap.String(config.Key, config.Value))
+	}
 	discoverServer, fa := s.context.GetDiscoverServer()
 	if fa {
-		discoverServer.Start()
+		discoverServer.ReStart()
 	}
 	return web.ResponseOK("ok"), nil
 }
@@ -158,7 +161,7 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 	if err != nil {
 		return web.ResponseError(err.Error()), err
 	}
-	err = s.context.GetServerConfig().Init()
+	_, err = s.context.GetServerConfig().Init()
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +213,7 @@ func (s *Server) reset(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = s.context.GetServerConfig().Init()
+	_, err = s.context.GetServerConfig().Init()
 	if err != nil {
 		return nil, err
 	}

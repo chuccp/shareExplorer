@@ -18,10 +18,10 @@ type ServerConfig struct {
 func NewServerConfig(configModel *db.ConfigModel) *ServerConfig {
 	return &ServerConfig{configModel: configModel, config: &Config{}}
 }
-func (sc *ServerConfig) Init() error {
+func (sc *ServerConfig) Init() ([]*db.Config, error) {
 	configs, err := sc.configModel.GetValues("isServer", "isClient", "isNatServer")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(configs) == 0 {
 		sc.config.IsServer = ""
@@ -41,7 +41,7 @@ func (sc *ServerConfig) Init() error {
 		}
 	}
 
-	return nil
+	return configs, nil
 }
 func (sc *ServerConfig) GetConfig() *Config {
 	return sc.config

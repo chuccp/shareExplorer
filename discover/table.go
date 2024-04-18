@@ -12,9 +12,11 @@ import (
 )
 
 const (
-	revalidateTime = 10 * time.Second
-	registerTime   = 5 * time.Second
-	refreshTime    = 30 * time.Minute
+	revalidateTime    = 10 * time.Second
+	registerTime      = 5 * time.Second
+	refreshTime       = 30 * time.Minute
+	clearTime         = registerTime
+	serverTimeOutTime = registerTime * 4
 )
 
 type Table struct {
@@ -45,15 +47,11 @@ func (table *Table) FindServer(target ID, distances int) (*Node, []*Node) {
 	table.coreCtx.GetLog().Debug("queryServer", zap.Any("node", node), zap.Bool("fa", fa))
 	return node, table.nodeTable.collectTableFindNode(distances)
 }
-func (table *Table) AddNatServer(n *Node) {
+
+func (table *Table) AddNode(n *Node) {
 	table.nodeTable.addNode(n)
 }
-func (table *Table) addNode(n *Node) {
-	table.nodeTable.addNode(n)
-}
-func (table *Table) addSeedNode(n *Node) {
-	table.nodeTable.addSeedNode(n)
-}
+
 func (table *Table) FindNode(findNode *FindNode) []*Node {
 	return table.nodeTable.collectTableNodes(findNode.addr.IP, findNode.Distances, findnodeResultLimit)
 }
@@ -86,7 +84,7 @@ func (table *Table) loadAddress() error {
 		}
 	}
 	for _, seed := range seeds {
-		table.addSeedNode(seed)
+		table.AddNode(seed)
 	}
 	if len(seeds) < 1 {
 		err = errors.New("db no node")
@@ -126,13 +124,28 @@ func (table *Table) run() {
 
 func (table *Table) loop(ctx context.Context) {
 	var (
-		revalidate     = time.NewTimer(table.nextRevalidateTime())
-		refresh        = time.NewTimer(table.nextRefreshTime())
-		register       = time.NewTimer(table.nextRegisterTime())
-		revalidateDone chan struct{}
-		registerDone   chan struct{}
-		refreshDone    = make(chan struct{})
+		revalidate  = time.NewTimer(table.nextRevalidateTime())
+		refresh     = time.NewTimer(table.nextRefreshTime())
+		register    = time.NewTimer(table.nextRegisterTime())
+		clearServer = time.NewTimer(table.nextClearTime())
+
+		revalidateDone  = make(chan struct{})
+		registerDone    = make(chan struct{})
+		clearServerDone = make(chan struct{})
+		refreshDone     = make(chan struct{})
 	)
+
+	defer func() {
+		revalidate.Stop()
+		refresh.Stop()
+		register.Stop()
+		clearServer.Stop()
+		close(revalidateDone)
+		close(registerDone)
+		close(clearServerDone)
+		close(refreshDone)
+	}()
+
 	go table.doRefresh(refreshDone)
 	for {
 		select {
@@ -143,42 +156,46 @@ func (table *Table) loop(ctx context.Context) {
 			}
 		case <-refresh.C:
 			{
-				if refreshDone == nil {
-					refreshDone = make(chan struct{})
-					go table.doRefresh(refreshDone)
-				}
+				go table.doRefresh(refreshDone)
 			}
 		case <-revalidate.C:
 			{
-				if revalidateDone == nil {
-					revalidateDone = make(chan struct{})
-					go table.doRevalidate(revalidateDone)
-				}
+				go table.doRevalidate(revalidateDone)
 			}
 		case <-register.C:
 			{
-				if registerDone == nil {
-					registerDone = make(chan struct{})
-					go table.doRegister(registerDone)
-				}
+				go table.doRegister(registerDone)
+			}
+		case <-clearServer.C:
+			{
+				go table.doClearServer(clearServerDone)
+			}
+		case <-clearServerDone:
+			{
+				clearServer.Reset(table.nextClearTime())
+				clearServerDone = make(chan struct{})
 			}
 		case <-registerDone:
 			{
 				register.Reset(table.nextRegisterTime())
-				registerDone = nil
+				registerDone = make(chan struct{})
 			}
 		case <-revalidateDone:
 			{
 				revalidate.Reset(table.nextRevalidateTime())
-				revalidateDone = nil
+				revalidateDone = make(chan struct{})
 			}
 		case <-refreshDone:
 			refresh.Reset(table.nextRefreshTime())
-			refreshDone = nil
+			refreshDone = make(chan struct{})
 		}
 	}
 }
-
+func (table *Table) doClearServer(done chan struct{}) {
+	defer close(done)
+	table.coreCtx.GetLog().Debug("doClearServer", zap.Bool("isServer", table.self().isServer))
+	table.nodeTable.clearServerTimeOut(serverTimeOutTime)
+}
 func (table *Table) doRegister(done chan struct{}) {
 	defer close(done)
 	table.coreCtx.GetLog().Debug("doRegister", zap.Bool("isServer", table.self().isServer))
@@ -194,6 +211,13 @@ func (table *Table) nextRegisterTime() time.Duration {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()
 	half := registerTime / 2
+	return half + time.Duration(table.rand.Int63n(int64(half)))
+}
+
+func (table *Table) nextClearTime() time.Duration {
+	table.mutex.Lock()
+	defer table.mutex.Unlock()
+	half := clearTime / 2
 	return half + time.Duration(table.rand.Int63n(int64(half)))
 }
 func (table *Table) nextRevalidateTime() time.Duration {
@@ -230,9 +254,13 @@ func (table *Table) loadNurseryNodes() {
 					return
 				} else {
 					if !node.ID().IsBlank() {
-						table.addNode(node)
-						n.SetID(node.ID())
-						table.coreCtx.GetDB().GetAddressModel().UpdateServerNameByAddress(n.addr.String(), node.ServerName())
+						if node.id != table.localNode.id {
+							table.AddNode(node)
+							n.SetID(node.ID())
+							table.coreCtx.GetDB().GetAddressModel().UpdateServerNameByAddress(n.addr.String(), node.ServerName())
+						} else {
+							table.coreCtx.GetLog().Info("loadNurseryNodes", zap.String("msg", "connection self"))
+						}
 						deleteNodes = append(deleteNodes, n)
 					}
 				}
@@ -263,7 +291,7 @@ func (table *Table) lookupByTarget(target ID) {
 			return
 		}
 		for _, n2 := range nodes {
-			table.addNode(n2)
+			table.AddNode(n2)
 		}
 	}
 }
@@ -285,7 +313,7 @@ func (table *Table) validate(node *Node) {
 		if node.id != value.id {
 			table.nodeTable.deleteNode(node)
 			table.coreCtx.GetDB().GetAddressModel().UpdateServerNameByAddress(node.addr.String(), node.ServerName())
-			table.addNode(value)
+			table.AddNode(value)
 			return
 		}
 		node.liveNessChecks++

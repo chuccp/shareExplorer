@@ -61,7 +61,7 @@ func (se *ShareExplorer) Start() error {
 		return err
 	}
 	//服务配置初始化
-	err = se.serverConfig.Init()
+	_, err = se.serverConfig.Init()
 	if err != nil {
 		return err
 	}

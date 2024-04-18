@@ -66,6 +66,38 @@ func (ns *nodeStore) remove(id ID) {
 	}
 }
 
+func (ns *nodeStore) clearTimeOut(duration time.Duration) {
+	ns.mutex.RLock()
+	now := time.Now()
+	nodeList := ns.nodeList
+	nodes := make([]*Node, 0)
+	for ele := nodeList.Front(); ele != nil; ele = ele.Next() {
+		id := ele.Value.(ID)
+		mNode, ok := ns.nodeMap[id]
+		if ok {
+			node := mNode.n
+			if node.lastUpdateTime.Add(duration).Before(now) {
+				nodes = append(nodes, node)
+			}
+		}
+	}
+	ns.mutex.RUnlock()
+	ns.mutex.Lock()
+	now = time.Now()
+	for _, node := range nodes {
+		if node.lastUpdateTime.Add(duration).Before(now) {
+			delete(ns.nodeMap, node.id)
+			n, ok := ns.nodeMap[node.id]
+			if ok {
+				ns.nodeList.Remove(n.ele)
+				delete(ns.nodeMap, node.id)
+			}
+		}
+	}
+	ns.mutex.Unlock()
+
+}
+
 func (ns *nodeStore) queryPage(pageNo, pageSize int) ([]*Node, int) {
 	ns.mutex.RLock()
 	defer ns.mutex.RUnlock()
@@ -172,6 +204,9 @@ func (nodeTable *NodeTable) queryNodesByIdAndDistance(target ID, maxNum int) *no
 func (nodeTable *NodeTable) deleteNode(n *Node) {
 	b := nodeTable.bucket(n.ID())
 	b.entries = deleteNode0(b.entries, n)
+}
+func (nodeTable *NodeTable) clearServerTimeOut(duration time.Duration) {
+	nodeTable.serverNode.clearTimeOut(duration)
 }
 
 func (nodeTable *NodeTable) nodeToRevalidate() (n *Node, bi int) {
@@ -337,11 +372,17 @@ func (nodeTable *NodeTable) removeNurseryNodes(ns []*Node) {
 	}
 }
 func (nodeTable *NodeTable) addNode(n *Node) {
-	if n.IsNatServer() {
-		nodeTable.addNatServer(n)
-	}
-	if n.IsServer() {
-		nodeTable.addServer(n)
+	if !n.HasId() {
+		nodeTable.addNursery(n)
+	} else {
+		if nodeTable.localNode.id != n.id {
+			if n.IsNatServer() {
+				nodeTable.addNatServer(n)
+			}
+			if n.IsServer() {
+				nodeTable.addServer(n)
+			}
+		}
 	}
 }
 func (nodeTable *NodeTable) bucketIndexAtDistance(d int) int {
@@ -453,14 +494,6 @@ func deleteNode0(list []*Node, n *Node) []*Node {
 		}
 	}
 	return list
-}
-
-func (nodeTable *NodeTable) addSeedNode(n *Node) {
-	if !n.HasId() {
-		nodeTable.addNursery(n)
-	} else {
-		nodeTable.addNode(n)
-	}
 }
 
 func (nodeTable *NodeTable) addNursery(n *Node) {

@@ -118,7 +118,7 @@ func (f *findServerNodeQueue) addNode(preId ID, fromId ID, queryNode *Node) {
 		fvn := &findServerNode{queryNode: queryNode, fromId: fromId, preId: preId}
 		f.addNode0(fvn)
 	}
-	f.queryTable.AddNatServer(queryNode)
+	f.queryTable.AddNode(queryNode)
 }
 func (f *findServerNodeQueue) getNode() (*findServerNode, bool) {
 	ele := f.nodeList.Front()
@@ -138,7 +138,7 @@ type queryTable interface {
 	Ping(node *Node) error
 	FindRemoteServer(target ID, node *Node, distances int) (*Node, []*Node, error)
 	FindServer(target ID, distances int) (*Node, []*Node)
-	AddNatServer(n *Node)
+	AddNode(n *Node)
 }
 
 type queryServer struct {
@@ -283,41 +283,37 @@ func (nodeSearch *nodeSearch) loop() {
 	var (
 		queryNode     = time.NewTimer(time.Second * 10)
 		ping          = time.NewTimer(time.Second * 10)
-		pingDone      chan struct{}
+		pingDone      = make(chan struct{})
 		queryNodeDone = make(chan struct{})
 	)
 	go nodeSearch.scanNode(queryNodeDone)
+	defer func() {
+		close(pingDone)
+		close(queryNodeDone)
+		queryNode.Stop()
+		ping.Stop()
+	}()
 	for {
 		select {
 
 		case <-queryNode.C:
 			{
-
-				if queryNodeDone == nil {
-					queryNodeDone = make(chan struct{})
-					go nodeSearch.scanNode(queryNodeDone)
-				}
-
+				go nodeSearch.scanNode(queryNodeDone)
 			}
 		case <-queryNodeDone:
 			{
 				queryNode.Reset(time.Second * 10)
-				queryNodeDone = nil
+				queryNodeDone = make(chan struct{})
 			}
 
 		case <-ping.C:
 			{
-
-				if pingDone == nil {
-					pingDone = make(chan struct{})
-					go nodeSearch.ping(nodeSearch.searchNode)
-				}
-
+				go nodeSearch.ping(nodeSearch.searchNode)
 			}
 		case <-pingDone:
 			{
 				ping.Reset(time.Second * 10)
-				pingDone = nil
+				pingDone = make(chan struct{})
 			}
 		case <-nodeSearch.ctx.Done():
 			{
