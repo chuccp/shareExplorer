@@ -181,9 +181,6 @@ func (s *Server) Ping(address *net.UDPAddr) error {
 }
 func (s *Server) ReStart() {
 	s.table.stop()
-	if s.nodeSearchManage != nil {
-		s.nodeSearchManage.stopAll()
-	}
 	s.start()
 }
 func (s *Server) start() {
@@ -204,6 +201,7 @@ func (s *Server) start() {
 	go s.nodeSearchManage.run()
 }
 func (s *Server) Stop() {
+	s.context.GetLog().Debug("Server", zap.Bool("table", s.table != nil))
 	if s.table != nil {
 		s.table.stop()
 	}

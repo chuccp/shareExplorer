@@ -211,13 +211,16 @@ func (s *Server) info(req *web.Request) (any, error) {
 func (s *Server) reset(req *web.Request) (any, error) {
 	err := s.context.GetDB().Reset()
 	if err != nil {
+		s.context.GetLog().Debug("reset", zap.Error(err))
 		return nil, err
 	}
 	_, err = s.context.GetServerConfig().Init()
 	if err != nil {
+		s.context.GetLog().Debug("reset", zap.Error(err))
 		return nil, err
 	}
 	ds, b := s.context.GetDiscoverServer()
+	s.context.GetLog().Debug("reset", zap.Bool("GetDiscoverServer", b))
 	if b {
 		ds.Stop()
 	}

@@ -108,12 +108,12 @@ func (table *Table) self() *Node {
 
 func (table *Table) run() {
 	table.mutex.Lock()
+	defer table.mutex.Unlock()
 	if table.ctxCancel != nil {
 		table.ctxCancel()
 		table.ctxCancel = nil
 	}
 	table.ctx, table.ctxCancel = context.WithCancel(context.Background())
-	defer table.mutex.Unlock()
 	err := table.loadAddress()
 	if err != nil {
 		return
@@ -152,7 +152,7 @@ func (table *Table) loop(ctx context.Context) {
 
 		case <-ctx.Done():
 			{
-				break
+				return
 			}
 		case <-refresh.C:
 			{
@@ -237,6 +237,7 @@ func (table *Table) stop() {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()
 	if table.ctxCancel != nil {
+		table.coreCtx.GetLog().Debug("stop", zap.Bool("ctxCancel", true))
 		table.ctxCancel()
 		table.ctxCancel = nil
 	}
