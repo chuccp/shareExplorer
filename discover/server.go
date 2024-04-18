@@ -126,7 +126,7 @@ func (s *Server) Servername() string {
 func (s *Server) Init(context *core.Context) {
 	s.context = context
 	s.servername = s.context.GetCertManager().GetServerName()
-	s.Start()
+	s.start()
 	s.context.Post("/discover/register", s.register)
 	s.context.Post("/discover/connect", s.connect)
 	s.context.Post("/discover/nodeStatus", s.nodeStatus)
@@ -184,9 +184,9 @@ func (s *Server) ReStart() {
 	if s.nodeSearchManage != nil {
 		s.nodeSearchManage.stopAll()
 	}
-	s.Start()
+	s.start()
 }
-func (s *Server) Start() {
+func (s *Server) start() {
 	id, err := StringToId(s.servername)
 	if err != nil {
 		s.context.GetLog().Error("Init", zap.Error(err))

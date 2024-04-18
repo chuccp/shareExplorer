@@ -16,7 +16,6 @@ type IRegister interface {
 }
 
 type DiscoverServer interface {
-	Start()
 	ReStart()
 	Ping(address *net.UDPAddr) error
 	Stop()

@@ -167,7 +167,7 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 	}
 	discoverServer, fa := s.context.GetDiscoverServer()
 	if fa {
-		discoverServer.Start()
+		discoverServer.ReStart()
 	}
 	return web.ResponseOK("ok"), nil
 }
