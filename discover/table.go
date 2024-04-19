@@ -203,7 +203,7 @@ func (table *Table) doRegister(done chan struct{}) {
 		queryNodes := table.nodeTable.collectLocalTableFindNode()
 		for _, node := range queryNodes {
 			table.coreCtx.GetLog().Debug("doRegister", zap.String("remoteAddress", node.addr.String()))
-			table.validate(node)
+			table.validateNatServer(node)
 		}
 	}
 }
@@ -308,7 +308,7 @@ func (table *Table) lookupRand() {
 	table.lookupByTarget(target)
 }
 
-func (table *Table) validate(node *Node) {
+func (table *Table) validateNatServer(node *Node) {
 	value, err := table.call.register(node.addr)
 	if err == nil {
 		if node.id != value.id {
@@ -332,7 +332,7 @@ func (table *Table) doRevalidate(done chan struct{}) {
 	table.loadNurseryNodes()
 	node, _ := table.nodeTable.nodeToRevalidate()
 	if node != nil {
-		table.validate(node)
+		table.validateNatServer(node)
 	}
 
 }

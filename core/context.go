@@ -224,7 +224,7 @@ func (c *Context) StaticHandle(relativePath string, filepath string) {
 	})
 }
 
-func (c *Context) isRemote(context *gin.Context) bool {
+func (c *Context) IsRemote(context *gin.Context) bool {
 	path_ := context.Request.URL.Path
 	c.log.Debug("isRemote", zap.Bool("IsRemotePaths", c.IsRemotePaths(path_)), zap.Bool("IsClient", c.serverConfig.IsClient()), zap.Int("ProtoMajor", context.Request.ProtoMajor))
 	if c.IsRemotePaths(path_) && c.serverConfig.IsClient() && context.Request.ProtoMajor != 3 {
@@ -281,14 +281,14 @@ func (c *Context) ReverseProxy(username, code string, context *gin.Context) {
 			}
 		}
 	} else {
-		context.AbortWithStatusJSON(200, web.ResponseError("用户名有误或未上传证书"))
+		context.AbortWithStatusJSON(200, web.ResponseError("Incorrect username or password, or certificate not uploaded."))
 	}
 	context.Abort()
 }
 func (c *Context) RemoteHandle() {
 	c.engine.Use(func(context *gin.Context) {
-		c.log.Info("RemoteHandle", zap.String("RequestURI", context.Request.RequestURI), zap.Bool("isRemote", c.isRemote(context)))
-		if c.isRemote(context) {
+		c.log.Info("RemoteHandle", zap.String("RequestURI", context.Request.RequestURI), zap.Bool("isRemote", c.IsRemote(context)))
+		if c.IsRemote(context) {
 			username := c.digestAuth.ReadAuth(context.Request)
 			c.log.Info("RemoteHandle", zap.String("username", username))
 			if username != "" {

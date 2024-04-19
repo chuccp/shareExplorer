@@ -175,7 +175,7 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 func (s *Server) info(req *web.Request) (any, error) {
 
 	un, code := req.ReadAuthUsernameAndCode()
-	if code != "" {
+	if code != "" && s.context.GetServerConfig().IsClient() {
 		s.context.ReverseProxy(un, code, req.GetContext())
 		return nil, nil
 	}
