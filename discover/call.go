@@ -71,12 +71,14 @@ func (call *call) findNode(target ID, queryNode *Node) ([]*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	response, err := web.JsonToResponse[[]*Node](value)
+	call.context.GetLog().Debug("findNode", zap.Any("value", value))
+	response, err := web.JsonToResponse[[]*ResponseNode](value)
 	if err != nil {
 		return nil, err
 	}
 	if response.IsOk() {
-		return response.Data, nil
+		call.context.GetLog().Debug("findNode", zap.Any("nodes", response.Data))
+		return wrapResponseNodeToNodes(response.Data), nil
 	}
 	return nil, errors.New(response.Error)
 }

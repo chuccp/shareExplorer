@@ -153,6 +153,7 @@ func NewNodeTable(localNode *Node, coreCtx *core.Context) *NodeTable {
 			ips:   DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
 		}
 	}
+	tab.nursery = make([]*Node, 0)
 	return tab
 }
 func (nodeTable *NodeTable) nurseryNodes() []*Node {
@@ -459,6 +460,7 @@ func (nodeTable *NodeTable) addIP(b *bucket, ip net.IP) bool {
 
 func (nodeTable *NodeTable) addNatServer(n *Node) {
 	b := nodeTable.bucket(n.ID())
+	nodeTable.coreCtx.GetLog().Debug("addNatServer", zap.Any("b.entries", b.entries), zap.String("id", n.ServerName()))
 	preNode, fa := nodesContainsId(b.entries, n.ID())
 	if fa {
 		preNode.lastUpdateTime = time.Now()
@@ -497,6 +499,7 @@ func deleteNode0(list []*Node, n *Node) []*Node {
 }
 
 func (nodeTable *NodeTable) addNursery(n *Node) {
+	nodeTable.coreCtx.GetLog().Debug("addNursery", zap.Any("nodeTable.nursery", nodeTable.nursery), zap.Any("n.addr", n.addr))
 	if !nodesContainsAddress(nodeTable.nursery, n.addr) {
 		n.addTime = time.Now()
 		nodeTable.nursery = append(nodeTable.nursery, n)
