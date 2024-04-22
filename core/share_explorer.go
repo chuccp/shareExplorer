@@ -42,8 +42,8 @@ func CreateShareExplorer(register IRegister) (*ShareExplorer, error) {
 	}
 	certManager := cert.NewManager("cert")
 	serverConfig := NewServerConfig(db.GetConfigModel())
-
-	logger, err := initLogger("log/run.log")
+	level := register.GetConfig().GetString("core", "log.level")
+	logger, err := initLogger("log/run.log", level)
 	if err != nil {
 		return nil, err
 	}

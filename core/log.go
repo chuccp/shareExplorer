@@ -6,17 +6,25 @@ import (
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
+	"strings"
 )
 
-func initLogger(path string) (*zap.Logger, error) {
-	writeFileCore, err := getFileLogWriter(path)
+func initLogger(path string, level string) (*zap.Logger, error) {
+	outLevel := zapcore.InfoLevel
+	if strings.EqualFold(level, "debug") {
+		outLevel = zapcore.DebugLevel
+	}
+	if strings.EqualFold(level, "error") {
+		outLevel = zapcore.ErrorLevel
+	}
+	writeFileCore, err := getFileLogWriter(path, outLevel)
 	if err != nil {
 		return nil, err
 	}
 	core := zapcore.NewTee(writeFileCore, getStdoutLogWriter())
 	return zap.New(core, zap.AddCaller()), nil
 }
-func getFileLogWriter(path string) (zapcore.Core, error) {
+func getFileLogWriter(path string, level zapcore.Level) (zapcore.Core, error) {
 
 	logger := &lumberjack.Logger{
 		Filename:   path,
@@ -26,7 +34,7 @@ func getFileLogWriter(path string) (zapcore.Core, error) {
 		Compress:   true, // disabled by default
 	}
 	encoder := getEncoder()
-	core := zapcore.NewCore(encoder, zapcore.AddSync(logger), zapcore.InfoLevel)
+	core := zapcore.NewCore(encoder, zapcore.AddSync(logger), level)
 	return core, nil
 }
 func getStdoutLogWriter() zapcore.Core {

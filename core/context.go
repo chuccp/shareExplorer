@@ -311,13 +311,13 @@ func (c *Context) ReverseProxy(username, code string, context *gin.Context) {
 }
 func (c *Context) RemoteHandle() {
 	c.engine.Use(func(context *gin.Context) {
-		c.log.Info("RemoteHandle", zap.String("RequestURI", context.Request.RequestURI), zap.Bool("isRemote", c.IsRemote(context)))
+		c.log.Debug("RemoteHandle", zap.String("RequestURI", context.Request.RequestURI), zap.Bool("isRemote", c.IsRemote(context)))
 		if c.IsRemote(context) {
 			username := c.digestAuth.ReadAuth(context.Request)
-			c.log.Info("RemoteHandle", zap.String("username", username))
+			c.log.Debug("RemoteHandle", zap.String("username", username))
 			if username != "" {
 				un, code := web.GetUsernameAndCode(username)
-				c.log.Info("RemoteHandle", zap.String("username", un), zap.String("code", code))
+				c.log.Debug("RemoteHandle", zap.String("username", un), zap.String("code", code))
 				if code == "" {
 					context.Next()
 				} else {

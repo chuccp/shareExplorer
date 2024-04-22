@@ -211,6 +211,7 @@ loop:
 	if clearServerDone != nil {
 		<-clearServerDone
 	}
+	table.coreCtx.GetLog().Debug("close table")
 }
 func (table *Table) doClearServer(done chan struct{}) {
 	defer close(done)
