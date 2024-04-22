@@ -41,7 +41,6 @@ func (c *ClientCert) _loadAllUser() error {
 		c.context.GetLog().Error("loadAllUser", zap.Error(err))
 		return err
 	}
-	c.context.GetLog().Debug("loadAllUser", zap.Int("users", len(users)))
 	for _, user := range users {
 		c.context.GetLog().Debug("loadAllUser", zap.String("Username", user.Username), zap.String("Code", user.Code), zap.String("CertPath", user.CertPath))
 		err := c._loadCert(user.Username, user.Code, user.CertPath)
@@ -111,7 +110,7 @@ func (c *ClientCert) _loadCert(username string, code string, path string) error 
 		c.codeClientCerts = append(c.codeClientCerts, &CodeClientCert{clientCertificate: cc, code: code})
 		return nil
 	}
-	return errors.New("用户名错误")
+	return errors.New("error in username or verification code")
 }
 func (c *ClientCert) _deleteCert(code string) {
 	for _, clientCert := range c.codeClientCerts {
