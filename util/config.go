@@ -38,6 +38,31 @@ func (cfg *Config) GetInt(section, name string) (int, error) {
 		return key.Int()
 	}
 }
+func (cfg *Config) GetIntOrDefault(section, name string, defaultValue int) int {
+	key, err := cfg.getSectionKey(section, name)
+	if err != nil {
+		return defaultValue
+	} else {
+		v, err := key.Int()
+		if err != nil {
+			return defaultValue
+		}
+		return v
+	}
+}
+
+func (cfg *Config) GetInt64OrDefault(section, name string, defaultValue int64) int64 {
+	key, err := cfg.getSectionKey(section, name)
+	if err != nil {
+		return defaultValue
+	} else {
+		v, err := key.Int64()
+		if err != nil {
+			return defaultValue
+		}
+		return v
+	}
+}
 
 func (cfg *Config) getSectionKey(section, name string) (*ini.Key, error) {
 	sc, err := cfg.cfg.GetSection(section)

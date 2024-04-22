@@ -12,22 +12,27 @@ import (
 )
 
 const (
-	revalidateTime    = 10 * time.Second
-	registerTime      = 5 * time.Second
-	refreshTime       = 30 * time.Minute
+	revalidateTime    = 10
+	registerTime      = 120
+	refreshTime       = 1800
 	clearTime         = registerTime
-	serverTimeOutTime = registerTime * 4
+	serverTimeoutTime = registerTime * 4
 )
 
 type Table struct {
-	rand      *rand.Rand
-	mutex     sync.Mutex
-	nodeTable *NodeTable
-	localNode *Node
-	call      *call
-	coreCtx   *core.Context
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	rand              *rand.Rand
+	mutex             sync.Mutex
+	nodeTable         *NodeTable
+	localNode         *Node
+	call              *call
+	coreCtx           *core.Context
+	ctx               context.Context
+	ctxCancel         context.CancelFunc
+	revalidateTime    time.Duration
+	registerTime      time.Duration
+	refreshTime       time.Duration
+	clearTime         time.Duration
+	serverTimeoutTime time.Duration
 }
 
 func (table *Table) ID() ID {
@@ -118,8 +123,13 @@ func (table *Table) run() {
 	if err != nil {
 		return
 	} else {
-		go table.loop()
-		go table.loopRegister()
+
+		table.coreCtx.Go(func() {
+			table.loop()
+		})
+		table.coreCtx.Go(func() {
+			table.loopRegister()
+		})
 	}
 }
 
@@ -143,7 +153,9 @@ func (table *Table) loop() {
 		close(refreshDone)
 	}()
 
-	go table.doRefresh(refreshDone)
+	table.coreCtx.Go(func() {
+		table.doRefresh(refreshDone)
+	})
 	for {
 		select {
 
@@ -153,16 +165,22 @@ func (table *Table) loop() {
 			}
 		case <-refresh.C:
 			{
-				go table.doRefresh(refreshDone)
+				table.coreCtx.Go(func() {
+					table.doRefresh(refreshDone)
+				})
 			}
 		case <-revalidate.C:
 			{
-				go table.doRevalidate(revalidateDone)
+				table.coreCtx.Go(func() {
+					table.doRevalidate(revalidateDone)
+				})
 			}
 
 		case <-clearServer.C:
 			{
-				go table.doClearServer(clearServerDone)
+				table.coreCtx.Go(func() {
+					table.doClearServer(clearServerDone)
+				})
 			}
 		case <-clearServerDone:
 			{
@@ -184,7 +202,7 @@ func (table *Table) loop() {
 func (table *Table) doClearServer(done chan struct{}) {
 	defer close(done)
 	table.coreCtx.GetLog().Debug("doClearServer", zap.Bool("isServer", table.self().isServer))
-	table.nodeTable.clearServerTimeOut(serverTimeOutTime)
+	table.nodeTable.clearServerTimeOut(table.serverTimeoutTime)
 }
 func (table *Table) loopRegister() {
 	registerDone := make(chan struct{})
@@ -194,7 +212,9 @@ func (table *Table) loopRegister() {
 		select {
 		case <-register.C:
 			{
-				go table.doRegister(registerDone)
+				table.coreCtx.Go(func() {
+					table.doRegister(registerDone)
+				})
 			}
 
 		case <-registerDone:
@@ -237,26 +257,26 @@ func (table *Table) doRegister(done chan struct{}) {
 func (table *Table) nextRegisterTime() time.Duration {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()
-	half := registerTime / 2
+	half := table.registerTime / 2
 	return half + time.Duration(table.rand.Int63n(int64(half)))
 }
 
 func (table *Table) nextClearTime() time.Duration {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()
-	half := clearTime / 2
+	half := table.clearTime / 2
 	return half + time.Duration(table.rand.Int63n(int64(half)))
 }
 func (table *Table) nextRevalidateTime() time.Duration {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()
-	return time.Duration(table.rand.Int63n(int64(revalidateTime)))
+	return time.Duration(table.rand.Int63n(int64(table.revalidateTime)))
 }
 
 func (table *Table) nextRefreshTime() time.Duration {
 	table.mutex.Lock()
 	defer table.mutex.Unlock()
-	half := refreshTime / 2
+	half := table.refreshTime / 2
 	return half + time.Duration(table.rand.Int63n(int64(half)))
 }
 
@@ -370,5 +390,27 @@ func (table *Table) doRevalidate(done chan struct{}) {
 
 }
 func NewTable(coreCtx *core.Context, localNode *Node, call *call) *Table {
-	return &Table{rand: rand.New(rand.NewSource(0)), coreCtx: coreCtx, nodeTable: NewNodeTable(localNode, coreCtx), localNode: localNode, call: call}
+	table := &Table{rand: rand.New(rand.NewSource(0)), coreCtx: coreCtx, nodeTable: NewNodeTable(localNode, coreCtx), localNode: localNode, call: call}
+	_revalidateTime_ := coreCtx.GetConfigInt64OrDefault("traversal", "revalidate.time", int64(revalidateTime))
+	table.revalidateTime = time.Second * time.Duration(_revalidateTime_)
+
+	_registerTime_ := coreCtx.GetConfigInt64OrDefault("traversal", "register.time", int64(registerTime))
+	table.registerTime = time.Second * time.Duration(_registerTime_)
+
+	_refreshTime_ := coreCtx.GetConfigInt64OrDefault("traversal", "refresh.time", int64(refreshTime))
+	table.refreshTime = time.Second * time.Duration(_refreshTime_)
+
+	_clearTime_ := coreCtx.GetConfigInt64OrDefault("traversal", "clear.time", int64(clearTime))
+	table.clearTime = time.Second * time.Duration(_clearTime_)
+
+	_serverTimeoutTime_ := coreCtx.GetConfigInt64OrDefault("traversal", "server.timeout.time", int64(serverTimeoutTime))
+	table.serverTimeoutTime = time.Second * time.Duration(_serverTimeoutTime_)
+
+	coreCtx.GetLog().Debug("NewTable", zap.Duration("revalidateTime", table.revalidateTime))
+	coreCtx.GetLog().Debug("NewTable", zap.Duration("registerTime", table.registerTime))
+	coreCtx.GetLog().Debug("NewTable", zap.Duration("refreshTime", table.refreshTime))
+	coreCtx.GetLog().Debug("NewTable", zap.Duration("clearTime", table.clearTime))
+	coreCtx.GetLog().Debug("NewTable", zap.Duration("serverTimeoutTime", table.serverTimeoutTime))
+
+	return table
 }

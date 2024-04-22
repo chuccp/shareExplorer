@@ -31,25 +31,6 @@ func (nsm *nodeSearchManage) getOrCreateNodeSearch(searchId ID) *nodeSearch {
 	nsm.nodeSearches = append(nsm.nodeSearches, nodeSearch)
 	return nodeSearch
 }
-
-func (nsm *nodeSearchManage) FindNodeStatus(searchId ID, isStart bool) *entity.NodeStatus {
-	for _, search := range nsm.nodeSearches {
-		if searchId == search.searchNode.id {
-			if isStart && !search.nodeStatus.IsOK() {
-				if isStart {
-					search.tempNodeStatus = entity.NewNodeStatus()
-				}
-				go search.tempRun()
-			}
-			return search.tempNodeStatus
-		}
-	}
-	nodeSearch := newNodeSearch(nsm.coreCtx, nsm.table, searchId)
-	nsm.nodeSearches = append(nsm.nodeSearches, nodeSearch)
-	go nodeSearch.run()
-	go nodeSearch.tempRun()
-	return nodeSearch.nodeStatus
-}
 func (nsm *nodeSearchManage) FindWaitNodeStatus(searchId ID, isWait bool) *entity.NodeStatus {
 	nsm.coreCtx.GetLog().Debug("FindWaitNodeStatus", zap.String("searchId==0", searchId.String()))
 	nodeSearch := nsm.getOrCreateNodeSearch(searchId)
@@ -86,7 +67,9 @@ func (nsm *nodeSearchManage) run() {
 			continue
 		}
 		search := nsm.getOrCreateNodeSearch(id)
-		go search.queryNode(false)
+		nsm.coreCtx.Go(func() {
+			search.queryNode(false)
+		})
 	}
 }
 
@@ -248,10 +231,6 @@ func newNodeSearch(coreCtx *core.Context, queryTable queryTable, searchId ID) *n
 	return &nodeSearch{coreCtx: coreCtx, lock: new(sync.RWMutex), queryTable: queryTable, searchNode: &Node{id: searchId}, tempNodeStatus: entity.NewNodeStatus(), nodeStatus: entity.NewNodeStatus(), ctx: ctx, ctxCancel: ctxCancel}
 }
 
-func (nodeSearch *nodeSearch) run() {
-	go nodeSearch.loop()
-}
-
 func (nodeSearch *nodeSearch) wait(isWait bool) *entity.NodeStatus {
 	nodeSearch.lock.Lock()
 	if nodeSearch.nodeStatus.IsOK() {
@@ -286,7 +265,9 @@ func (nodeSearch *nodeSearch) loop() {
 		pingDone      = make(chan struct{})
 		queryNodeDone = make(chan struct{})
 	)
-	go nodeSearch.scanNode(queryNodeDone)
+	nodeSearch.coreCtx.Go(func() {
+		nodeSearch.scanNode(queryNodeDone)
+	})
 	defer func() {
 		close(pingDone)
 		close(queryNodeDone)
@@ -298,7 +279,10 @@ func (nodeSearch *nodeSearch) loop() {
 
 		case <-queryNode.C:
 			{
-				go nodeSearch.scanNode(queryNodeDone)
+				nodeSearch.coreCtx.Go(func() {
+					nodeSearch.scanNode(queryNodeDone)
+				})
+
 			}
 		case <-queryNodeDone:
 			{
@@ -308,7 +292,10 @@ func (nodeSearch *nodeSearch) loop() {
 
 		case <-ping.C:
 			{
-				go nodeSearch.ping(nodeSearch.searchNode)
+
+				nodeSearch.coreCtx.Go(func() {
+					nodeSearch.ping(nodeSearch.searchNode)
+				})
 			}
 		case <-pingDone:
 			{

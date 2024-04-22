@@ -9,8 +9,10 @@ import (
 	"github.com/chuccp/shareExplorer/web"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"log"
 	"net"
 	"path"
+	"runtime/debug"
 	"strings"
 )
 
@@ -71,6 +73,14 @@ func (c *Context) GetDiscoverServer() (DiscoverServer, bool) {
 func (c *Context) GetConfigInt(section, name string) (int, error) {
 	return c.register.GetConfig().GetInt(section, name)
 }
+
+func (c *Context) GetConfigIntOrDefault(section, name string, defaultValue int) int {
+	return c.register.GetConfig().GetIntOrDefault(section, name, defaultValue)
+}
+func (c *Context) GetConfigInt64OrDefault(section, name string, defaultValue int64) int64 {
+	return c.register.GetConfig().GetInt64OrDefault(section, name, defaultValue)
+}
+
 func (c *Context) GetHttpClient(address *net.UDPAddr) (*khttp.Client, error) {
 	return c.server.GetHttpClient(address)
 }
@@ -222,6 +232,19 @@ func (c *Context) StaticHandle(relativePath string, filepath string) {
 			}
 		}
 	})
+}
+
+func (c *Context) Go(handle func()) {
+	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				s := string(debug.Stack())
+				log.Println(s)
+				c.GetLog().Error("Go", zap.Any("err", err), zap.String("info", s))
+			}
+		}()
+		handle()
+	}()
 }
 
 func (c *Context) IsRemote(context *gin.Context) bool {

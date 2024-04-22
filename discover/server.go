@@ -92,12 +92,9 @@ func (s *Server) nodeStatus(req *web.Request) (any, error) {
 }
 
 func (s *Server) findUserServer(req *web.Request) (any, error) {
-
 	username := req.FormValue("username")
 	code := req.FormValue("code")
-
 	s.context.GetLog().Debug("findUserServer", zap.String("code", code), zap.String("username", username))
-
 	discoverServer, fa := s.context.GetDiscoverServer()
 	if fa {
 		user, err := s.context.GetDB().GetUserModel().QueryOneUser(username, code)
@@ -153,11 +150,6 @@ func (s *Server) nodeServerList(req *web.Request) (any, error) {
 func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
 }
-
-func (s *Server) FindStatus(servername string, isStart bool) *entity.NodeStatus {
-	id, _ := wrapIdFName(servername)
-	return s.nodeSearchManage.FindNodeStatus(id, isStart)
-}
 func (s *Server) FindStatusWait(servername string, isWait bool) (*entity.NodeStatus, error) {
 	s.context.GetLog().Debug("FindStatusWait", zap.String("servername", servername))
 	id, err := StringToId(servername)
@@ -197,8 +189,12 @@ func (s *Server) start() {
 	if !s.context.GetServerConfig().HasInit() {
 		return
 	}
-	go s.table.run()
-	go s.nodeSearchManage.run()
+	s.context.Go(func() {
+		s.table.run()
+	})
+	s.context.Go(func() {
+		s.nodeSearchManage.run()
+	})
 }
 func (s *Server) Stop() {
 	s.context.GetLog().Debug("Server", zap.Bool("table", s.table != nil))
