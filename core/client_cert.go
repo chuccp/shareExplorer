@@ -38,12 +38,15 @@ func (c *ClientCert) init() error {
 func (c *ClientCert) _loadAllUser() error {
 	users, err := c.userModel.QueryAllUser()
 	if err != nil {
+		c.context.GetLog().Error("loadAllUser", zap.Error(err))
 		return err
 	}
+	c.context.GetLog().Debug("loadAllUser", zap.Int("users", len(users)))
 	for _, user := range users {
 		c.context.GetLog().Debug("loadAllUser", zap.String("Username", user.Username), zap.String("Code", user.Code), zap.String("CertPath", user.CertPath))
-		err := c.LoadCert(user.Username, user.Code, user.CertPath)
+		err := c._loadCert(user.Username, user.Code, user.CertPath)
 		if err != nil {
+			c.context.GetLog().Error("loadAllUser", zap.Error(err))
 			return err
 		}
 	}
@@ -57,7 +60,7 @@ func (c *ClientCert) LoadUser(username string, code string) error {
 		return err
 	}
 	path := user.CertPath
-	return c.LoadCert(username, code, path)
+	return c._loadCert(username, code, path)
 }
 
 func (c *ClientCert) LoadAndDeleteUser(username string, code string, oldCode string) error {
@@ -68,7 +71,7 @@ func (c *ClientCert) LoadAndDeleteUser(username string, code string, oldCode str
 		return err
 	}
 	path := user.CertPath
-	err = c.LoadCert(username, code, path)
+	err = c._loadCert(username, code, path)
 	if err == nil {
 		c._deleteCert(oldCode)
 	}
@@ -97,6 +100,9 @@ func (c *ClientCert) GetCertByCode(username string, code string) (*cert.Certific
 func (c *ClientCert) LoadCert(username string, code string, path string) error {
 	c.rLock.RLock()
 	defer c.rLock.RUnlock()
+	return c._loadCert(username, code, path)
+}
+func (c *ClientCert) _loadCert(username string, code string, path string) error {
 	_, cc, err := cert.ParseClientKuicCertFile(path)
 	if err != nil {
 		return err
