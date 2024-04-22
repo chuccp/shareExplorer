@@ -129,28 +129,6 @@ func GenerateNodes(num int) []*Node {
 	return nodes
 }
 
-func TestTable_AddSeenNodes(t *testing.T) {
-	table := GenerateTable()
-	for i := 0; i < 1000; i++ {
-		node := wrapNode(GenerateServerNode())
-		table.addSeenNode(node)
-		node2 := wrapNode(GenerateServerNode())
-		table.addSeenNode(node2)
-	}
-	node := GenerateNode()
-	nodes := table.FindServer(node.ID(), 248)
-	t.Log(nodes)
-}
-
-func TestTable_AddSeenNode(t *testing.T) {
-	table := GenerateTable()
-	node := wrapNode(GenerateServerNode())
-	table.addSeenNode(node)
-	node0, fa := table.queryServerNode(node.ID())
-	t.Log(node0, fa)
-
-}
-
 func GenerateServerNodes(num int) []*Node {
 	var nodes = make([]*Node, num)
 	for i := 0; i < num; i++ {
@@ -193,16 +171,6 @@ func NewQueryTable(table *Table, node *Node) *QueryTable {
 	return &QueryTable{Table: table, node: node, queryTableMap: make(map[ID]*QueryTable)}
 }
 
-func (qv *QueryTable) FindRemoteServer(target ID, node *Node, distances int) ([]*Node, error) {
-
-	qt, ok := qv.queryTableMap[node.ID()]
-	if ok {
-		nodes := qt.FindServer(target, distances)
-		return nodes, nil
-	}
-	return nil, QueryNotFoundError
-
-}
 func (qv *QueryTable) AddTable(id ID, queryTable *QueryTable) {
 	qv.queryTableMap[id] = queryTable
 }

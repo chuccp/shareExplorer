@@ -139,27 +139,20 @@ func (table *Table) loop() {
 		refresh     = time.NewTimer(table.nextRefreshTime())
 		clearServer = time.NewTimer(table.nextClearTime())
 
-		revalidateDone  = make(chan struct{})
-		clearServerDone = make(chan struct{})
+		revalidateDone  chan struct{}
+		clearServerDone chan struct{}
 		refreshDone     = make(chan struct{})
 	)
-	defer func() {
-		revalidate.Stop()
-		refresh.Stop()
-		clearServer.Stop()
-		close(revalidateDone)
-		close(clearServerDone)
-		close(refreshDone)
-	}()
 	table.coreCtx.Go(func() {
 		table.doRefresh(refreshDone)
 	})
+loop:
 	for {
 		select {
 
 		case <-table.ctx.Done():
 			{
-				return
+				break loop
 			}
 		case <-refresh.C:
 			{
@@ -173,32 +166,50 @@ func (table *Table) loop() {
 			}
 		case <-revalidate.C:
 			{
-				table.coreCtx.Go(func() {
-					table.doRevalidate(revalidateDone)
-				})
+				if revalidateDone == nil {
+					revalidateDone = make(chan struct{})
+					table.coreCtx.Go(func() {
+						table.doRevalidate(revalidateDone)
+					})
+				}
+
 			}
 
 		case <-clearServer.C:
 			{
-				table.coreCtx.Go(func() {
-					table.doClearServer(clearServerDone)
-				})
+				if clearServerDone == nil {
+					clearServerDone = make(chan struct{})
+					table.coreCtx.Go(func() {
+						table.doClearServer(clearServerDone)
+					})
+				}
+
 			}
 		case <-clearServerDone:
 			{
 				clearServer.Reset(table.nextClearTime())
-				clearServerDone = make(chan struct{})
+				clearServerDone = nil
 			}
 
 		case <-revalidateDone:
 			{
 				revalidate.Reset(table.nextRevalidateTime())
-				revalidateDone = make(chan struct{})
+				revalidateDone = nil
 			}
 		case <-refreshDone:
 			refresh.Reset(table.nextRefreshTime())
 			refreshDone = nil
 		}
+	}
+
+	if revalidateDone != nil {
+		<-revalidateDone
+	}
+	if refreshDone != nil {
+		<-refreshDone
+	}
+	if clearServerDone != nil {
+		<-clearServerDone
 	}
 }
 func (table *Table) doClearServer(done chan struct{}) {
