@@ -141,6 +141,21 @@ func (u *UserModel) AddClientUser(username, code, certPath, ServerName string) e
 	})
 	return tx.Error
 }
+
+func (u *UserModel) EditClientUser(userId int, code string) (*User, error) {
+	var users []*User
+	tx1 := u.db.Table(u.tableName).Find(&users, "id=? limit 1", userId)
+	if tx1.Error != nil {
+		return nil, tx1.Error
+	}
+	if len(users) == 0 {
+		return nil, errors.New("the ID does not exist")
+	}
+	user2 := &User{Code: code}
+	tx := u.db.Table(u.tableName).Where("id=?", userId).Updates(user2)
+	return users[0], tx.Error
+}
+
 func (u *UserModel) QueryUser(username string, password string) (*User, error) {
 
 	var user User

@@ -281,7 +281,7 @@ func (c *Context) GetReverseProxy(remoteAddress *net.UDPAddr, cert *cert.Certifi
 	return proxy, err
 }
 func (c *Context) ReverseProxy(username, code string, context *gin.Context) {
-	certificate, has := c.clientCert.getCertByCode(username, code)
+	certificate, has := c.clientCert.GetCertByCode(username, code)
 	if has {
 		ds, fa := c.GetDiscoverServer()
 		if fa {

@@ -496,6 +496,26 @@ func (s *Server) addClientUser(req *web.Request) (any, error) {
 	return web.ResponseOK(&client), nil
 }
 
+func (s *Server) editClientUser(req *web.Request) (any, error) {
+	var client entity.Client
+	v, err := req.BodyJson(&client)
+	if err != nil {
+		s.context.GetLog().Error("editClientUser", zap.Error(err), zap.ByteString("body", v))
+		return nil, err
+	}
+	u, err := s.context.GetDB().GetUserModel().EditClientUser(client.UserId, client.Code)
+	if err != nil {
+		s.context.GetLog().Error("EditClientUser", zap.Error(err))
+		return nil, err
+	}
+	clientCert := s.context.GetClientCert()
+	err = clientCert.LoadAndDeleteUser(u.Username, client.Code, u.Code)
+	if err != nil {
+		return nil, err
+	}
+	return web.ResponseOK("ok"), nil
+}
+
 func (s *Server) deleteUser(req *web.Request) (any, error) {
 	username := req.FormValue("username")
 	err := s.context.GetDB().GetUserModel().DeleteUser(username)
@@ -555,6 +575,7 @@ func (s *Server) Init(context *core.Context) {
 	context.GetRemoteAuth("/user/downloadClientCert", s.downloadClientCert)
 	context.GetRemoteAuth("/user/queryUser", s.queryUser)
 	context.PostRemoteAuth("/user/addUser", s.addUser)
+	context.PostRemoteAuth("/user/editClientUser", s.editClientUser)
 	context.PostRemoteAuth("/user/addClientUser", s.addClientUser)
 	context.GetRemoteAuth("/user/deleteUser", s.deleteUser)
 	context.PostRemoteAuth("/user/editUser", s.editUser)
