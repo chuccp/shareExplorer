@@ -36,7 +36,7 @@ func (c *ClientCert) init() error {
 	return nil
 }
 func (c *ClientCert) _loadAllUser() error {
-	users, err := c.userModel.QueryAllUser()
+	users, err := c.userModel.QueryAllClientUser()
 	if err != nil {
 		return err
 	}

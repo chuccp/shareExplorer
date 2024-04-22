@@ -21,6 +21,5 @@ type DiscoverServer interface {
 	Stop()
 	Servername() string
 	FindStatusWait(servername string, isWait bool) (*entity.NodeStatus, error)
-
 	QueryStatus(servername ...string) []*entity.NodeStatus
 }
