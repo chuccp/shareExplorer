@@ -198,9 +198,9 @@ func (u *UserModel) QueryOneUser(username string, code string) (*User, error) {
 	return nil, tx.Error
 }
 
-func (u *UserModel) QueryAllClientUser() ([]*User, error) {
+func (u *UserModel) QueryAllUser() ([]*User, error) {
 	var users01 []*User
-	tx := u.db.Table(u.tableName).Where("role='client'").Find(&users01)
+	tx := u.db.Table(u.tableName).Find(&users01)
 	if tx.Error == nil {
 		return users01, nil
 	}
