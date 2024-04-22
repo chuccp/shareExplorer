@@ -239,6 +239,7 @@ func (c *Context) Go(handle func()) {
 		defer func() {
 			if err := recover(); err != nil {
 				s := string(debug.Stack())
+				log.Println(err)
 				log.Println(s)
 				c.GetLog().Error("Go", zap.Any("err", err), zap.String("info", s))
 			}

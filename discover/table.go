@@ -143,7 +143,6 @@ func (table *Table) loop() {
 		clearServerDone = make(chan struct{})
 		refreshDone     = make(chan struct{})
 	)
-
 	defer func() {
 		revalidate.Stop()
 		refresh.Stop()
@@ -152,7 +151,6 @@ func (table *Table) loop() {
 		close(clearServerDone)
 		close(refreshDone)
 	}()
-
 	table.coreCtx.Go(func() {
 		table.doRefresh(refreshDone)
 	})
@@ -165,9 +163,13 @@ func (table *Table) loop() {
 			}
 		case <-refresh.C:
 			{
-				table.coreCtx.Go(func() {
-					table.doRefresh(refreshDone)
-				})
+				if refreshDone == nil {
+					refreshDone = make(chan struct{})
+					table.coreCtx.Go(func() {
+						table.doRefresh(refreshDone)
+					})
+				}
+
 			}
 		case <-revalidate.C:
 			{
@@ -195,7 +197,7 @@ func (table *Table) loop() {
 			}
 		case <-refreshDone:
 			refresh.Reset(table.nextRefreshTime())
-			refreshDone = make(chan struct{})
+			refreshDone = nil
 		}
 	}
 }
@@ -323,6 +325,7 @@ func (table *Table) loadNurseryNodes() {
 
 func (table *Table) doRefresh(done chan struct{}) {
 	defer close(done)
+	table.coreCtx.GetLog().Debug("doRefresh", zap.Bool("isServer", table.self().isServer))
 	table.loadNurseryNodes()
 	table.lookup()
 }
