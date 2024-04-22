@@ -146,13 +146,13 @@ func (table *Table) loop() {
 	table.coreCtx.Go(func() {
 		table.doRefresh(refreshDone)
 	})
-loop:
+
 	for {
 		select {
 
 		case <-table.ctx.Done():
 			{
-				break loop
+				return
 			}
 		case <-refresh.C:
 			{
@@ -201,17 +201,6 @@ loop:
 			refreshDone = nil
 		}
 	}
-
-	if revalidateDone != nil {
-		<-revalidateDone
-	}
-	if refreshDone != nil {
-		<-refreshDone
-	}
-	if clearServerDone != nil {
-		<-clearServerDone
-	}
-	table.coreCtx.GetLog().Debug("close table")
 }
 func (table *Table) doClearServer(done chan struct{}) {
 	defer close(done)
