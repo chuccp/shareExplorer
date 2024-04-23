@@ -9,8 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
-	"syscall"
 )
 
 type FileInfo struct {
@@ -154,31 +152,6 @@ func ReadRootPath() ([]*FileInfo, error) {
 		return files, nil
 	}
 }
-func IsHiddenFile(filename string) (bool, error) {
-	basename := filepath.Base(filename)
-	if runtime.GOOS == "windows" {
-		if basename[0:1] == "." {
-			return true, nil
-		}
-		pointer, err := syscall.UTF16PtrFromString(filename)
-		if err != nil {
-			fmt.Errorf("IsHiddenFile %s", err)
-			return false, err
-		}
-		attributes, err := syscall.GetFileAttributes(pointer)
-		if err != nil {
-			fmt.Errorf("IsHiddenFile %s", err)
-			return false, err
-		}
-		return attributes&syscall.FILE_ATTRIBUTE_HIDDEN != 0, nil
-	} else {
-		if basename[0:1] == "." {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func Copy(dst io.Writer, src io.Reader) (written int64, err error) {
 	var bucket = ratelimit.NewBucketWithRate(100_000, 100)
 	reader := ratelimit.Reader(src, bucket)
