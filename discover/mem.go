@@ -85,7 +85,6 @@ func (ns *nodeStore) clearTimeOut(duration time.Duration) {
 	now = time.Now()
 	for _, node := range nodes {
 		if node.lastUpdateTime.Add(duration).Before(now) {
-			delete(ns.nodeMap, node.id)
 			n, ok := ns.nodeMap[node.id]
 			if ok {
 				ns.nodeList.Remove(n.ele)
