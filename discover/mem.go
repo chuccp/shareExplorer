@@ -58,7 +58,6 @@ func (ns *nodeStore) add(node *Node) {
 func (ns *nodeStore) remove(id ID) {
 	ns.mutex.Lock()
 	defer ns.mutex.Unlock()
-	delete(ns.nodeMap, id)
 	n, ok := ns.nodeMap[id]
 	if ok {
 		ns.nodeList.Remove(n.ele)

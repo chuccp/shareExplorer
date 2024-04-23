@@ -3,6 +3,7 @@ package discover
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/chuccp/shareExplorer/core"
 	"math/bits"
@@ -14,7 +15,13 @@ import (
 type ID [32]byte
 
 func StringToId(server string) (ID, error) {
+	if len(server) != 64 {
+		return zeroId, errors.New("the length must be 64")
+	}
 	id, err := hex.DecodeString(server)
+	if err != nil {
+		return zeroId, err
+	}
 	return ID(id), err
 }
 
