@@ -11,6 +11,7 @@ type FileManage struct {
 }
 
 func (fm *FileManage) Children(path string) ([]*FileInfo, error) {
+	path = strings.ReplaceAll(path, "\\", "/")
 	absolute := filepath.Join(fm.base, path)
 	file, err := OpenFile(absolute)
 	if err != nil {
@@ -31,6 +32,7 @@ func (fm *FileManage) Children(path string) ([]*FileInfo, error) {
 }
 
 func (fm *FileManage) CreateNewFolder(path string, fileName string) error {
+	path = strings.ReplaceAll(path, "\\", "/")
 	if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "\\") {
 		path = path[1:]
 	}
@@ -39,6 +41,7 @@ func (fm *FileManage) CreateNewFolder(path string, fileName string) error {
 }
 
 func (fm *FileManage) Absolute(path string, fileName string) string {
+	path = strings.ReplaceAll(path, "\\", "/")
 	if strings.HasPrefix(path, "/") || strings.HasPrefix(path, "\\") {
 		path = path[1:]
 	}
@@ -47,5 +50,6 @@ func (fm *FileManage) Absolute(path string, fileName string) string {
 }
 
 func CreateFileManage(root string) *FileManage {
+	root = strings.ReplaceAll(root, "\\", "/")
 	return &FileManage{base: root}
 }
