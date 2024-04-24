@@ -28,7 +28,7 @@ type bucket struct {
 	entries      []*Node
 	replacements []*Node
 	index        int
-	ips          DistinctNetSet
+	ips          *DistinctNetSet
 }
 type mNode struct {
 	n   *Node
@@ -138,7 +138,7 @@ type NodeTable struct {
 	nursery    []*Node //bootstrap nodes
 	serverNode *nodeStore
 	localNode  *Node
-	ips        DistinctNetSet //IP计数
+	ips        *DistinctNetSet //IP计数
 	rand       *rand.Rand
 	coreCtx    *core.Context
 }
@@ -148,9 +148,10 @@ func NewNodeTable(localNode *Node, coreCtx *core.Context) *NodeTable {
 	for i := range tab.buckets {
 		tab.buckets[i] = &bucket{
 			index: i,
-			ips:   DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
+			ips:   &DistinctNetSet{Subnet: bucketSubnet, Limit: bucketIPLimit},
 		}
 	}
+	tab.ips = &DistinctNetSet{Subnet: tableSubnet, Limit: tableIPLimit}
 	tab.nursery = make([]*Node, 0)
 	return tab
 }
@@ -458,8 +459,9 @@ func (nodeTable *NodeTable) addIP(b *bucket, ip net.IP) bool {
 
 func (nodeTable *NodeTable) addNatServer(n *Node) {
 	b := nodeTable.bucket(n.ID())
-	nodeTable.coreCtx.GetLog().Debug("addNatServer", zap.Any("b.entries", b.entries), zap.String("id", n.ServerName()))
+
 	preNode, fa := nodesContainsId(b.entries, n.ID())
+	nodeTable.coreCtx.GetLog().Debug("addNatServer0", zap.Any("b.entries", b.entries), zap.String("id", n.ServerName()), zap.Bool("fa", fa))
 	if fa {
 		preNode.lastUpdateTime = time.Now()
 		return
