@@ -37,7 +37,13 @@ func (s *Server) GetName() string {
 	return "user"
 }
 func (s *Server) signIn(req *web.Request) (any, error) {
-	return web.ResponseOK("ok"), nil
+	ui := &entity.UserInfo{}
+	ds, ok := s.context.GetDiscoverServer()
+	if ok {
+		ui.ServerName = ds.Servername()
+	}
+	ui.Username = req.GetAuthUsername()
+	return web.ResponseOK(ui), nil
 }
 
 func (s *Server) addAdmin(req *web.Request) (any, error) {
@@ -173,29 +179,29 @@ func (s *Server) addClient(req *web.Request) (any, error) {
 }
 
 func (s *Server) info(req *web.Request) (any, error) {
-
 	un, code := req.ReadAuthUsernameAndCode()
 	if code != "" && s.context.GetServerConfig().IsClient() {
-		s.context.ReverseProxy(un, code, req.GetContext())
-		return nil, nil
+		writer := req.GetContext().Writer
+		response := web.NewProxyResponse(writer)
+		s.context.ReverseProxy(un, code, response, req.GetContext())
+		body := response.GetBody()
+		toResponse, err := web.JsonToResponse[*entity.System](body)
+		if err == nil {
+			system := toResponse.Data
+			if system.HasSignIn {
+				req.GetContext().AbortWithStatusJSON(200, toResponse)
+				return nil, nil
+			}
+		}
 	}
-
 	ServerConfig := s.context.GetServerConfig()
 	var system entity.System
 	system.HasInit = ServerConfig.HasInit()
 	if system.HasInit {
 		system.IsServer = ServerConfig.IsServer()
 		system.IsClient = ServerConfig.IsClient()
-
-		if system.IsClient {
-
-		}
-
 		system.IsNatServer = ServerConfig.IsNatServer()
-		ds, ok := s.context.GetDiscoverServer()
-		if ok {
-			system.ServerName = ds.Servername()
-		}
+
 		username := req.GetAuthUsername()
 		if len(username) > 0 {
 			system.HasSignIn = true

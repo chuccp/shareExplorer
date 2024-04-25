@@ -1,9 +1,12 @@
 package web
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"github.com/chuccp/shareExplorer/entity"
+)
 
 type Data interface {
-	string | any | *PageAble
+	string | any | *PageAble | *entity.System
 }
 
 type Response[T Data] struct {

@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 	"log"
 	"net"
+	"net/http"
 	"path"
 	"runtime/debug"
 	"strings"
@@ -281,7 +282,8 @@ func (c *Context) GetReverseProxy(remoteAddress *net.UDPAddr, cert *cert.Certifi
 	proxy, err := c.server.GetTlsReverseProxy(remoteAddress, cert)
 	return proxy, err
 }
-func (c *Context) ReverseProxy(username, code string, context *gin.Context) {
+
+func (c *Context) ReverseProxy(username, code string, writer http.ResponseWriter, context *gin.Context) {
 	certificate, has := c.clientCert.GetCertByCode(username, code)
 	if has {
 		ds, fa := c.GetDiscoverServer()
@@ -297,7 +299,7 @@ func (c *Context) ReverseProxy(username, code string, context *gin.Context) {
 					} else {
 						context.Request.Header.Del("Referer")
 						context.Request.Header.Del("Origin")
-						reverseProxy.ServeHTTP(context.Writer, context.Request)
+						reverseProxy.ServeHTTP(writer, context.Request)
 					}
 				} else {
 					context.AbortWithStatusJSON(200, web.ResponseMsg(status.GetCode(), status.GetMsg()))
@@ -321,7 +323,7 @@ func (c *Context) RemoteHandle() {
 				if code == "" {
 					context.Next()
 				} else {
-					c.ReverseProxy(un, code, context)
+					c.ReverseProxy(un, code, context.Writer, context)
 				}
 			}
 		}
