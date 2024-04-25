@@ -5,7 +5,10 @@ import (
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strings"
 )
+
+const digestAuthName = "digestAuth"
 
 type BasicAuth struct {
 	*auth.BasicAuth
@@ -19,6 +22,46 @@ func (basicAuth *BasicAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) HandlerF
 	}
 }
 
+type AuthResponseWriter struct {
+	header     http.Header
+	statusCode int
+	w          http.ResponseWriter
+	r          *http.Request
+	digestAuth *DigestAuth
+}
+
+func newAuthResponseWriter(w http.ResponseWriter, r *http.Request, digestAuth *DigestAuth) *AuthResponseWriter {
+	return &AuthResponseWriter{
+		header:     http.Header{},
+		w:          w,
+		r:          r,
+		digestAuth: digestAuth,
+	}
+}
+func (writer *AuthResponseWriter) Header() http.Header {
+	return writer.header
+}
+func (writer *AuthResponseWriter) Write(data []byte) (int, error) {
+
+	return writer.w.Write(data)
+}
+func (writer *AuthResponseWriter) WriteHeader(statusCode int) {
+	ua := writer.r.UserAgent()
+	if strings.Contains(ua, "Chrome") {
+		authenticate := writer.Header().Get(writer.digestAuth.Headers.V().Authenticate)
+		if len(authenticate) > 0 {
+			writer.Header().Del(writer.digestAuth.Headers.V().Authenticate)
+			writer.Header().Set(digestAuthName, authenticate)
+		}
+	}
+	for k, v := range writer.header {
+		for _, v_ := range v {
+			writer.w.Header().Set(k, v_)
+		}
+	}
+	writer.w.WriteHeader(statusCode)
+}
+
 type DigestAuth struct {
 	*auth.DigestAuth
 }
@@ -26,8 +69,8 @@ type DigestAuth struct {
 func (digestAuth *DigestAuth) Wrap(wrapped auth.AuthenticatedHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if username, authinfo := digestAuth._checkAuth(r); username == "" {
-			digestAuth.RequireAuth(w, r)
-			authenticate := w.Header().Get(digestAuth.Headers.V().Authenticate)
+			digestAuth.RequireAuth(newAuthResponseWriter(w, r, digestAuth), r)
+			authenticate := w.Header().Get(digestAuthName)
 			w.Write([]byte(digestAuth.Headers.V().Authenticate + ":" + authenticate + "\n"))
 		} else {
 			ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
