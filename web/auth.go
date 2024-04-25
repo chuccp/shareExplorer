@@ -47,7 +47,7 @@ func (writer *AuthResponseWriter) Write(data []byte) (int, error) {
 }
 func (writer *AuthResponseWriter) WriteHeader(statusCode int) {
 	ua := writer.r.UserAgent()
-	if util.ContainsAny(ua, "Mozilla", "Opera") {
+	if util.ContainsAnyIgnoreCase(ua, "Mozilla", "Opera") {
 		authenticate := writer.Header().Get(writer.digestAuth.Headers.V().Authenticate)
 		if len(authenticate) > 0 {
 			writer.Header().Del(writer.digestAuth.Headers.V().Authenticate)

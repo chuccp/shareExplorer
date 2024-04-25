@@ -48,3 +48,19 @@ func ContainsAny(s string, strs ...string) bool {
 	}
 	return false
 }
+
+func ContainsAnyIgnoreCase(s string, strs ...string) bool {
+	// 将待检查的字符串转换为小写
+	sLower := strings.ToLower(s)
+
+	// 遍历字符串切片
+	for _, str := range strs {
+		// 将当前字符串也转换为小写，然后进行比较
+		if strings.Contains(sLower, strings.ToLower(str)) {
+			return true
+		}
+	}
+
+	// 如果没有找到匹配的字符串，则返回false
+	return false
+}
