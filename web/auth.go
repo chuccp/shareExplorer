@@ -3,9 +3,9 @@ package web
 import (
 	"encoding/base64"
 	auth "github.com/abbot/go-http-auth"
+	"github.com/chuccp/shareExplorer/util"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"strings"
 )
 
 const digestAuthName = "digestAuth"
@@ -47,7 +47,7 @@ func (writer *AuthResponseWriter) Write(data []byte) (int, error) {
 }
 func (writer *AuthResponseWriter) WriteHeader(statusCode int) {
 	ua := writer.r.UserAgent()
-	if strings.Contains(ua, "Chrome") {
+	if util.ContainsAny(ua, "Mozilla", "Opera") {
 		authenticate := writer.Header().Get(writer.digestAuth.Headers.V().Authenticate)
 		if len(authenticate) > 0 {
 			writer.Header().Del(writer.digestAuth.Headers.V().Authenticate)
@@ -56,7 +56,10 @@ func (writer *AuthResponseWriter) WriteHeader(statusCode int) {
 	}
 	for k, v := range writer.header {
 		for _, v_ := range v {
-			writer.w.Header().Set(k, v_)
+			if len(v_) > 0 {
+				writer.w.Header().Set(k, v_)
+			}
+
 		}
 	}
 	writer.w.WriteHeader(statusCode)

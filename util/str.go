@@ -39,3 +39,12 @@ func ReplaceAllRegex(path, regex, math string) string {
 	re := regexp.MustCompile(regex)
 	return re.ReplaceAllString(path, math)
 }
+
+func ContainsAny(s string, strs ...string) bool {
+	for _, str := range strs {
+		if strings.Contains(s, str) {
+			return true
+		}
+	}
+	return false
+}
