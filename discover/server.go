@@ -7,6 +7,7 @@ import (
 	"github.com/chuccp/shareExplorer/web"
 	"go.uber.org/zap"
 	"net"
+	"time"
 )
 
 const (
@@ -108,7 +109,7 @@ func (s *Server) findUserServer(req *web.Request) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		status, err := discoverServer.FindStatusWait(ce.ServerName, true)
+		status, err := discoverServer.FindStatusWait(ce.ServerName, core.FindWaitTime)
 		if err != nil {
 			return err, nil
 		}
@@ -150,13 +151,13 @@ func (s *Server) nodeServerList(req *web.Request) (any, error) {
 func (s *Server) connect(req *web.Request) (any, error) {
 	return web.ResponseOK("ok"), nil
 }
-func (s *Server) FindStatusWait(servername string, isWait bool) (*entity.NodeStatus, error) {
+func (s *Server) FindStatusWait(servername string, duration time.Duration) (*entity.NodeStatus, error) {
 	s.context.GetLog().Debug("FindStatusWait", zap.String("servername", servername))
 	id, err := StringToId(servername)
 	if err != nil {
 		return nil, err
 	}
-	return s.nodeSearchManage.FindWaitNodeStatus(id, isWait), nil
+	return s.nodeSearchManage.FindWaitNodeStatus(id, duration), nil
 }
 
 func (s *Server) QueryStatus(servername ...string) []*entity.NodeStatus {

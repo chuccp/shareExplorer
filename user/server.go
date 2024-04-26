@@ -343,7 +343,7 @@ func (s *Server) uploadUserCert(req *web.Request) (any, error) {
 	} else {
 		ds, fa := s.context.GetDiscoverServer()
 		if fa {
-			_, err := ds.FindStatusWait(client.ServerName, false)
+			_, err := ds.FindStatusWait(client.ServerName, 0)
 			if err != nil {
 				return nil, err
 			}
@@ -501,7 +501,7 @@ func (s *Server) addClientUser(req *web.Request) (any, error) {
 	}
 	discoverServer, fa := s.context.GetDiscoverServer()
 	if fa {
-		discoverServer.FindStatusWait(client.ServerName, false)
+		discoverServer.FindStatusWait(client.ServerName, 0)
 	}
 	return web.ResponseOK(&client), nil
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/chuccp/shareExplorer/entity"
 	"github.com/chuccp/shareExplorer/util"
 	"net"
+	"time"
 )
 
 type Server interface {
@@ -20,6 +21,6 @@ type DiscoverServer interface {
 	Ping(address *net.UDPAddr) error
 	Stop()
 	Servername() string
-	FindStatusWait(servername string, isWait bool) (*entity.NodeStatus, error)
+	FindStatusWait(servername string, duration time.Duration) (*entity.NodeStatus, error)
 	QueryStatus(servername ...string) []*entity.NodeStatus
 }

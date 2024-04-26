@@ -15,7 +15,10 @@ import (
 	"path"
 	"runtime/debug"
 	"strings"
+	"time"
 )
+
+const FindWaitTime = 20 * time.Second
 
 type Context struct {
 	engine         *gin.Engine
@@ -288,7 +291,7 @@ func (c *Context) ReverseProxy(username, code string, writer http.ResponseWriter
 	if has {
 		ds, fa := c.GetDiscoverServer()
 		if fa {
-			status, err := ds.FindStatusWait(certificate.ServerName, true)
+			status, err := ds.FindStatusWait(certificate.ServerName, FindWaitTime)
 			if err != nil {
 				context.AbortWithStatusJSON(200, web.ResponseError(status.GetError().Error()))
 			} else {

@@ -31,9 +31,9 @@ func (nsm *nodeSearchManage) getOrCreateNodeSearch(searchId ID) *nodeSearch {
 	nsm.nodeSearches = append(nsm.nodeSearches, nodeSearch)
 	return nodeSearch
 }
-func (nsm *nodeSearchManage) FindWaitNodeStatus(searchId ID, isWait bool) *entity.NodeStatus {
+func (nsm *nodeSearchManage) FindWaitNodeStatus(searchId ID, duration time.Duration) *entity.NodeStatus {
 	nodeSearch := nsm.getOrCreateNodeSearch(searchId)
-	return nodeSearch.wait(isWait)
+	return nodeSearch.wait(duration)
 }
 func (nsm *nodeSearchManage) QueryStatus(serverNames ...string) []*entity.NodeStatus {
 	nodes := make([]*entity.NodeStatus, len(serverNames))
@@ -66,7 +66,7 @@ func (nsm *nodeSearchManage) run() {
 		}
 		search := nsm.getOrCreateNodeSearch(id)
 		nsm.coreCtx.Go(func() {
-			search.queryNode(false)
+			search.queryNode(0)
 		})
 	}
 }
@@ -229,7 +229,7 @@ func newNodeSearch(coreCtx *core.Context, queryTable queryTable, searchId ID) *n
 	return &nodeSearch{coreCtx: coreCtx, lock: new(sync.RWMutex), queryTable: queryTable, searchNode: &Node{id: searchId}, tempNodeStatus: entity.NewNodeStatus(), nodeStatus: entity.NewNodeStatus(), ctx: ctx, ctxCancel: ctxCancel}
 }
 
-func (nodeSearch *nodeSearch) wait(isWait bool) *entity.NodeStatus {
+func (nodeSearch *nodeSearch) wait(duration time.Duration) *entity.NodeStatus {
 	nodeSearch.lock.Lock()
 	if nodeSearch.nodeStatus.IsOK() {
 		nodeStatus := nodeSearch.nodeStatus
@@ -237,7 +237,7 @@ func (nodeSearch *nodeSearch) wait(isWait bool) *entity.NodeStatus {
 		return nodeStatus
 	}
 	nodeSearch.lock.Unlock()
-	return nodeSearch.queryNode(isWait)
+	return nodeSearch.queryNode(duration)
 }
 
 func (nodeSearch *nodeSearch) tempRun() {
@@ -314,14 +314,14 @@ func (nodeSearch *nodeSearch) refresh(done chan<- struct{}) {
 
 func (nodeSearch *nodeSearch) scanNode(done chan<- struct{}) {
 	defer close(done)
-	nodeSearch.queryNode(false)
+	nodeSearch.queryNode(0)
 }
 
-func (nodeSearch *nodeSearch) queryNode(isWait bool) *entity.NodeStatus {
+func (nodeSearch *nodeSearch) queryNode(duration time.Duration) *entity.NodeStatus {
 	nodeSearch.lock.Lock()
 	if nodeSearch.nodeStatus.IsSearching() {
-		if isWait {
-			ctx02, ctxCancel02 := context.WithCancel(nodeSearch.ctx01)
+		if duration > 0 {
+			ctx02, ctxCancel02 := context.WithDeadline(nodeSearch.ctx01, time.Now().Add(duration))
 			nodeSearch.lock.Unlock()
 			select {
 			case <-ctx02.Done():
