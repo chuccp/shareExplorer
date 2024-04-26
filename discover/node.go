@@ -80,6 +80,7 @@ type Node struct {
 	isClient        bool
 	isNatServer     bool
 	addr            *net.UDPAddr
+	address         string
 	addTime         time.Time
 	lastUpdateTime  time.Time
 	lastRefreshTime time.Time
@@ -87,6 +88,12 @@ type Node struct {
 	liveNessChecks  int
 }
 
+func (n *Node) GetRemoteAddress() string {
+	if len(n.address) > 0 {
+		return n.address
+	}
+	return n.addr.String()
+}
 func (n *Node) IP() net.IP {
 	return n.addr.IP
 }

@@ -19,7 +19,13 @@ type call struct {
 func newCall(localNode *Node, httpClient *core.HttpClient, context *core.Context) *call {
 	return &call{localNode: localNode, httpClient: httpClient, context: context}
 }
-
+func (call *call) registerNode(node *Node) (*Node, error) {
+	n, err := call.register(node.addr)
+	if err == nil {
+		n.address = node.GetRemoteAddress()
+	}
+	return n, err
+}
 func (call *call) register(remoteAddress *net.UDPAddr) (*Node, error) {
 	var register = &Register{
 		FormId:      call.localNode.ServerName(),

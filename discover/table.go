@@ -75,7 +75,8 @@ func (table *Table) loadAddress() error {
 				table.coreCtx.GetLog().Error("loadAddress", zap.Error(err))
 				continue
 			} else {
-				node := &Node{addr: addr, isServer: false, isNatServer: true, isClient: false}
+				table.coreCtx.GetLog().Debug("loadAddress", zap.String("Address", address.Address), zap.Any("addr", addr))
+				node := &Node{addr: addr, address: address.Address, isServer: false, isNatServer: true, isClient: false}
 				if len(address.ServerName) >= 64 {
 					id, err := StringToId(address.ServerName)
 					if err == nil {
@@ -301,7 +302,7 @@ func (table *Table) loadNurseryNodes() {
 				if table.isDone() {
 					return
 				}
-				node, err := table.call.register(n.addr)
+				node, err := table.call.registerNode(n)
 				if err != nil {
 					table.coreCtx.GetLog().Error("loadNurseryNodes", zap.Error(err))
 					n.errorNum++
@@ -311,7 +312,7 @@ func (table *Table) loadNurseryNodes() {
 						if node.id != table.localNode.id {
 							table.AddNode(node)
 							n.SetID(node.ID())
-							table.coreCtx.GetDB().GetAddressModel().UpdateServerNameByAddress(n.addr.String(), node.ServerName())
+							table.coreCtx.GetDB().GetAddressModel().UpdateServerNameByAddress(n.GetRemoteAddress(), node.ServerName())
 						} else {
 							table.coreCtx.GetLog().Info("loadNurseryNodes", zap.String("msg", "connection self"))
 						}

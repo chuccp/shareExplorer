@@ -499,6 +499,10 @@ func (s *Server) addClientUser(req *web.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	discoverServer, fa := s.context.GetDiscoverServer()
+	if fa {
+		discoverServer.FindStatusWait(client.ServerName, false)
+	}
 	return web.ResponseOK(&client), nil
 }
 

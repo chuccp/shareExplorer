@@ -32,9 +32,7 @@ func (nsm *nodeSearchManage) getOrCreateNodeSearch(searchId ID) *nodeSearch {
 	return nodeSearch
 }
 func (nsm *nodeSearchManage) FindWaitNodeStatus(searchId ID, isWait bool) *entity.NodeStatus {
-	nsm.coreCtx.GetLog().Debug("FindWaitNodeStatus", zap.String("searchId==0", searchId.String()))
 	nodeSearch := nsm.getOrCreateNodeSearch(searchId)
-	nsm.coreCtx.GetLog().Debug("FindWaitNodeStatus", zap.String("searchId==1", searchId.String()))
 	return nodeSearch.wait(isWait)
 }
 func (nsm *nodeSearchManage) QueryStatus(serverNames ...string) []*entity.NodeStatus {
@@ -321,7 +319,6 @@ func (nodeSearch *nodeSearch) scanNode(done chan<- struct{}) {
 
 func (nodeSearch *nodeSearch) queryNode(isWait bool) *entity.NodeStatus {
 	nodeSearch.lock.Lock()
-	nodeSearch.coreCtx.GetLog().Debug("queryNode", zap.Bool("IsSearching", nodeSearch.nodeStatus.IsSearching()), zap.Bool("isWait", isWait))
 	if nodeSearch.nodeStatus.IsSearching() {
 		if isWait {
 			ctx02, ctxCancel02 := context.WithCancel(nodeSearch.ctx01)

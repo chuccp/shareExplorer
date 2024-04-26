@@ -469,7 +469,7 @@ func (nodeTable *NodeTable) addNatServer(n *Node) {
 	if !nodeTable.addIP(b, n.IP()) {
 		return
 	}
-	err := nodeTable.coreCtx.GetDB().GetAddressModel().AddAddress(n.addr.String(), n.ServerName(), false)
+	err := nodeTable.coreCtx.GetDB().GetAddressModel().AddAddress(n.GetRemoteAddress(), n.ServerName(), false)
 	if err != nil {
 		nodeTable.coreCtx.GetLog().Debug("addNatServer to db", zap.Error(err))
 	}
