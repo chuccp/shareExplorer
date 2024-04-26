@@ -67,7 +67,7 @@ func NodeToRegister(n *Node) *Register {
 	return register
 }
 func NodeToExNode(n *Node) *ExNode {
-	var register = &ExNode{Id: n.ServerName(), Address: n.addr.String(), LastLiveTime: util.FormatTime(&n.lastUpdateTime)}
+	var register = &ExNode{Id: n.ServerName(), Address: n.GetRemoteAddress(), LastLiveTime: util.FormatTime(&n.lastUpdateTime)}
 	return register
 }
 func NodeToExNodes(ns []*Node) []*ExNode {

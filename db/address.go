@@ -43,7 +43,7 @@ func (a *AddressModel) DeleteTable() error {
 
 func (a *AddressModel) QueryAddresses() ([]*Address, error) {
 	var addr []*Address
-	tx := a.db.Table(a.tableName).Find(&addr)
+	tx := a.db.Table(a.tableName).Find(&addr).Limit(272)
 	return addr, tx.Error
 }
 
@@ -60,6 +60,15 @@ func (a *AddressModel) UpdateServerNameByAddress(address, serverName string) err
 		Address: address,
 	}).Updates(&Address{
 		ServerName: serverName,
+		UpdateTime: time.Now(),
+	})
+	return tx.Error
+}
+func (a *AddressModel) UpdateAddressByServerName(serverName, address string) error {
+	tx := a.db.Table(a.tableName).Where(&Address{
+		ServerName: serverName,
+	}).Updates(&Address{
+		Address:    address,
 		UpdateTime: time.Now(),
 	})
 	return tx.Error

@@ -86,6 +86,7 @@ type Node struct {
 	lastRefreshTime time.Time
 	errorNum        int
 	liveNessChecks  int
+	isSeed          bool
 }
 
 func (n *Node) GetRemoteAddress() string {
@@ -93,6 +94,12 @@ func (n *Node) GetRemoteAddress() string {
 		return n.address
 	}
 	return n.addr.String()
+}
+func (n *Node) SetAddr(addr *net.UDPAddr) {
+	if !n.isSeed {
+		n.addr = addr
+		n.address = addr.String()
+	}
 }
 func (n *Node) IP() net.IP {
 	return n.addr.IP

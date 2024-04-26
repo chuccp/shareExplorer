@@ -326,3 +326,9 @@ func IsSameAddress(addr, other *net.UDPAddr) bool {
 	}
 	return false
 }
+func IsSameAddressStr(addr, other string) bool {
+	if addr == other {
+		return true
+	}
+	return false
+}

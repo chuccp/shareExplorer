@@ -46,7 +46,9 @@ func (ns *nodeStore) add(node *Node) {
 	nele, ok := ns.nodeMap[node.id]
 	if ok {
 		nd := nele.n
-		nd.addr = node.addr
+		if !nd.isSeed {
+			nd.SetAddr(node.addr)
+		}
 		nd.lastUpdateTime = time.Now()
 	} else {
 		node.lastUpdateTime = time.Now()
@@ -459,10 +461,14 @@ func (nodeTable *NodeTable) addIP(b *bucket, ip net.IP) bool {
 
 func (nodeTable *NodeTable) addNatServer(n *Node) {
 	b := nodeTable.bucket(n.ID())
-
 	preNode, fa := nodesContainsId(b.entries, n.ID())
 	nodeTable.coreCtx.GetLog().Debug("addNatServer0", zap.Any("b.entries", b.entries), zap.String("id", n.ServerName()), zap.Bool("fa", fa))
 	if fa {
+		nodeTable.coreCtx.GetLog().Debug("addNatServer1", zap.Bool("seed", preNode.isSeed), zap.Any("b.entries", b.entries), zap.String("address", preNode.GetRemoteAddress()), zap.String("id", n.ServerName()), zap.Bool("fa", fa))
+		if !preNode.isSeed {
+			nodeTable.coreCtx.GetDB().GetAddressModel().UpdateAddressByServerName(n.ServerName(), n.GetRemoteAddress())
+			preNode.SetAddr(n.addr)
+		}
 		preNode.lastUpdateTime = time.Now()
 		return
 	}
@@ -500,15 +506,15 @@ func deleteNode0(list []*Node, n *Node) []*Node {
 
 func (nodeTable *NodeTable) addNursery(n *Node) {
 	nodeTable.coreCtx.GetLog().Debug("addNursery", zap.Any("nodeTable.nursery", nodeTable.nursery), zap.Any("n.addr", n.addr))
-	if !nodesContainsAddress(nodeTable.nursery, n.addr) {
+	if !nodesContainsAddress(nodeTable.nursery, n.GetRemoteAddress()) {
 		n.addTime = time.Now()
 		nodeTable.nursery = append(nodeTable.nursery, n)
 	}
 }
 
-func nodesContainsAddress(ns []*Node, addr *net.UDPAddr) bool {
+func nodesContainsAddress(ns []*Node, addr string) bool {
 	for _, v := range ns {
-		if IsSameAddress(v.addr, addr) {
+		if IsSameAddressStr(v.GetRemoteAddress(), addr) {
 			return true
 		}
 	}

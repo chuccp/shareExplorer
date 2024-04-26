@@ -75,8 +75,8 @@ func (table *Table) loadAddress() error {
 				table.coreCtx.GetLog().Error("loadAddress", zap.Error(err))
 				continue
 			} else {
-				table.coreCtx.GetLog().Debug("loadAddress", zap.String("Address", address.Address), zap.Any("addr", addr))
-				node := &Node{addr: addr, address: address.Address, isServer: false, isNatServer: true, isClient: false}
+				table.coreCtx.GetLog().Debug("loadAddress", zap.Int("Seed", address.Seed), zap.String("Address", address.Address), zap.Any("addr", addr))
+				node := &Node{addr: addr, address: address.Address, isSeed: address.Seed == 1, isServer: false, isNatServer: true, isClient: false}
 				if len(address.ServerName) >= 64 {
 					id, err := StringToId(address.ServerName)
 					if err == nil {
@@ -310,6 +310,7 @@ func (table *Table) loadNurseryNodes() {
 				} else {
 					if !node.ID().IsBlank() {
 						if node.id != table.localNode.id {
+							node.isSeed = n.isSeed
 							table.AddNode(node)
 							n.SetID(node.ID())
 							table.coreCtx.GetDB().GetAddressModel().UpdateServerNameByAddress(n.GetRemoteAddress(), node.ServerName())
@@ -372,6 +373,7 @@ func (table *Table) validateNatServer(node *Node) {
 		if node.id != value.id {
 			table.nodeTable.deleteNode(node)
 			table.coreCtx.GetDB().GetAddressModel().UpdateServerNameByAddress(node.addr.String(), node.ServerName())
+			value.isSeed = node.isSeed
 			table.AddNode(value)
 			return
 		}
